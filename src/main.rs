@@ -21,122 +21,142 @@ fn main() {
     let repository = Path::new("test-notes");
 
     let input_command: InputCommand = InputCommand::from_args();
-    if let Err(err) = run(input_command, repository) {
+    if let Err(err) = run(repository, input_command) {
         println!("{}.", err.to_string());
         std::process::exit(1);
     }
 }
 
-fn run(input_command: InputCommand, repository: &Path) -> Result<(), RunError> {
-    match input_command {
-        InputCommand::AddFakeData => {
-            CommandInterpreter::new(&repository)?.execute(vec![
-                Command::AddNoteWithContent {
-                    path: Path::new("2022/05/test1").to_owned(),
-                    tags: vec!["x".to_owned(), "y".to_owned()],
-                    content: r#"Hello, World!
+fn run(repository: &Path, input_command: InputCommand) -> Result<(), RunError> {
+    Application::new(repository)?.run(input_command)
+}
+
+struct Application {
+    repository: PathBuf,
+    command_interpreter: CommandInterpreter
+}
+
+impl Application {
+    pub fn new(repository: &Path) -> Result<Application, RunError> {
+        Ok(
+            Application {
+                repository: repository.to_path_buf(),
+                command_interpreter: CommandInterpreter::new(repository)?
+            }
+        )
+    }
+
+    pub fn run(&mut self, input_command: InputCommand) -> Result<(), RunError> {
+        match input_command {
+            InputCommand::AddFakeData => {
+                self.command_interpreter.execute(vec![
+                    Command::AddNoteWithContent {
+                        path: Path::new("2022/05/test1").to_owned(),
+                        tags: vec!["x".to_owned(), "y".to_owned()],
+                        content: r#"Hello, World!
 
 ``` python
 import numpy as np
 print(np.square(np.arange(0, 10)))
 ```
 "#.to_string()
-                },
-                Command::AddNoteWithContent {
-                    path: Path::new("2023/05/test2").to_owned(),
-                    tags: vec!["x".to_owned(), "z".to_owned()],
-                    content: "Hello, Stupid World!".to_string()
-                },
-                Command::AddNoteWithContent {
-                    path: Path::new("2023/test3").to_owned(),
-                    tags: vec!["x".to_owned(), "y".to_owned()],
-                    content: "Hello, New World!".to_string()
-                },
-                Command::Commit
-            ])?;
-        }
-        InputCommand::Add { path, tags } => {
-            CommandInterpreter::new(&repository)?.execute(vec![
-                Command::AddNote { path, tags},
-                Command::Commit
-            ])?;
-        }
-        InputCommand::Edit { path } => {
-            CommandInterpreter::new(&repository)?.execute(vec![
-                Command::EditNoteContent { path },
-                Command::Commit
-            ])?;
-        }
-        InputCommand::RunSnippet { path, save_output } => {
-            let mut commands = vec![
-                Command::RunSnippet { path, save_output }
-            ];
-
-            if save_output {
-                commands.push(Command::Commit);
+                    },
+                    Command::AddNoteWithContent {
+                        path: Path::new("2023/05/test2").to_owned(),
+                        tags: vec!["x".to_owned(), "z".to_owned()],
+                        content: "Hello, Stupid World!".to_string()
+                    },
+                    Command::AddNoteWithContent {
+                        path: Path::new("2023/test3").to_owned(),
+                        tags: vec!["x".to_owned(), "y".to_owned()],
+                        content: "Hello, New World!".to_string()
+                    },
+                    Command::Commit
+                ])?;
             }
+            InputCommand::Add { path, tags } => {
+                self.command_interpreter.execute(vec![
+                    Command::AddNote { path, tags},
+                    Command::Commit
+                ])?;
+            }
+            InputCommand::Edit { path } => {
+                self.command_interpreter.execute(vec![
+                    Command::EditNoteContent { path },
+                    Command::Commit
+                ])?;
+            }
+            InputCommand::RunSnippet { path, save_output } => {
+                let mut commands = vec![
+                    Command::RunSnippet { path, save_output }
+                ];
 
-            CommandInterpreter::new(&repository)?.execute(commands)?;
-        }
-        InputCommand::PrintContent { path, only_code } => {
-            let content = NoteMetadataStorage::from_dir(repository)?.get_content(&path)?;
+                if save_output {
+                    commands.push(Command::Commit);
+                }
 
-            if only_code {
-                let arena = markdown::storage();
-                let root = markdown::parse(&arena, &content);
+                self.command_interpreter.execute(commands)?;
+            }
+            InputCommand::PrintContent { path, only_code } => {
+                let content = NoteMetadataStorage::from_dir(&self.repository)?.get_content(&path)?;
 
-                markdown::visit_code_blocks::<CommandInterpreterError, _>(
-                    &root,
-                    |current_node| {
-                        if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                            println!("{}", block.literal);
+                if only_code {
+                    let arena = markdown::storage();
+                    let root = markdown::parse(&arena, &content);
+
+                    markdown::visit_code_blocks::<CommandInterpreterError, _>(
+                        &root,
+                        |current_node| {
+                            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
+                                println!("{}", block.literal);
+                            }
+
+                            Ok(())
                         }
-
-                        Ok(())
+                    )?;
+                } else {
+                    println!("{}", content);
+                }
+            }
+            InputCommand::Finder(finder) => {
+                let query = match finder {
+                    ConsoleInputFinder::Tags { tags } => {
+                        FindQuery::Tags(tags.into_iter().map(|tag| StringMatcher::new(&tag)).collect())
                     }
-                )?;
-            } else {
-                println!("{}", content);
+                    ConsoleInputFinder::Name { name } => {
+                        FindQuery::Path(RegexMatcher::new(&name))
+                    }
+                    ConsoleInputFinder::Id { id } => {
+                        FindQuery::Id(RegexMatcher::new(&id))
+                    }
+                    ConsoleInputFinder::Created { parts } => {
+                        FindQuery::Created(parts)
+                    }
+                    ConsoleInputFinder::Updated { parts } => {
+                        FindQuery::LastUpdated(parts)
+                    }
+                };
+
+                let finder = Finder::new(&self.repository)?;
+                let results = finder.find(&query)?;
+                print_note_metadata_results(&results);
+            }
+            InputCommand::ListDirectory { query } => {
+                let notes_metadata = NoteMetadata::load_all_to_vec(&self.repository)?;
+                let list_directory = ListDirectory::new(&notes_metadata)?;
+
+                let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
+                print_list_directory_results(&results)
+            }
+            InputCommand::Tree { prefix } => {
+                let notes_metadata = NoteMetadata::load_all_to_vec(&self.repository)?;
+                let list_tree = ListTree::new(&notes_metadata)?;
+                list_tree.list(prefix.as_ref().map(|x| x.as_path()));
             }
         }
-        InputCommand::Finder(finder) => {
-            let query = match finder {
-                ConsoleInputFinder::Tags { tags } => {
-                    FindQuery::Tags(tags.into_iter().map(|tag| StringMatcher::new(&tag)).collect())
-                }
-                ConsoleInputFinder::Name { name } => {
-                    FindQuery::Path(RegexMatcher::new(&name))
-                }
-                ConsoleInputFinder::Id { id } => {
-                    FindQuery::Id(RegexMatcher::new(&id))
-                }
-                ConsoleInputFinder::Created { parts } => {
-                    FindQuery::Created(parts)
-                }
-                ConsoleInputFinder::Updated { parts } => {
-                    FindQuery::LastUpdated(parts)
-                }
-            };
 
-            let finder = Finder::new(&repository)?;
-            let results = finder.find(&query)?;
-            print_note_metadata_results(&results);
-        }
-        InputCommand::ListDirectory { query } => {
-            let notes_metadata = NoteMetadata::load_all_to_vec(repository)?;
-            let list_directory = ListDirectory::new(&notes_metadata)?;
-
-            let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
-            print_list_directory_results(&results)
-        }
-        InputCommand::Tree { prefix } => {
-            let notes_metadata = NoteMetadata::load_all_to_vec(repository)?;
-            let list_tree = ListTree::new(&notes_metadata)?;
-            list_tree.list(prefix.as_ref().map(|x| x.as_path()));
-        }
+        Ok(())
     }
-
-    Ok(())
 }
 
 #[derive(Debug, StructOpt)]

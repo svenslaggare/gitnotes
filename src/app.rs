@@ -1,27 +1,35 @@
 use std::path::{Path, PathBuf};
 
-use comrak::nodes::NodeValue;
+use serde::Deserialize;
 
 use structopt::StructOpt;
 
 use thiserror::Error;
+
+use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::markdown;
 use crate::model::{NoteMetadata, NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, StringMatcher};
 
+#[derive(Debug, Deserialize)]
+pub struct Config {
+    pub repository: PathBuf,
+}
+
 pub struct Application {
-    repository: PathBuf,
+    config: Config,
     command_interpreter: CommandInterpreter
 }
 
 impl Application {
-    pub fn new(repository: &Path) -> Result<Application, AppError> {
+    pub fn new(config: Config) -> Result<Application, AppError> {
+        let command_interpreter = CommandInterpreter::new(&config.repository)?;
         Ok(
             Application {
-                repository: repository.to_path_buf(),
-                command_interpreter: CommandInterpreter::new(repository)?
+                config,
+                command_interpreter
             }
         )
     }
@@ -78,7 +86,7 @@ print(np.square(np.arange(0, 10)))
                 self.command_interpreter.execute(commands)?;
             }
             InputCommand::PrintContent { path, only_code } => {
-                let content = NoteMetadataStorage::from_dir(&self.repository)?.get_content(&path)?;
+                let content = NoteMetadataStorage::from_dir(&self.config.repository)?.get_content(&path)?;
 
                 if only_code {
                     let arena = markdown::storage();
@@ -117,25 +125,29 @@ print(np.square(np.arange(0, 10)))
                     }
                 };
 
-                let finder = Finder::new(&self.repository)?;
+                let finder = Finder::new(&self.config.repository)?;
                 let results = finder.find(&query)?;
                 print_note_metadata_results(&results);
             }
             InputCommand::ListDirectory { query } => {
-                let notes_metadata = NoteMetadata::load_all_to_vec(&self.repository)?;
+                let notes_metadata = self.notes_metadata()?;
                 let list_directory = ListDirectory::new(&notes_metadata)?;
 
                 let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
                 print_list_directory_results(&results)
             }
             InputCommand::Tree { prefix } => {
-                let notes_metadata = NoteMetadata::load_all_to_vec(&self.repository)?;
+                let notes_metadata = self.notes_metadata()?;
                 let list_tree = ListTree::new(&notes_metadata)?;
                 list_tree.list(prefix.as_ref().map(|x| x.as_path()));
             }
         }
 
         Ok(())
+    }
+
+    fn notes_metadata(&self) -> std::io::Result<Vec<NoteMetadata>> {
+        NoteMetadata::load_all_to_vec(&self.config.repository)
     }
 }
 

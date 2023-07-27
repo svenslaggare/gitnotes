@@ -9,18 +9,20 @@ mod markdown;
 mod snippets;
 mod app;
 
-use crate::app::{AppError, Application, InputCommand};
+use crate::app::{AppError, Application, Config, InputCommand};
 
 fn main() {
-    let repository = Path::new("test-notes");
+    let config = Config {
+        repository: Path::new("test-notes").to_path_buf()
+    };
 
     let input_command: InputCommand = InputCommand::from_args();
-    if let Err(err) = run(repository, input_command) {
+    if let Err(err) = run(config, input_command) {
         println!("{}.", err.to_string());
         std::process::exit(1);
     }
 }
 
-fn run(repository: &Path, input_command: InputCommand) -> Result<(), AppError> {
-    Application::new(repository)?.run(input_command)
+fn run(config: Config, input_command: InputCommand) -> Result<(), AppError> {
+    Application::new(config)?.run(input_command)
 }

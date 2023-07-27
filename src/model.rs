@@ -3,13 +3,16 @@ use std::ffi::OsString;
 use std::fmt::{Display};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
+
 use chrono::{DateTime, Local};
+
 use fnv::FnvHashMap;
 
 use rand::{Rng, thread_rng};
 
 use serde::{Serialize, Deserialize, Deserializer, Serializer};
 use serde::de::{Error, Visitor};
+
 use crate::helpers::io_error;
 
 const NOTE_ID_SIZE: usize = 5;
@@ -103,15 +106,18 @@ impl Serialize for NoteId {
 pub struct NoteMetadata {
     pub id: NoteId,
     pub created: DateTime<Local>,
+    pub last_updated: DateTime<Local>,
     pub path: PathBuf,
     pub tags: Vec<String>
 }
 
 impl NoteMetadata {
     pub fn new(id: NoteId, path: PathBuf, tags: Vec<String>) -> NoteMetadata {
+        let now = Local::now();
         NoteMetadata {
             id,
-            created: Local::now(),
+            created: now,
+            last_updated: now,
             path,
             tags
         }
@@ -193,6 +199,10 @@ impl NoteMetadataStorage {
         self.id_to_notes.get(id)
     }
 
+    pub fn get_by_id_mut(&mut self, id: &NoteId) -> Option<&mut NoteMetadata> {
+        self.id_to_notes.get_mut(id)
+    }
+
     pub fn contains_path(&self, path: &Path) -> bool {
         self.path_to_id.contains_key(path)
     }
@@ -209,19 +219,38 @@ impl NoteMetadataStorage {
 
     pub fn get_note_storage_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
         let relative_path = Path::new(&(id.to_string() + ".md")).to_path_buf();
-        let abs_note_path = root_dir.join(&relative_path);
-        (relative_path, abs_note_path)
+        let abs_path = root_dir.join(&relative_path);
+        (relative_path, abs_path)
+    }
+
+    pub fn get_note_metadata_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
+        let relative_path = Path::new(&(id.to_string() + ".metadata")).to_path_buf();
+        let abs_path = root_dir.join(&relative_path);
+        (relative_path, abs_path)
     }
 }
 
 pub enum NoteFileTree<'a> {
     Note(&'a NoteMetadata),
-    Tree(BTreeMap<OsString, NoteFileTree<'a>>)
+    Tree {
+        last_updated: Option<DateTime<Local>>,
+        children: BTreeMap<OsString, NoteFileTree<'a>>
+    }
 }
 
 impl<'a> NoteFileTree<'a> {
     pub fn new() -> NoteFileTree<'a> {
-        NoteFileTree::Tree(BTreeMap::new())
+        NoteFileTree::Tree {
+            last_updated: None,
+            children: BTreeMap::new()
+        }
+    }
+
+    pub fn with_updated(updated: DateTime<Local>) -> NoteFileTree<'a> {
+        NoteFileTree::Tree {
+            last_updated: Some(updated),
+            children: BTreeMap::new()
+        }
     }
 
     pub fn from_iter(iter: impl Iterator<Item=&'a NoteMetadata>) -> Option<NoteFileTree<'a>> {
@@ -234,14 +263,21 @@ impl<'a> NoteFileTree<'a> {
             for (part_index, part) in parts.iter().enumerate() {
                 let is_last = part_index == parts.len() - 1;
                 match current {
-                    NoteFileTree::Tree(children) => {
+                    NoteFileTree::Tree { last_updated, children } => {
                         let entry = children.entry(part.to_os_string()).or_insert_with(|| {
                             if is_last {
                                 NoteFileTree::Note(note_metadata)
                             } else {
-                                NoteFileTree::new()
+                                NoteFileTree::with_updated(note_metadata.last_updated)
                             }
                         });
+
+                        if let Some(last_updated) = last_updated.as_mut() {
+                            *last_updated = (*last_updated).max(note_metadata.last_updated);
+                        } else {
+                            *last_updated = Some(note_metadata.last_updated);
+                        }
+
                         current = entry;
                     }
                     NoteFileTree::Note(_) => {
@@ -264,7 +300,7 @@ impl<'a> NoteFileTree<'a> {
                                 return;
                             }
                         }
-                        NoteFileTree::Tree(_) => {
+                        NoteFileTree::Tree { .. } => {
                             if !apply(level, name, child) {
                                 return;
                             }
@@ -311,7 +347,7 @@ impl<'a> NoteFileTree<'a> {
                     NoteFileTree::Note(note_metadata) => {
                         println!("{}{} ({})", padding, name.to_str().unwrap(), note_metadata.id);
                     }
-                    NoteFileTree::Tree(_) => {
+                    NoteFileTree::Tree { .. } => {
                         println!("{}{}", padding, name.to_str().unwrap());
                     }
                 }
@@ -322,7 +358,7 @@ impl<'a> NoteFileTree<'a> {
     }
 
     fn children(&self) -> Option<&BTreeMap<OsString, NoteFileTree>> {
-        if let NoteFileTree::Tree(children) = self {
+        if let NoteFileTree::Tree { children, .. } = self {
             Some(children)
         } else {
             None

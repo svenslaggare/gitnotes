@@ -1,6 +1,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
+use chrono::Local;
+
 use thiserror::Error;
 
 use comrak::nodes::NodeValue;
@@ -129,13 +131,15 @@ impl CommandInterpreter {
                 }
                 Command::EditNoteContent { path } => {
                     let id = self.get_note_id(&path)?;
-                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
+                    let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&abs_note_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    launch_editor(&abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
-                    index.add_path(&relative_note_path)?;
+                    index.add_path(&relative_content_path)?;
                     index.write()?;
+
+                    self.try_change_last_updated(&id)?;
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
                     self.commit_message_lines.push(format!("Edited note '{}'.", real_path));
@@ -188,6 +192,8 @@ impl CommandInterpreter {
                         index.add_path(&relative_note_path)?;
                         index.write()?;
 
+                        self.try_change_last_updated(&id)?;
+
                         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
                         self.commit_message_lines.push(format!("Saved output for note '{}'.", real_path));
                     }
@@ -196,15 +202,8 @@ impl CommandInterpreter {
                     let new_tree = self.index()?.write_tree()?;
                     let new_tree = self.repository.find_tree(new_tree)?;
 
-                    let head = self.repository.head()?;
-                    let head_commit = head.peel(git2::ObjectType::Commit)?;
-                    let head_commit = head_commit.as_commit().unwrap();
-
-                    let head_tree = head.peel(git2::ObjectType::Tree)?;
-                    let head_tree = head_tree.as_tree().unwrap();
-
-                    let diff = self.repository.diff_tree_to_tree(Some(&new_tree), Some(head_tree), None)?;
-                    if diff.stats()?.files_changed() > 0 {
+                    let (head_commit, head_tree) = CommandInterpreter::get_git_head(&self.repository)?;
+                    if CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)? {
                         let signature = git2::Signature::now(&self.user_name_and_email.0, &self.user_name_and_email.1)?;
                         let commit_message = self.commit_message_lines.join("\n");
                         self.repository.commit(
@@ -233,14 +232,13 @@ impl CommandInterpreter {
                 path: PathBuf, tags: Vec<String>) -> CommandInterpreterResult<()> {
         use CommandInterpreterError::*;
 
-        let metadata_path = id.to_string() + ".metadata";
-        let metadata_path = Path::new(&metadata_path);
+        let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
         let metadata = NoteMetadata::new(id, path.to_owned(), tags);
-        metadata.save(&self.repository_path.join(metadata_path)).map_err(|err| FailedToAddNote(err.to_string()))?;
+        metadata.save(&abs_metadata_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
         let index = self.index()?;
         index.add_path(&relative_path)?;
-        index.add_path(&metadata_path)?;
+        index.add_path(&relative_metadata_path)?;
         index.write()?;
 
         self.commit_message_lines.push(format!("Added note '{}'.", path.to_str().unwrap()));
@@ -248,8 +246,51 @@ impl CommandInterpreter {
         Ok(())
     }
 
+    fn try_change_last_updated(&mut self, id: &NoteId) -> CommandInterpreterResult<()> {
+        if self.has_git_changes()? {
+            let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
+            let note_metadata = self.get_note_metadata_mut(&id)?;
+            note_metadata.last_updated = Local::now();
+            note_metadata.save(&abs_metadata_path)?;
+
+            let index = self.index()?;
+            index.add_path(&relative_metadata_path)?;
+            index.write()?;
+        }
+
+        Ok(())
+    }
+
+    fn has_git_changes(&mut self) -> CommandInterpreterResult<bool> {
+        let new_tree = self.index()?.write_tree()?;
+        let new_tree = self.repository.find_tree(new_tree)?;
+
+        let (_, head_tree) = CommandInterpreter::get_git_head(&self.repository)?;
+        CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)
+    }
+
+    fn get_git_head(repository: &git2::Repository) -> CommandInterpreterResult<(git2::Commit, git2::Tree)> {
+        let head = repository.head()?;
+        let head_commit = head.peel(git2::ObjectType::Commit)?;
+        let head_commit = head_commit.as_commit().unwrap().clone();
+
+        let head_tree = head.peel(git2::ObjectType::Tree)?;
+        let head_tree = head_tree.as_tree().unwrap().clone();
+
+        Ok((head_commit, head_tree))
+    }
+
+    fn has_git_diff(repository: &git2::Repository, head_tree: &git2::Tree, new_tree: &git2::Tree) -> CommandInterpreterResult<bool> {
+        let diff = repository.diff_tree_to_tree(Some(&new_tree), Some(&head_tree), None)?;
+        Ok(diff.stats()?.files_changed() > 0)
+    }
+
     fn get_note_storage_path(&self, id: &NoteId) -> (PathBuf, PathBuf) {
         NoteMetadataStorage::get_note_storage_path(&self.repository_path, id)
+    }
+
+    fn get_note_metadata_path(&self, id: &NoteId) -> (PathBuf, PathBuf) {
+        NoteMetadataStorage::get_note_metadata_path(&self.repository_path, id)
     }
 
     fn get_note_id(&mut self, path: &PathBuf) -> CommandInterpreterResult<NoteId> {
@@ -265,6 +306,12 @@ impl CommandInterpreter {
             .ok_or_else(|| CommandInterpreterError::NoteNotFound(id.to_string()))
     }
 
+    fn get_note_metadata_mut(&mut self, id: &NoteId) -> CommandInterpreterResult<&mut NoteMetadata> {
+        self.note_metadata_storage_mut()?
+            .get_by_id_mut(id)
+            .ok_or_else(|| CommandInterpreterError::NoteNotFound(id.to_string()))
+    }
+
     fn check_if_note_exists(&mut self, path: &Path) -> CommandInterpreterResult<()> {
         if self.note_metadata_storage()?.contains_path(path) {
             Err(CommandInterpreterError::NoteAlreadyExists(path.to_owned()))
@@ -274,16 +321,20 @@ impl CommandInterpreter {
     }
 
     fn note_metadata_storage(&mut self) -> CommandInterpreterResult<&NoteMetadataStorage> {
-        CommandInterpreter::get_note_metadata_storage(&self.repository_path, &mut self.note_metadata_storage)
+        if self.note_metadata_storage.is_some() {
+            Ok(self.note_metadata_storage.as_mut().unwrap())
+        } else {
+            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.repository_path)?);
+            Ok(self.note_metadata_storage.as_mut().unwrap())
+        }
     }
 
-    fn get_note_metadata_storage<'a>(root_dir: &Path,
-                                     note_metadata_storage: &'a mut Option<NoteMetadataStorage>) -> CommandInterpreterResult<&'a NoteMetadataStorage> {
-        if note_metadata_storage.is_some() {
-            Ok(note_metadata_storage.as_mut().unwrap())
+    fn note_metadata_storage_mut(&mut self) -> CommandInterpreterResult<&mut NoteMetadataStorage> {
+        if self.note_metadata_storage.is_some() {
+            Ok(self.note_metadata_storage.as_mut().unwrap())
         } else {
-            *note_metadata_storage = Some(NoteMetadataStorage::from_dir(root_dir)?);
-            Ok(note_metadata_storage.as_mut().unwrap())
+            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.repository_path)?);
+            Ok(self.note_metadata_storage.as_mut().unwrap())
         }
     }
 

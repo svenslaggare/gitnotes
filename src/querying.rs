@@ -1,5 +1,5 @@
 use std::path::Path;
-use chrono::{Datelike, Timelike};
+use chrono::{Datelike, DateTime, Local, Timelike};
 use regex::Regex;
 
 use thiserror::Error;
@@ -126,6 +126,7 @@ impl Finder {
 
 pub struct ListDirectoryEntry<'a> {
     pub name: String,
+    pub last_updated: Option<DateTime<Local>>,
     pub note_metadata: Option<&'a NoteMetadata>
 }
 
@@ -162,12 +163,14 @@ impl<'a> ListDirectory<'a> {
                         NoteFileTree::Note(metadata) => {
                             ListDirectoryEntry::<'a> {
                                 name: name.to_str().unwrap().to_owned(),
+                                last_updated: Some(metadata.last_updated),
                                 note_metadata: Some(*metadata)
                             }
                         }
-                        NoteFileTree::Tree(_) => {
+                        NoteFileTree::Tree { last_updated, .. } => {
                             ListDirectoryEntry::<'a> {
                                 name: name.to_str().unwrap().to_owned(),
+                                last_updated: *last_updated,
                                 note_metadata: None
                             }
                         }
@@ -211,14 +214,18 @@ impl<'a> ListTree<'a> {
 
 pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
     for note_metadata in results {
-        println!("{} - id: {}, created: {}", note_metadata.path.to_str().unwrap(), note_metadata.id, note_metadata.created);
+        println!("{} - id: {}, created: {}, last updated: {}", note_metadata.path.to_str().unwrap(), note_metadata.id, note_metadata.created, note_metadata.last_updated);
     }
 }
 
 pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) {
     for entry in results {
+        let last_updated = entry.last_updated.unwrap();
         println!(
-            "{}\t{}{}",
+            "{} {:0>2} {:0>2} {}\t{}{}",
+            last_updated.year(),
+            last_updated.month(),
+            last_updated.day(),
             entry.note_metadata.map(|_| "note").unwrap_or("dir"),
             entry.name,
             entry.note_metadata.map(|metadata| format!(" ({})", metadata.id)).unwrap_or_else(|| String::new())

@@ -1,8 +1,13 @@
+use std::io::stdout;
 use std::path::Path;
+
 use chrono::{Datelike, DateTime, Local, Timelike};
 use regex::Regex;
-
 use thiserror::Error;
+
+use crossterm::ExecutableCommand;
+use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
+use crossterm::style::Attribute::Bold;
 
 use crate::model::{NoteFileTree, NoteMetadata, NoteMetadataStorage};
 
@@ -43,7 +48,7 @@ impl Matcher for StringMatcher {
 pub struct RegexMatcher(Regex);
 impl RegexMatcher {
     pub fn new(str: &str) -> RegexMatcher {
-        RegexMatcher(Regex::new(str).unwrap())
+        RegexMatcher(Regex::new(str).expect("Invalid regex."))
     }
 }
 
@@ -129,6 +134,48 @@ impl Finder {
         }
 
         Ok(results)
+    }
+}
+
+pub struct Searcher {
+    note_metadata_storage: NoteMetadataStorage
+}
+
+impl Searcher {
+    pub fn new(repository_path: &Path) -> QueryingResult<Searcher> {
+        Ok(
+            Searcher {
+                note_metadata_storage: NoteMetadataStorage::from_dir(repository_path)?
+            }
+        )
+    }
+
+    pub fn search(&self, query: &Regex) -> QueryingResult<()> {
+        for note_metadata in self.note_metadata_storage.notes() {
+            for line in self.note_metadata_storage.get_content_lines(&note_metadata.path)? {
+                let line = line?;
+
+                if let Some(line_match) = query.find(&line) {
+                    let before = &line[0..line_match.start()];
+                    let during = &line[line_match.range()];
+                    let after = &line[line_match.end()..];
+
+                    stdout()
+                        .execute(SetForegroundColor(Color::DarkMagenta))?
+                        .execute(Print(format!("{}: ", note_metadata.info_text())))?
+                        .execute(ResetColor)?
+                        .execute(Print(before))?
+                        .execute(SetAttribute(Bold))?
+                        .execute(SetForegroundColor(Color::Red))?
+                        .execute(Print(during))?
+                        .execute(ResetColor)?
+                        .execute(Print(after))?
+                        .execute(Print("\n"))?;
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -226,19 +273,24 @@ pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
     }
 }
 
-pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) {
+pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) -> QueryingResult<()> {
     for entry in results {
         let last_updated = entry.last_updated.unwrap();
-        println!(
-            "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}\t{}\t{}{}",
-            last_updated.year(),
-            last_updated.month(),
-            last_updated.day(),
-            last_updated.hour(),
-            last_updated.minute(),
-            entry.note_metadata.map(|_| "note").unwrap_or("dir"),
-            entry.name,
-            entry.note_metadata.map(|metadata| format!(" (id: {})", metadata.id)).unwrap_or_else(|| String::new())
-        );
+        stdout()
+            .execute(Print(format!(
+                "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}\t{}\t",
+                last_updated.year(),
+                last_updated.month(),
+                last_updated.day(),
+                last_updated.hour(),
+                last_updated.minute(),
+                entry.note_metadata.map(|_| "note").unwrap_or("dir"),
+            )))?
+            .execute(SetForegroundColor(if entry.note_metadata.is_some() { Color::Green } else { Color::Blue }))?
+            .execute(Print(format!("{}{}", entry.name, entry.note_metadata.map(|metadata| format!(" (id: {})", metadata.id)).unwrap_or_else(|| String::new()))))?
+            .execute(ResetColor)?
+            .execute(Print("\n"))?;
     }
+
+    Ok(())
 }

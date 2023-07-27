@@ -1,17 +1,17 @@
 use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
+use regex::Regex;
+use thiserror::Error;
 
 use structopt::StructOpt;
-
-use thiserror::Error;
 
 use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::markdown;
 use crate::model::{NoteMetadata, NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -106,6 +106,18 @@ print(np.square(np.arange(0, 10)))
                     println!("{}", content);
                 }
             }
+            InputCommand::ListDirectory { query } => {
+                let notes_metadata = self.notes_metadata()?;
+                let list_directory = ListDirectory::new(&notes_metadata)?;
+
+                let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
+                print_list_directory_results(&results)?
+            }
+            InputCommand::Tree { prefix } => {
+                let notes_metadata = self.notes_metadata()?;
+                let list_tree = ListTree::new(&notes_metadata)?;
+                list_tree.list(prefix.as_ref().map(|x| x.as_path()));
+            }
             InputCommand::Finder(finder) => {
                 let query = match finder {
                     InputCommandFinder::Tags { tags } => {
@@ -129,17 +141,14 @@ print(np.square(np.arange(0, 10)))
                 let results = finder.find(&query)?;
                 print_note_metadata_results(&results);
             }
-            InputCommand::ListDirectory { query } => {
-                let notes_metadata = self.notes_metadata()?;
-                let list_directory = ListDirectory::new(&notes_metadata)?;
+            InputCommand::Search { mut query, case_sensitive } => {
+                if !case_sensitive {
+                    query = "(?i)".to_owned() + &query;
+                }
+                let query = Regex::new(&query)?;
 
-                let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
-                print_list_directory_results(&results)
-            }
-            InputCommand::Tree { prefix } => {
-                let notes_metadata = self.notes_metadata()?;
-                let list_tree = ListTree::new(&notes_metadata)?;
-                list_tree.list(prefix.as_ref().map(|x| x.as_path()));
+                let searcher = Searcher::new(&self.config.repository)?;
+                searcher.search(&query)?;
             }
         }
 
@@ -186,9 +195,6 @@ pub enum InputCommand {
         #[structopt(long="code")]
         only_code: bool
     },
-    /// Searches for note based on properties.
-    #[structopt(name="find")]
-    Finder(InputCommandFinder),
     /// Lists note in a directory.
     #[structopt(name="ls")]
     ListDirectory {
@@ -199,6 +205,18 @@ pub enum InputCommand {
     Tree {
         /// List tree starting at the given prefix.
         prefix: Option<PathBuf>
+    },
+    /// Searches for note based on properties.
+    #[structopt(name="find")]
+    Finder(InputCommandFinder),
+    /// Searches for note based on content.
+    #[structopt(name="grep")]
+    Search {
+        /// The regex query.
+        query: String,
+        /// Indicates if the match is cans sensitive
+        #[structopt(long="no-ignore-case")]
+        case_sensitive: bool
     }
 }
 
@@ -240,6 +258,9 @@ pub enum AppError {
     Querying(QueryingError),
 
     #[error("{0}")]
+    Regex(regex::Error),
+
+    #[error("{0}")]
     IO(std::io::Error)
 }
 
@@ -252,6 +273,12 @@ impl From<CommandInterpreterError> for AppError {
 impl From<QueryingError> for AppError {
     fn from(err: QueryingError) -> Self {
         AppError::Querying(err)
+    }
+}
+
+impl From<regex::Error> for AppError {
+    fn from(err: regex::Error) -> Self {
+        AppError::Regex(err)
     }
 }
 

@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::ffi::OsString;
 use std::fmt::{Display};
+use std::fs::File;
+use std::io::{BufRead, BufReader, Lines};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
@@ -123,6 +125,10 @@ impl NoteMetadata {
         }
     }
 
+    pub fn info_text(&self) -> String {
+        format!("{} (id: {})", self.path.to_str().unwrap(), self.id)
+    }
+
     pub fn load(path: &Path) -> std::io::Result<NoteMetadata> {
         let content = std::fs::read_to_string(path)?;
         toml::from_str(&content).map_err(|err| io_error(err))
@@ -191,6 +197,10 @@ impl NoteMetadataStorage {
         self.path_to_id.get(path).cloned()
     }
 
+    pub fn get_id_result(&self, path: &Path) -> std::io::Result<NoteId> {
+         self.get_id(path).ok_or_else(|| io_error(format!("Note '{}' not found", path.to_str().unwrap())))
+    }
+
     pub fn get(&self, path: &Path) -> Option<&NoteMetadata> {
         self.id_to_notes.get(&self.get_id(path)?)
     }
@@ -212,9 +222,15 @@ impl NoteMetadataStorage {
     }
 
     pub fn get_content(&self, path: &Path) -> std::io::Result<String> {
-        let id = self.get_id(path).ok_or_else(|| io_error(format!("Note '{}' not found", path.to_str().unwrap())))?;
+        let id = self.get_id_result(path)?;
         let (_, abs_note_path) = NoteMetadataStorage::get_note_storage_path(&self.root_dir, &id);
         std::fs::read_to_string(abs_note_path)
+    }
+
+    pub fn get_content_lines(&self, path: &Path) -> std::io::Result<Lines<BufReader<File>>> {
+        let id = self.get_id_result(path)?;
+        let (_, abs_note_path) = NoteMetadataStorage::get_note_storage_path(&self.root_dir, &id);
+        Ok(BufReader::new(File::open(abs_note_path)?).lines())
     }
 
     pub fn get_note_storage_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {

@@ -1,5 +1,6 @@
 use std::io::stdout;
 use std::path::Path;
+use atty::Stream;
 
 use chrono::{Datelike, DateTime, Local, Timelike};
 use regex::Regex;
@@ -151,6 +152,8 @@ impl Searcher {
     }
 
     pub fn search(&self, query: &Regex) -> QueryingResult<()> {
+        let is_terminal = atty::is(Stream::Stdout);
+
         for note_metadata in self.note_metadata_storage.notes() {
             for line in self.note_metadata_storage.get_content_lines(&note_metadata.path)? {
                 let line = line?;
@@ -160,17 +163,21 @@ impl Searcher {
                     let during = &line[line_match.range()];
                     let after = &line[line_match.end()..];
 
-                    stdout()
-                        .execute(SetForegroundColor(Color::DarkMagenta))?
-                        .execute(Print(format!("{}: ", note_metadata.info_text())))?
-                        .execute(ResetColor)?
-                        .execute(Print(before))?
-                        .execute(SetAttribute(Bold))?
-                        .execute(SetForegroundColor(Color::Red))?
-                        .execute(Print(during))?
-                        .execute(ResetColor)?
-                        .execute(Print(after))?
-                        .execute(Print("\n"))?;
+                    if is_terminal {
+                        stdout()
+                            .execute(SetForegroundColor(Color::DarkMagenta))?
+                            .execute(Print(format!("{}: ", note_metadata.info_text())))?
+                            .execute(ResetColor)?
+                            .execute(Print(before))?
+                            .execute(SetAttribute(Bold))?
+                            .execute(SetForegroundColor(Color::Red))?
+                            .execute(Print(during))?
+                            .execute(ResetColor)?
+                            .execute(Print(after))?
+                            .execute(Print("\n"))?;
+                    } else {
+                        println!("{}: {}{}{}", note_metadata.info_text(), before, during, after);
+                    }
                 }
             }
         }
@@ -269,27 +276,48 @@ impl<'a> ListTree<'a> {
 
 pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
     for note_metadata in results {
-        println!("{} - id: {}, created: {}, last updated: {}", note_metadata.path.to_str().unwrap(), note_metadata.id, note_metadata.created, note_metadata.last_updated);
+        println!(
+            "{} - id: {}, created: {}, last updated: {}",
+            note_metadata.path.to_str().unwrap(),
+            note_metadata.id,
+            note_metadata.created,
+            note_metadata.last_updated
+        );
     }
 }
 
 pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) -> QueryingResult<()> {
+    let is_terminal = atty::is(Stream::Stdout);
+
     for entry in results {
         let last_updated = entry.last_updated.unwrap();
-        stdout()
-            .execute(Print(format!(
-                "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}\t{}\t",
-                last_updated.year(),
-                last_updated.month(),
-                last_updated.day(),
-                last_updated.hour(),
-                last_updated.minute(),
-                entry.note_metadata.map(|_| "note").unwrap_or("dir"),
-            )))?
-            .execute(SetForegroundColor(if entry.note_metadata.is_some() { Color::Green } else { Color::Blue }))?
-            .execute(Print(format!("{}{}", entry.name, entry.note_metadata.map(|metadata| format!(" (id: {})", metadata.id)).unwrap_or_else(|| String::new()))))?
-            .execute(ResetColor)?
-            .execute(Print("\n"))?;
+
+        let date_part = format!(
+            "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}\t{}\t",
+            last_updated.year(),
+            last_updated.month(),
+            last_updated.day(),
+            last_updated.hour(),
+            last_updated.minute(),
+            entry.note_metadata.map(|_| "note").unwrap_or("dir"),
+        );
+
+        let name_part = format!(
+            "{}{}",
+            entry.name,
+            entry.note_metadata.map(|metadata| format!(" (id: {})", metadata.id)).unwrap_or_else(|| String::new())
+        );
+
+        if is_terminal {
+            stdout()
+                .execute(Print(date_part))?
+                .execute(SetForegroundColor(if entry.note_metadata.is_some() { Color::Green } else { Color::Blue }))?
+                .execute(Print(name_part))?
+                .execute(ResetColor)?
+                .execute(Print("\n"))?;
+        } else {
+            println!("{}{}", date_part, name_part);
+        }
     }
 
     Ok(())

@@ -222,13 +222,15 @@ pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) {
     for entry in results {
         let last_updated = entry.last_updated.unwrap();
         println!(
-            "{} {:0>2} {:0>2} {}\t{}{}",
+            "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}\t{}\t{}{}",
             last_updated.year(),
             last_updated.month(),
             last_updated.day(),
+            last_updated.hour(),
+            last_updated.minute(),
             entry.note_metadata.map(|_| "note").unwrap_or("dir"),
             entry.name,
-            entry.note_metadata.map(|metadata| format!(" ({})", metadata.id)).unwrap_or_else(|| String::new())
+            entry.note_metadata.map(|metadata| format!(" (id: {})", metadata.id)).unwrap_or_else(|| String::new())
         );
     }
 }

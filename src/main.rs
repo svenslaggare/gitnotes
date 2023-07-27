@@ -213,13 +213,13 @@ enum ConsoleInputFinder {
 
 #[derive(Error, Debug)]
 pub enum RunError {
-    #[error("Command error: {0}")]
+    #[error("{0}")]
     Command(CommandInterpreterError),
 
-    #[error("Querying error: {0}")]
+    #[error("{0}")]
     Querying(QueryingError),
 
-    #[error("I/O error: {0}")]
+    #[error("{0}")]
     IO(std::io::Error)
 }
 

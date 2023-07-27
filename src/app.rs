@@ -155,7 +155,7 @@ print(np.square(np.arange(0, 10)))
 pub enum InputCommand {
     /// Adds fake data.
     AddFakeData,
-    /// Adds a new note.
+    /// Creates a new note.
     Add {
         /// The path of the note.
         path: PathBuf,
@@ -168,7 +168,7 @@ pub enum InputCommand {
         /// The absolute path of the note. Id also work.
         path: PathBuf
     },
-    /// Runs the code snipper contained in a note.
+    /// Runs the code snippet contained in a note.
     #[structopt(name="run")]
     RunSnippet {
         /// The absolute path of the note. Id also work.
@@ -182,7 +182,7 @@ pub enum InputCommand {
     PrintContent {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
-        /// Print only code.
+        /// Print only code content.
         #[structopt(long="code")]
         only_code: bool
     },

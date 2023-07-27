@@ -168,12 +168,16 @@ impl Searcher {
                             .execute(SetForegroundColor(Color::DarkMagenta))?
                             .execute(Print(format!("{}: ", note_metadata.info_text())))?
                             .execute(ResetColor)?
+
                             .execute(Print(before))?
+
                             .execute(SetAttribute(Bold))?
                             .execute(SetForegroundColor(Color::Red))?
                             .execute(Print(during))?
                             .execute(ResetColor)?
+
                             .execute(Print(after))?
+
                             .execute(Print("\n"))?;
                     } else {
                         println!("{}: {}{}{}", note_metadata.info_text(), before, during, after);

@@ -386,20 +386,20 @@ macro_rules! assert_tree_eq {
 #[test]
 fn test_create_tree1() {
     let note_metadata = vec![
-        NoteMetadata::new(NoteId::new(), Path::new("00.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/03.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/04.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/02/05.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/02/01/06.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/02.note").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("00.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/03.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/04.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/02/05.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/02/01/06.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/02.md").to_path_buf(), Vec::new()),
     ];
 
     let tree = NoteFileTree::from_iter(note_metadata.iter()).unwrap();
     tree.print();
 
     assert_tree_eq!(
-        vec!["00.note", "2023", "01", "01", "03.note", "04.note", "02", "05.note", "01.note", "02", "01", "06.note", "02.note"],
+        vec!["00.md", "2023", "01", "01", "03.md", "04.md", "02", "05.md", "01.md", "02", "01", "06.md", "02.md"],
         tree
     );
 }
@@ -407,14 +407,14 @@ fn test_create_tree1() {
 #[test]
 fn test_find_tree1() {
     let note_metadata = vec![
-        NoteMetadata::new(NoteId::new(), Path::new("00.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/03.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/04.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/02/05.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/01/06.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/02/01/07.note").to_path_buf(), Vec::new()),
-        NoteMetadata::new(NoteId::new(), Path::new("2023/02.note").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("00.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/03.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/01/04.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/02/05.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/01/06.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/02/01/07.md").to_path_buf(), Vec::new()),
+        NoteMetadata::new(NoteId::new(), Path::new("2023/02.md").to_path_buf(), Vec::new()),
     ];
 
     let tree = NoteFileTree::from_iter(note_metadata.iter()).unwrap();
@@ -423,7 +423,7 @@ fn test_find_tree1() {
     found.print();
 
     assert_tree_eq!(
-        vec!["00.note", "2023", "01", "01", "03.note", "04.note", "02", "05.note", "06.note", "01.note", "02", "01", "07.note", "02.note"],
+        vec!["00.md", "2023", "01", "01", "03.md", "04.md", "02", "05.md", "06.md", "01.md", "02", "01", "07.md", "02.md"],
         tree
     );
 }

@@ -345,10 +345,10 @@ impl<'a> NoteFileTree<'a> {
                 let padding = "  ".repeat(level);
                 match tree {
                     NoteFileTree::Note(note_metadata) => {
-                        println!("{}{} ({})", padding, name.to_str().unwrap(), note_metadata.id);
+                        println!("{}* {} (id: {})", padding, name.to_str().unwrap(), note_metadata.id);
                     }
                     NoteFileTree::Tree { .. } => {
-                        println!("{}{}", padding, name.to_str().unwrap());
+                        println!("{}* {}", padding, name.to_str().unwrap());
                     }
                 }
 

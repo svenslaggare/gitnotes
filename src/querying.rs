@@ -57,7 +57,8 @@ pub enum FindQuery {
     Tags(Vec<StringMatcher>),
     Path(RegexMatcher),
     Id(RegexMatcher),
-    Created(Vec<i32>)
+    Created(Vec<i32>),
+    LastUpdated(Vec<i32>)
 }
 
 impl FindQuery {
@@ -79,23 +80,30 @@ impl FindQuery {
                 id.is_match(&note_metadata.id.to_string())
             }
             FindQuery::Created(parts) => {
-                fn is_part_match(value: i32, part: Option<&i32>) -> bool {
-                    if part.is_some() {
-                        &value == part.unwrap()
-                    } else {
-                        true
-                    }
-                }
-
-                is_part_match(note_metadata.created.year(), parts.get(0))
-                && is_part_match(note_metadata.created.month() as i32, parts.get(1))
-                && is_part_match(note_metadata.created.day() as i32, parts.get(2))
-                && is_part_match(note_metadata.created.hour() as i32, parts.get(3))
-                && is_part_match(note_metadata.created.minute() as i32, parts.get(4))
-                && is_part_match(note_metadata.created.second() as i32, parts.get(5))
+                is_datetime_match(&note_metadata.created, parts)
+            }
+            FindQuery::LastUpdated(parts) => {
+                is_datetime_match(&note_metadata.last_updated, parts)
             }
         }
     }
+}
+
+fn is_datetime_match(datetime: &DateTime<Local>, parts: &Vec<i32>) -> bool {
+    fn is_part_match(value: i32, part: Option<&i32>) -> bool {
+        if part.is_some() {
+            &value == part.unwrap()
+        } else {
+            true
+        }
+    }
+
+    is_part_match(datetime.year(), parts.get(0))
+    && is_part_match(datetime.month() as i32, parts.get(1))
+    && is_part_match(datetime.day() as i32, parts.get(2))
+    && is_part_match(datetime.hour() as i32, parts.get(3))
+    && is_part_match(datetime.minute() as i32, parts.get(4))
+    && is_part_match(datetime.second() as i32, parts.get(5))
 }
 
 pub struct Finder {

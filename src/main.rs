@@ -113,6 +113,9 @@ print(np.square(np.arange(0, 10)))
                 ConsoleInputFinder::Created { parts } => {
                     FindQuery::Created(parts)
                 }
+                ConsoleInputFinder::Updated { parts } => {
+                    FindQuery::LastUpdated(parts)
+                }
             };
 
             let finder = Finder::new(&repository)?;
@@ -206,6 +209,11 @@ enum ConsoleInputFinder {
     },
     /// Searches based on created date
     Created {
+        /// First element is year, then month, etc. All parts are optional.
+        parts: Vec<i32>
+    },
+    /// Searches based on updated date
+    Updated {
         /// First element is year, then month, etc. All parts are optional.
         parts: Vec<i32>
     }

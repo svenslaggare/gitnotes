@@ -158,29 +158,46 @@ impl Searcher {
             for line in self.note_metadata_storage.get_content_lines(&note_metadata.path)? {
                 let line = line?;
 
-                if let Some(line_match) = query.find(&line) {
-                    let before = &line[0..line_match.start()];
-                    let during = &line[line_match.range()];
-                    let after = &line[line_match.end()..];
+                let mut remaining_line_start = 0;
+                let mut found_match = false;
+                for current_match in query.find_iter(&line) {
+                    if !found_match {
+                        if is_terminal {
+                            stdout()
+                                .execute(SetForegroundColor(Color::DarkMagenta))?
+                                .execute(Print(format!("{}: ", note_metadata.info_text())))?
+                                .execute(ResetColor)?;
+                        } else {
+                            print!("{}: ", note_metadata.info_text());
+                        }
+
+                        found_match = true;
+                    }
+
+                    let before = &line[remaining_line_start..current_match.start()];
+                    let during = &line[current_match.range()];
+                    remaining_line_start = current_match.end();
 
                     if is_terminal {
                         stdout()
-                            .execute(SetForegroundColor(Color::DarkMagenta))?
-                            .execute(Print(format!("{}: ", note_metadata.info_text())))?
-                            .execute(ResetColor)?
-
                             .execute(Print(before))?
 
                             .execute(SetAttribute(Bold))?
                             .execute(SetForegroundColor(Color::Red))?
                             .execute(Print(during))?
-                            .execute(ResetColor)?
+                            .execute(ResetColor)?;
+                    } else {
+                        print!("{}{}", before, during);
+                    }
+                }
 
-                            .execute(Print(after))?
-
+                if found_match {
+                    if is_terminal {
+                        stdout()
+                            .execute(Print(&line[remaining_line_start..]))?
                             .execute(Print("\n"))?;
                     } else {
-                        println!("{}: {}{}{}", note_metadata.info_text(), before, during, after);
+                        println!("{}", &line[remaining_line_start..]);
                     }
                 }
             }

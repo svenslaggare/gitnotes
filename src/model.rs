@@ -27,7 +27,7 @@ impl NoteId {
         const CHARACTERS: [char; 10] = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
         let mut id: [char; NOTE_ID_SIZE] = Default::default();
-        for i in 0..5 {
+        for i in 0..NOTE_ID_SIZE {
             id[i] = CHARACTERS[rng.gen_range(0..CHARACTERS.len())];
         }
 

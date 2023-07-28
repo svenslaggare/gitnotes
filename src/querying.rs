@@ -298,9 +298,10 @@ impl<'a> ListTree<'a> {
 pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
     for note_metadata in results {
         println!(
-            "{} - id: {}, created: {}, last updated: {}",
+            "{} - id: {}, tags: [{}], created: {}, last updated: {}",
             note_metadata.path.to_str().unwrap(),
             note_metadata.id,
+            note_metadata.tags.join(", "),
             note_metadata.created,
             note_metadata.last_updated
         );

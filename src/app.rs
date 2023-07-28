@@ -74,9 +74,9 @@ print(np.square(np.arange(0, 10)))
                 ])?;
                 self.clear_cache();
             }
-            InputCommand::Edit { path } => {
+            InputCommand::Edit { path, clear_tags, add_tags } => {
                 self.command_interpreter.execute(vec![
-                    Command::EditNoteContent { path },
+                    Command::EditNoteContent { path, clear_tags, add_tags },
                     Command::Commit
                 ])?;
                 self.clear_cache();
@@ -191,7 +191,13 @@ pub enum InputCommand {
     /// Edits an existing note.
     Edit {
         /// The absolute path of the note. Id also work.
-        path: PathBuf
+        path: PathBuf,
+        /// Clears the tags.
+        #[structopt(long)]
+        clear_tags: bool,
+        /// Adds tags. These are added after tags are cleared.
+        #[structopt(long)]
+        add_tags: Vec<String>
     },
     /// Runs the code snippet contained in a note.
     #[structopt(name="run")]

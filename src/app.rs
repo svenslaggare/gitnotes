@@ -6,13 +6,12 @@ use thiserror::Error;
 use structopt::StructOpt;
 
 use comrak::nodes::NodeValue;
-use tempfile::TempDir;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::Config;
 use crate::markdown;
 use crate::model::{NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, GitLog, HistoricContentFetcher, launch_editor_with_content, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub struct Application {
     config: Config,
@@ -102,8 +101,8 @@ print(np.square(np.arange(0, 10)))
                 self.command_interpreter.execute(commands)?;
                 self.clear_cache();
             }
-            InputCommand::PrintContent { path, only_code, only_output } => {
-                let content = self.note_metadata_storage()?.get_content(&path)?;
+            InputCommand::PrintContent { path, git_reference, only_code, only_output } => {
+                let content = self.get_note_content(&path, git_reference)?;
 
                 if only_code || only_output {
                     let arena = markdown::storage();
@@ -113,7 +112,7 @@ print(np.square(np.arange(0, 10)))
                         &root,
                         |current_node| {
                             if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                                println!("{}", block.literal);
+                                print!("{}", block.literal);
                             }
 
                             Ok(())
@@ -122,7 +121,33 @@ print(np.square(np.arange(0, 10)))
                         only_output
                     )?;
                 } else {
-                    println!("{}", content);
+                    print!("{}", content);
+                }
+            }
+            InputCommand::Show { path, git_reference, only_code, only_output } => {
+                let content = self.get_note_content(&path, git_reference)?;
+
+                if only_code || only_output {
+                    let arena = markdown::storage();
+                    let root = markdown::parse(&arena, &content);
+
+                    let mut new_content = String::new();
+                    markdown::visit_code_blocks::<CommandInterpreterError, _>(
+                        &root,
+                        |current_node| {
+                            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
+                                new_content += &block.literal;
+                            }
+
+                            Ok(())
+                        },
+                        only_code,
+                        only_output
+                    )?;
+
+                    launch_editor_with_content(&self.config, &new_content)?;
+                } else {
+                    launch_editor_with_content(&self.config, &content)?;
                 }
             }
             InputCommand::ListDirectory { query } => {
@@ -173,6 +198,21 @@ print(np.square(np.arange(0, 10)))
         }
 
         Ok(())
+    }
+
+    fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
+        if let Some(git_reference) = git_reference {
+            let repository = self.config.repository.to_owned();
+            let historic_content_fetcher = HistoricContentFetcher::new(&repository, self.note_metadata_storage()?)?;
+
+            if let Some(commit_content) = historic_content_fetcher.fetch(&path, &git_reference)? {
+                Ok(commit_content)
+            } else {
+                Err(QueryingError::NoteNotFoundAtGitReference(git_reference))
+            }
+        } else {
+            Ok(self.note_metadata_storage()?.get_content(&path)?)
+        }
     }
 
     fn clear_cache(&mut self) {
@@ -244,6 +284,23 @@ pub enum InputCommand {
     PrintContent {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
+        /// Prints the content at the given git reference
+        #[structopt(long="git-ref")]
+        git_reference: Option<String>,
+        /// Print only code content.
+        #[structopt(long="code")]
+        only_code: bool,
+        /// Print only output content.
+        #[structopt(long="output")]
+        only_output: bool
+    },
+    /// Shows the content of a note in an editor
+    Show {
+        /// The absolute path of the note. Id also work.
+        path: PathBuf,
+        /// Prints the content at the given git reference
+        #[structopt(long="git-ref")]
+        git_reference: Option<String>,
         /// Print only code content.
         #[structopt(long="code")]
         only_code: bool,
@@ -362,6 +419,8 @@ impl From<std::io::Error> for AppError {
 
 #[test]
 fn test_add_and_run_snippet() {
+    use tempfile::TempDir;
+
     let temp_repository_dir = TempDir::new().unwrap();
     let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();
@@ -445,6 +504,8 @@ print(np.square(np.arange(0, 11)))
 
 #[test]
 fn test_add_and_move() {
+    use tempfile::TempDir;
+
     let temp_repository_dir = TempDir::new().unwrap();
     let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();
@@ -480,6 +541,8 @@ print(np.square(np.arange(0, 10)))
 
 #[test]
 fn test_add_and_remove() {
+    use tempfile::TempDir;
+
     let temp_repository_dir = TempDir::new().unwrap();
     let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();

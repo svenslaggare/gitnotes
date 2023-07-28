@@ -134,7 +134,7 @@ impl CommandInterpreter {
                     let id = NoteId::new();
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.config.editor, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    launch_editor(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
@@ -142,7 +142,7 @@ impl CommandInterpreter {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.config.editor, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    launch_editor(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;
@@ -468,9 +468,9 @@ impl CommandInterpreter {
     }
 }
 
-fn launch_editor(editor: &str, path: &Path) -> CommandInterpreterResult<()> {
-    let mut editor_command = std::process::Command::new(editor);
-    match editor {
+pub fn launch_editor(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
+    let mut editor_command = std::process::Command::new(&config.editor);
+    match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
         _ => {}
     }

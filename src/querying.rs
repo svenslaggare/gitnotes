@@ -1,14 +1,17 @@
-use std::io::stdout;
+use std::io::{stdout, Write};
 use std::path::Path;
-use atty::Stream;
 
-use chrono::{Datelike, DateTime, Local, Timelike};
+use chrono::{Datelike, DateTime, FixedOffset, Local, NaiveDateTime, Timelike, TimeZone};
 use regex::Regex;
 use thiserror::Error;
+
+use atty::Stream;
 
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
+use crate::command::{CommandInterpreterResult, launch_editor};
+use crate::config::Config;
 
 use crate::model::{NoteFileTree, NoteMetadata, NoteMetadataStorage};
 
@@ -18,6 +21,9 @@ pub type QueryingResult<T> = Result<T, QueryingError>;
 pub enum QueryingError {
     #[error("Failed to create note file tree")]
     FailedToCreateNoteFileTree,
+
+    #[error("Note not found at git reference '{0}'")]
+    NoteNotFoundAtGitReference(String),
 
     #[error("{0}")]
     Git(git2::Error),
@@ -376,9 +382,60 @@ impl GitLog {
         for commit_id in rev_walk.into_iter().take(if self.count >= 0 { self.count as usize } else { usize::MAX }) {
             let commit_id = commit_id?;
             let commit = self.repository.find_commit(commit_id)?;
-            println!("{}: {}", commit_id, commit.message().unwrap_or("").trim().replace("\n", " "));
+
+            let short_commit_hash = commit.as_object().short_id()?.as_str().unwrap().to_owned();
+
+            let commit_time = NaiveDateTime::from_timestamp_opt(commit.time().seconds(), 0).unwrap();
+            let commit_time = FixedOffset::east_opt(commit.time().offset_minutes() * 60).unwrap().from_utc_datetime(&commit_time);
+
+            println!(
+                "{} ({}): {}",
+                short_commit_hash,
+                commit_time,
+                commit.message().unwrap_or("").trim().replace("\n", " ")
+            );
         }
 
         Ok(())
     }
+}
+
+pub struct HistoricContentFetcher<'a> {
+    repository: git2::Repository,
+    node_metadata_storage: &'a NoteMetadataStorage
+}
+
+impl<'a> HistoricContentFetcher<'a> {
+    pub fn new(repository: &Path, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<HistoricContentFetcher<'a>> {
+        Ok(
+            HistoricContentFetcher {
+                repository: git2::Repository::open(repository)?,
+                node_metadata_storage
+            }
+        )
+    }
+
+    pub fn fetch(&self, path: &Path, spec: &str) -> QueryingResult<Option<String>> {
+        let note_id = self.node_metadata_storage.get_id_result(&path)?;
+
+        let git_id = self.repository.revparse_single(spec)?.id();
+        let tree = self.repository.find_commit(git_id)?.tree()?;
+
+        if let Some(entry) = tree.get_name(&(note_id.to_string() + ".md")) {
+            let entry_object = entry.to_object(&self.repository).map_err(|err| QueryingError::Git(err))?;
+            if let Some(entry_blob) = entry_object.as_blob() {
+                return Ok(Some(String::from_utf8_lossy(entry_blob.content()).to_string()))
+            }
+        }
+
+        Ok(None)
+    }
+}
+
+pub fn launch_editor_with_content(config: &Config, content: &str) -> CommandInterpreterResult<()> {
+    let temp_file = tempfile::Builder::new()
+        .suffix(".md")
+        .tempfile()?;
+    temp_file.as_file().write_all(content.as_bytes())?;
+    launch_editor(config, temp_file.path())
 }

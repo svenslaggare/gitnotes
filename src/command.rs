@@ -14,17 +14,21 @@ use crate::snippets::{SnipperRunnerManger, SnippetError};
 
 #[derive(Debug)]
 pub enum Command {
-    AddNoteWithContent {
-        path: PathBuf,
-        tags: Vec<String>,
-        content: String
-    },
     AddNote {
         path: PathBuf,
         tags: Vec<String>
     },
     EditNoteContent {
         path: PathBuf
+    },
+    AddNoteWithContent {
+        path: PathBuf,
+        tags: Vec<String>,
+        content: String
+    },
+    EditNoteSetContent {
+        path: PathBuf,
+        content: String
     },
     RunSnippet {
         path: PathBuf,
@@ -109,6 +113,31 @@ impl CommandInterpreter {
 
         for command in commands.into_iter() {
             match command {
+                Command::AddNote { path, tags } => {
+                    self.check_if_note_exists(&path)?;
+
+                    let id = NoteId::new();
+                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
+
+                    launch_editor(&abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+
+                    self.add_note(id, &relative_note_path, path, tags)?;
+                }
+                Command::EditNoteContent { path } => {
+                    let id = self.get_note_id(&path)?;
+                    let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
+
+                    launch_editor(&abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+
+                    let index = self.index()?;
+                    index.add_path(&relative_content_path)?;
+                    index.write()?;
+
+                    self.try_change_last_updated(&id)?;
+
+                    let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
+                    self.commit_message_lines.push(format!("Edited note '{}'.", real_path));
+                }
                 Command::AddNoteWithContent { path, tags, content } => {
                     self.check_if_note_exists(&path)?;
 
@@ -119,21 +148,11 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
-                Command::AddNote { path, tags } => {
-                    self.check_if_note_exists(&path)?;
-
-                    let id = NoteId::new();
-                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
-
-                    launch_editor(&abs_note_path).map_err(|err| FailedToEditNote(err.to_string()))?;
-
-                    self.add_note(id, &relative_note_path, path, tags)?;
-                }
-                Command::EditNoteContent { path } => {
+                Command::EditNoteSetContent { path, content } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;
@@ -202,8 +221,23 @@ impl CommandInterpreter {
                     let new_tree = self.index()?.write_tree()?;
                     let new_tree = self.repository.find_tree(new_tree)?;
 
-                    let (head_commit, head_tree) = CommandInterpreter::get_git_head(&self.repository)?;
-                    if CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)? {
+                    // Handle that this might be the first commit
+                    let create = match CommandInterpreter::get_git_head(&self.repository) {
+                        Ok((head_commit, head_tree)) => {
+                            if CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)? {
+                                Some(Some(head_commit))
+                            } else {
+                                None
+                            }
+                        }
+                        Err(_) => {
+                            Some(None)
+                        }
+                    };
+
+                    if let Some(head_commit) = create {
+                        let head_commit = head_commit.as_ref().map(|h| vec![h]).unwrap_or_else(|| vec![]);
+
                         let signature = git2::Signature::now(&self.user_name_and_email.0, &self.user_name_and_email.1)?;
                         let commit_message = self.commit_message_lines.join("\n");
                         self.repository.commit(
@@ -212,7 +246,7 @@ impl CommandInterpreter {
                             &signature,
                             &commit_message,
                             &new_tree,
-                            &[&head_commit]
+                            &head_commit
                         ).map_err(|err| FailedToCommit(err.to_string()))?;
                         println!("Created commit with message:\n{}", commit_message);
 

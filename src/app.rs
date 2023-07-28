@@ -107,10 +107,10 @@ print(np.square(np.arange(0, 10)))
                 self.command_interpreter.execute(commands)?;
                 self.clear_cache();
             }
-            InputCommand::PrintContent { path, only_code } => {
+            InputCommand::PrintContent { path, only_code, only_output } => {
                 let content = self.note_metadata_storage()?.get_content(&path)?;
 
-                if only_code {
+                if only_code || only_output {
                     let arena = markdown::storage();
                     let root = markdown::parse(&arena, &content);
 
@@ -122,7 +122,9 @@ print(np.square(np.arange(0, 10)))
                             }
 
                             Ok(())
-                        }
+                        },
+                        only_code,
+                        only_output
                     )?;
                 } else {
                     println!("{}", content);
@@ -243,7 +245,10 @@ pub enum InputCommand {
         path: PathBuf,
         /// Print only code content.
         #[structopt(long="code")]
-        only_code: bool
+        only_code: bool,
+        /// Print only output content.
+        #[structopt(long="output")]
+        only_output: bool
     },
     /// Lists note in a directory.
     #[structopt(name="ls")]

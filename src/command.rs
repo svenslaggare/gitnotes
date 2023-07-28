@@ -258,7 +258,9 @@ impl CommandInterpreter {
                             }
 
                             Ok(())
-                        }
+                        },
+                        true,
+                        false
                     )?;
 
                     if save_output {

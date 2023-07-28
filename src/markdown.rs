@@ -15,11 +15,12 @@ pub fn parse<'a>(arena: &'a Arena<AstNode<'a>>, content: &str) -> &'a AstNode<'a
     )
 }
 
-pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root: &'a AstNode<'a>, mut apply: F) -> Result<(), E> {
+pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root: &'a AstNode<'a>, mut apply: F, show_code: bool, show_output: bool) -> Result<(), E> {
     for current_node in root.children() {
         match current_node.data.borrow().value {
             NodeValue::CodeBlock(ref block) => {
-                if block.info != "output" {
+                let is_code = block.info != "output";
+                if (is_code && show_code) || (!is_code && show_output) {
                     apply(current_node)?;
                 }
             }

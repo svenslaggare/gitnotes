@@ -1,6 +1,5 @@
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
 use regex::Regex;
 use thiserror::Error;
 
@@ -10,14 +9,10 @@ use comrak::nodes::NodeValue;
 use tempfile::TempDir;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
+use crate::config::Config;
 use crate::markdown;
 use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
-
-#[derive(Debug, Deserialize)]
-pub struct Config {
-    pub repository: PathBuf
-}
 
 pub struct Application {
     config: Config,
@@ -27,7 +22,7 @@ pub struct Application {
 
 impl Application {
     pub fn new(config: Config) -> Result<Application, AppError> {
-        let command_interpreter = CommandInterpreter::new(&config.repository)?;
+        let command_interpreter = CommandInterpreter::new(config.clone())?;
         Ok(
             Application {
                 config,
@@ -368,9 +363,7 @@ impl From<std::io::Error> for AppError {
 #[test]
 fn test_add_and_run_snippet() {
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config {
-        repository: temp_repository_dir.path().to_path_buf()
-    };
+    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");
@@ -453,9 +446,7 @@ print(np.square(np.arange(0, 11)))
 #[test]
 fn test_add_and_move() {
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config {
-        repository: temp_repository_dir.path().to_path_buf()
-    };
+    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");
@@ -490,9 +481,7 @@ print(np.square(np.arange(0, 10)))
 #[test]
 fn test_add_and_remove() {
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config {
-        repository: temp_repository_dir.path().to_path_buf()
-    };
+    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");

@@ -6,6 +6,7 @@ use chrono::Local;
 use thiserror::Error;
 
 use comrak::nodes::NodeValue;
+use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::helpers::io_error;
@@ -92,11 +93,9 @@ impl From<std::io::Error> for CommandInterpreterError {
 }
 
 pub struct CommandInterpreter {
-    repository: git2::Repository,
+    config: Config,
 
-    repository_path: PathBuf,
-    user_name_and_email: (String, String),
-    editor: String,
+    repository: git2::Repository,
 
     note_metadata_storage: Option<NoteMetadataStorage>,
     snippet_runner_manager: SnipperRunnerManger,
@@ -106,14 +105,14 @@ pub struct CommandInterpreter {
 }
 
 impl CommandInterpreter {
-    pub fn new(repository_path: &Path) -> CommandInterpreterResult<CommandInterpreter> {
+    pub fn new(config: Config) -> CommandInterpreterResult<CommandInterpreter> {
+        let repository = git2::Repository::open(&config.repository).map_err(|err| CommandInterpreterError::FailedToOpenRepository(err))?;
+
         Ok(
             CommandInterpreter {
-                repository: git2::Repository::open(repository_path).map_err(|err| CommandInterpreterError::FailedToOpenRepository(err))?,
+                config,
 
-                repository_path: repository_path.to_path_buf(),
-                user_name_and_email: get_user_name_and_email()?,
-                editor: "code".to_owned(),
+                repository,
 
                 note_metadata_storage: None,
                 snippet_runner_manager: SnipperRunnerManger::default(),
@@ -135,7 +134,7 @@ impl CommandInterpreter {
                     let id = NoteId::new();
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.editor, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    launch_editor(&self.config.editor, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
@@ -143,7 +142,7 @@ impl CommandInterpreter {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.editor, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    launch_editor(&self.config.editor, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;
@@ -301,7 +300,7 @@ impl CommandInterpreter {
                     if let Some(head_commit) = create {
                         let head_commit = head_commit.as_ref().map(|h| vec![h]).unwrap_or_else(|| vec![]);
 
-                        let signature = git2::Signature::now(&self.user_name_and_email.0, &self.user_name_and_email.1)?;
+                        let signature = git2::Signature::now(&self.config.user_name_and_email.0, &self.config.user_name_and_email.1)?;
                         let commit_message = self.commit_message_lines.join("\n");
                         self.repository.commit(
                             Some("HEAD"),
@@ -402,11 +401,11 @@ impl CommandInterpreter {
     }
 
     fn get_note_storage_path(&self, id: &NoteId) -> (PathBuf, PathBuf) {
-        NoteMetadataStorage::get_note_storage_path(&self.repository_path, id)
+        NoteMetadataStorage::get_note_storage_path(&self.config.repository, id)
     }
 
     fn get_note_metadata_path(&self, id: &NoteId) -> (PathBuf, PathBuf) {
-        NoteMetadataStorage::get_note_metadata_path(&self.repository_path, id)
+        NoteMetadataStorage::get_note_metadata_path(&self.config.repository, id)
     }
 
     fn get_note_id(&mut self, path: &PathBuf) -> CommandInterpreterResult<NoteId> {
@@ -440,7 +439,7 @@ impl CommandInterpreter {
         if self.note_metadata_storage.is_some() {
             Ok(self.note_metadata_storage.as_mut().unwrap())
         } else {
-            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.repository_path)?);
+            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.config.repository)?);
             Ok(self.note_metadata_storage.as_mut().unwrap())
         }
     }
@@ -449,7 +448,7 @@ impl CommandInterpreter {
         if self.note_metadata_storage.is_some() {
             Ok(self.note_metadata_storage.as_mut().unwrap())
         } else {
-            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.repository_path)?);
+            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.config.repository)?);
             Ok(self.note_metadata_storage.as_mut().unwrap())
         }
     }
@@ -466,14 +465,6 @@ impl CommandInterpreter {
             *index = Some(repository.index()?);
             Ok(index.as_mut().unwrap())
         }
-    }
-}
-
-fn get_user_name_and_email() -> CommandInterpreterResult<(String, String)> {
-    let config = git2::Config::open_default()?;
-    match (config.get_string("user.name"), config.get_string("user.email")) {
-        (Ok(name), Ok(email)) => Ok((name, email)),
-        _ => Ok(("unknown".to_owned(), "unknown".to_owned()))
     }
 }
 

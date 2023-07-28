@@ -3,6 +3,7 @@ use std::path::Path;
 use rustyline::{DefaultEditor};
 use structopt::{clap, StructOpt};
 
+mod config;
 mod helpers;
 mod model;
 mod querying;
@@ -11,12 +12,11 @@ mod markdown;
 mod snippets;
 mod app;
 
-use crate::app::{AppError, Application, Config, InputCommand};
+use crate::app::{AppError, Application, InputCommand};
+use crate::config::Config;
 
 fn main() {
-    let config = Config {
-        repository: Path::new("test-notes").to_path_buf()
-    };
+    let config = Config::from_env(Path::new("test-notes"));
 
     let input_command: InputCommand = InputCommand::from_args();
     if let Err(err) = run(config, input_command) {

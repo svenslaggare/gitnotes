@@ -218,7 +218,7 @@ impl CommandInterpreter {
                     index.remove_path(&relative_metadata_path)?;
                     index.write()?;
 
-                    self.commit_message_lines.push(format!("Deleted move '{}'.", real_path));
+                    self.commit_message_lines.push(format!("Deleted note '{}'.", real_path));
                 }
                 Command::RunSnippet { path, save_output } => {
                     let id = self.get_note_id(&path)?;
@@ -273,7 +273,7 @@ impl CommandInterpreter {
                         self.try_change_last_updated(&id)?;
 
                         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-                        self.commit_message_lines.push(format!("Saved output for note '{}'.", real_path));
+                        self.commit_message_lines.push(format!("Saved run output for note '{}'.", real_path));
                     }
                 }
                 Command::Commit => {

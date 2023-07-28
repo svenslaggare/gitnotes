@@ -12,7 +12,7 @@ use tempfile::TempDir;
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::markdown;
 use crate::model::{NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
@@ -171,6 +171,10 @@ print(np.square(np.arange(0, 10)))
                 let searcher = Searcher::new(self.note_metadata_storage()?)?;
                 searcher.search(&query)?;
             }
+            InputCommand::Log { count } => {
+                let git_log = GitLog::new(&self.config.repository, count)?;
+                git_log.print()?;
+            }
         }
 
         Ok(())
@@ -191,6 +195,8 @@ print(np.square(np.arange(0, 10)))
 }
 
 #[derive(Debug, StructOpt)]
+#[structopt(about="CLI & Git based notes/snippet application")]
+#[structopt(global_setting=structopt::clap::AppSettings::AllowNegativeNumbers)]
 pub enum InputCommand {
     /// Runs in interactive mode
     Interactive,
@@ -272,6 +278,12 @@ pub enum InputCommand {
         /// Indicates if the match is cans sensitive
         #[structopt(long="no-ignore-case")]
         case_sensitive: bool
+    },
+    /// Lists git commits
+    Log {
+        /// The number of commits to show. -1 for all.
+        #[structopt(default_value="5")]
+        count: isize
     }
 }
 

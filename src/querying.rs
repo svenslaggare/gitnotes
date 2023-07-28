@@ -19,8 +19,17 @@ pub enum QueryingError {
     #[error("Failed to create note file tree")]
     FailedToCreateNoteFileTree,
 
-    #[error("I/O error: {0}")]
+    #[error("{0}")]
+    Git(git2::Error),
+
+    #[error("{0}")]
     IO(std::io::Error)
+}
+
+impl From<git2::Error> for QueryingError {
+    fn from(err: git2::Error) -> Self {
+        QueryingError::Git(err)
+    }
 }
 
 impl From<std::io::Error> for QueryingError {
@@ -135,6 +144,19 @@ impl<'a> Finder<'a> {
         }
 
         Ok(results)
+    }
+}
+
+pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
+    for note_metadata in results {
+        println!(
+            "{} - id: {}, tags: [{}], created: {}, last updated: {}",
+            note_metadata.path.to_str().unwrap(),
+            note_metadata.id,
+            note_metadata.tags.join(", "),
+            note_metadata.created,
+            note_metadata.last_updated
+        );
     }
 }
 
@@ -268,46 +290,6 @@ impl<'a> ListDirectory<'a> {
     }
 }
 
-pub struct ListTree<'a> {
-    root: NoteFileTree<'a>
-}
-
-impl<'a> ListTree<'a> {
-    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListTree<'a>> {
-        Ok(
-            ListTree {
-                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
-            }
-        )
-    }
-
-    pub fn list(&self, prefix: Option<&Path>) {
-        match prefix {
-            None => {
-                self.root.print();
-            }
-            Some(prefix) => {
-                if let Some(tree) = self.root.find(prefix) {
-                    tree.print();
-                }
-            }
-        }
-    }
-}
-
-pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
-    for note_metadata in results {
-        println!(
-            "{} - id: {}, tags: [{}], created: {}, last updated: {}",
-            note_metadata.path.to_str().unwrap(),
-            note_metadata.id,
-            note_metadata.tags.join(", "),
-            note_metadata.created,
-            note_metadata.last_updated
-        );
-    }
-}
-
 pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) -> QueryingResult<()> {
     let is_terminal = atty::is(Stream::Stdout);
 
@@ -343,4 +325,60 @@ pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) -> Queryi
     }
 
     Ok(())
+}
+
+pub struct ListTree<'a> {
+    root: NoteFileTree<'a>
+}
+
+impl<'a> ListTree<'a> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListTree<'a>> {
+        Ok(
+            ListTree {
+                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
+            }
+        )
+    }
+
+    pub fn list(&self, prefix: Option<&Path>) {
+        match prefix {
+            None => {
+                self.root.print();
+            }
+            Some(prefix) => {
+                if let Some(tree) = self.root.find(prefix) {
+                    tree.print();
+                }
+            }
+        }
+    }
+}
+
+pub struct GitLog {
+    repository: git2::Repository,
+    count: isize
+}
+
+impl GitLog {
+    pub fn new(repository: &Path, count: isize) -> QueryingResult<GitLog> {
+        Ok(
+            GitLog {
+                repository: git2::Repository::open(repository)?,
+                count
+            }
+        )
+    }
+
+    pub fn print(&self) -> QueryingResult<()> {
+        let mut rev_walk = self.repository.revwalk()?;
+        rev_walk.push_head()?;
+
+        for commit_id in rev_walk.into_iter().take(if self.count >= 0 { self.count as usize } else { usize::MAX }) {
+            let commit_id = commit_id?;
+            let commit = self.repository.find_commit(commit_id)?;
+            println!("{}: {}", commit_id, commit.message().unwrap_or("").trim());
+        }
+
+        Ok(())
+    }
 }

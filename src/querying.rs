@@ -376,7 +376,7 @@ impl GitLog {
         for commit_id in rev_walk.into_iter().take(if self.count >= 0 { self.count as usize } else { usize::MAX }) {
             let commit_id = commit_id?;
             let commit = self.repository.find_commit(commit_id)?;
-            println!("{}: {}", commit_id, commit.message().unwrap_or("").trim());
+            println!("{}: {}", commit_id, commit.message().unwrap_or("").trim().replace("\n", " "));
         }
 
         Ok(())

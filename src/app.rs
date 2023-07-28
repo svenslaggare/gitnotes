@@ -10,6 +10,7 @@ use comrak::nodes::NodeValue;
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::Config;
 use crate::{editor, markdown};
+use crate::helpers::get_or_insert_with;
 use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, HistoricContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
@@ -220,12 +221,10 @@ print(np.square(np.arange(0, 10)))
     }
 
     fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
-        if self.note_metadata_storage.is_none() {
-            let note_metadata_storage = NoteMetadataStorage::from_dir(&self.config.repository)?;
-            self.note_metadata_storage = Some(note_metadata_storage);
-        }
-
-        Ok(self.note_metadata_storage.as_ref().unwrap())
+        get_or_insert_with(
+            &mut self.note_metadata_storage,
+            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
+        ).map(|x| &*x)
     }
 }
 

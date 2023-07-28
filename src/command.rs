@@ -9,6 +9,7 @@ use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
+use crate::helpers::get_or_insert_with;
 use crate::snippets::{SnipperRunnerManger, SnippetError};
 
 #[derive(Debug)]
@@ -438,12 +439,10 @@ impl CommandInterpreter {
     }
 
     fn note_metadata_storage_mut(&mut self) -> CommandInterpreterResult<&mut NoteMetadataStorage> {
-        if self.note_metadata_storage.is_some() {
-            Ok(self.note_metadata_storage.as_mut().unwrap())
-        } else {
-            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.config.repository)?);
-            Ok(self.note_metadata_storage.as_mut().unwrap())
-        }
+        get_or_insert_with(
+            &mut self.note_metadata_storage,
+            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
+        )
     }
 
     fn index(&mut self) -> CommandInterpreterResult<&mut git2::Index> {
@@ -452,11 +451,6 @@ impl CommandInterpreter {
 
     fn get_index<'a>(repository: &git2::Repository,
                      index: &'a mut Option<git2::Index>) -> CommandInterpreterResult<&'a mut git2::Index> {
-        if index.is_some() {
-            Ok(index.as_mut().unwrap())
-        } else {
-            *index = Some(repository.index()?);
-            Ok(index.as_mut().unwrap())
-        }
+        get_or_insert_with(index, || Ok(repository.index()?))
     }
 }

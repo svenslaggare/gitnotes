@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use rustyline::{DefaultEditor, Editor};
+use rustyline::{DefaultEditor};
 use structopt::{clap, StructOpt};
 
 mod helpers;
@@ -60,10 +60,11 @@ fn run_interactive(config: Config) -> Result<(), AppError> {
     Ok(())
 }
 
-fn input_command_interactive(line: &str) -> Result<InputCommand, clap::Error> {
+fn input_command_interactive(line: &str) -> Result<InputCommand, String> {
+    let words = shellwords::split(line).map_err(|err| err.to_string())?;
     Ok(InputCommand::from_clap(
         &InputCommand::clap()
             .setting(clap::AppSettings::NoBinaryName)
-            .get_matches_from_safe(line.split(" "))?
+            .get_matches_from_safe(words).map_err(|err| err.to_string())?
     ))
 }

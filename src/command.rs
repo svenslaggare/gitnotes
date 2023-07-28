@@ -93,8 +93,10 @@ impl From<std::io::Error> for CommandInterpreterError {
 
 pub struct CommandInterpreter {
     repository: git2::Repository,
+
     repository_path: PathBuf,
     user_name_and_email: (String, String),
+    editor: String,
 
     note_metadata_storage: Option<NoteMetadataStorage>,
     snippet_runner_manager: SnipperRunnerManger,
@@ -108,8 +110,10 @@ impl CommandInterpreter {
         Ok(
             CommandInterpreter {
                 repository: git2::Repository::open(repository_path).map_err(|err| CommandInterpreterError::FailedToOpenRepository(err))?,
+
                 repository_path: repository_path.to_path_buf(),
                 user_name_and_email: get_user_name_and_email()?,
+                editor: "code".to_owned(),
 
                 note_metadata_storage: None,
                 snippet_runner_manager: SnipperRunnerManger::default(),
@@ -131,7 +135,7 @@ impl CommandInterpreter {
                     let id = NoteId::new();
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    launch_editor(&self.editor, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
@@ -139,7 +143,7 @@ impl CommandInterpreter {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    launch_editor(&self.editor, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;
@@ -473,9 +477,14 @@ fn get_user_name_and_email() -> CommandInterpreterResult<(String, String)> {
     }
 }
 
-fn launch_editor(path: &Path) -> CommandInterpreterResult<()> {
-    let mut result = std::process::Command::new("code")
-        .arg("--wait")
+fn launch_editor(editor: &str, path: &Path) -> CommandInterpreterResult<()> {
+    let mut editor_command = std::process::Command::new(editor);
+    match editor {
+        "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
+        _ => {}
+    }
+
+    let mut result = editor_command
         .arg(path)
         .stdin(Stdio::inherit())
         .spawn()

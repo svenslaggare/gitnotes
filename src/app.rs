@@ -16,7 +16,7 @@ use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_
 
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub repository: PathBuf,
+    pub repository: PathBuf
 }
 
 pub struct Application {

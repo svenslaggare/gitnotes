@@ -1,5 +1,7 @@
 use std::path::Path;
-use structopt::StructOpt;
+
+use rustyline::{DefaultEditor, Editor};
+use structopt::{clap, StructOpt};
 
 mod helpers;
 mod model;
@@ -24,5 +26,44 @@ fn main() {
 }
 
 fn run(config: Config, input_command: InputCommand) -> Result<(), AppError> {
-    Application::new(config)?.run(input_command)
+    if input_command.is_interactive() {
+        run_interactive(config)
+    } else {
+        Application::new(config)?.run(input_command)
+    }
+}
+
+fn run_interactive(config: Config) -> Result<(), AppError> {
+    let mut app = Application::new(config)?;
+
+    let mut line_editor = DefaultEditor::new().unwrap();
+
+    while let Ok(mut line) = line_editor.readline("> ") {
+        if line.ends_with('\n') {
+            line.pop();
+        }
+
+        line_editor.add_history_entry(line.clone()).unwrap();
+
+        match input_command_interactive(&line) {
+            Ok(input_command) => {
+                if let Err(err) = app.run(input_command) {
+                    println!("{}.", err);
+                }
+            }
+            Err(err) => {
+                println!("{}", err);
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn input_command_interactive(line: &str) -> Result<InputCommand, clap::Error> {
+    Ok(InputCommand::from_clap(
+        &InputCommand::clap()
+            .setting(clap::AppSettings::NoBinaryName)
+            .get_matches_from_safe(line.split(" "))?
+    ))
 }

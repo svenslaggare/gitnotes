@@ -36,6 +36,7 @@ impl Application {
 
     pub fn run(&mut self, input_command: InputCommand) -> Result<(), AppError> {
         match input_command {
+            InputCommand::Interactive => {}
             InputCommand::AddFakeData => {
                 self.command_interpreter.execute(vec![
                     Command::AddNoteWithContent {
@@ -162,6 +163,8 @@ print(np.square(np.arange(0, 10)))
 
 #[derive(Debug, StructOpt)]
 pub enum InputCommand {
+    /// Runs in interactive mode
+    Interactive,
     /// Adds fake data.
     AddFakeData,
     /// Creates a new note.
@@ -217,6 +220,16 @@ pub enum InputCommand {
         /// Indicates if the match is cans sensitive
         #[structopt(long="no-ignore-case")]
         case_sensitive: bool
+    }
+}
+
+impl InputCommand {
+    pub fn is_interactive(&self) -> bool {
+        if let InputCommand::Interactive = self {
+            true
+        } else {
+            false
+        }
     }
 }
 

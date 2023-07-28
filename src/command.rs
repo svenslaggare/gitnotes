@@ -125,7 +125,7 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
-                Command::EditNoteContent { path, clear_tags, mut add_tags } => {
+                Command::EditNoteContent { path, clear_tags, add_tags } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
@@ -135,26 +135,7 @@ impl CommandInterpreter {
                     index.add_path(&relative_content_path)?;
                     index.write()?;
 
-                    let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
-                    let mut changed_tags = false;
-                    let note_metadata = &mut self.get_note_metadata_mut(&id)?;
-                    if clear_tags {
-                        note_metadata.tags.clear();
-                        changed_tags = true;
-                    }
-
-                    if !add_tags.is_empty() {
-                        note_metadata.tags.append(&mut add_tags);
-                        changed_tags = true;
-                    }
-
-                    if changed_tags {
-                        note_metadata.save(&abs_metadata_path)?;
-
-                        let index = self.index()?;
-                        index.add_path(&relative_metadata_path)?;
-                        index.write()?;
-                    }
+                    self.update_note_tags(&id, clear_tags, add_tags)?;
 
                     self.try_change_last_updated(&id)?;
 
@@ -308,6 +289,31 @@ impl CommandInterpreter {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
             let note_metadata = self.get_note_metadata_mut(&id)?;
             note_metadata.last_updated = Local::now();
+            note_metadata.save(&abs_metadata_path)?;
+
+            let index = self.index()?;
+            index.add_path(&relative_metadata_path)?;
+            index.write()?;
+        }
+
+        Ok(())
+    }
+
+    fn update_note_tags(&mut self, id: &NoteId, clear_tags: bool, mut add_tags: Vec<String>) -> CommandInterpreterResult<()> {
+        let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
+        let mut changed_tags = false;
+        let note_metadata = &mut self.get_note_metadata_mut(&id)?;
+        if clear_tags {
+            note_metadata.tags.clear();
+            changed_tags = true;
+        }
+
+        if !add_tags.is_empty() {
+            note_metadata.tags.append(&mut add_tags);
+            changed_tags = true;
+        }
+
+        if changed_tags {
             note_metadata.save(&abs_metadata_path)?;
 
             let index = self.index()?;

@@ -10,6 +10,7 @@ mod querying;
 mod command;
 mod markdown;
 mod snippets;
+mod editor;
 mod app;
 
 use crate::app::{AppError, Application, InputCommand};

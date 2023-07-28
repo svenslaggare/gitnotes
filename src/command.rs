@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 
 use chrono::Local;
 
@@ -9,8 +8,7 @@ use comrak::nodes::NodeValue;
 use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
-use crate::helpers::io_error;
-use crate::markdown;
+use crate::{editor, markdown};
 use crate::snippets::{SnipperRunnerManger, SnippetError};
 
 #[derive(Debug)]
@@ -134,7 +132,7 @@ impl CommandInterpreter {
                     let id = NoteId::new();
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    editor::launch(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
@@ -142,7 +140,7 @@ impl CommandInterpreter {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    launch_editor(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    editor::launch(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;
@@ -465,26 +463,5 @@ impl CommandInterpreter {
             *index = Some(repository.index()?);
             Ok(index.as_mut().unwrap())
         }
-    }
-}
-
-pub fn launch_editor(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
-    let mut editor_command = std::process::Command::new(&config.editor);
-    match config.editor.as_str() {
-        "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
-        _ => {}
-    }
-
-    let mut result = editor_command
-        .arg(path)
-        .stdin(Stdio::inherit())
-        .spawn()
-        .map_err(|err| CommandInterpreterError::SubProcess(err))?;
-
-    let result = result.wait().map_err(|err| CommandInterpreterError::SubProcess(err))?;
-    if result.success() {
-        Ok(())
-    } else {
-        Err(CommandInterpreterError::SubProcess(io_error(format!("Non successful result: {}", result.code().unwrap_or(1)))))
     }
 }

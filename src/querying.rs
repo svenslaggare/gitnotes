@@ -1,4 +1,4 @@
-use std::io::{stdout, Write};
+use std::io::{stdout};
 use std::path::Path;
 
 use chrono::{Datelike, DateTime, FixedOffset, Local, NaiveDateTime, Timelike, TimeZone};
@@ -10,8 +10,6 @@ use atty::Stream;
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
-use crate::command::{CommandInterpreterResult, launch_editor};
-use crate::config::Config;
 
 use crate::model::{NoteFileTree, NoteMetadata, NoteMetadataStorage};
 
@@ -430,12 +428,4 @@ impl<'a> HistoricContentFetcher<'a> {
 
         Ok(None)
     }
-}
-
-pub fn launch_editor_with_content(config: &Config, content: &str) -> CommandInterpreterResult<()> {
-    let temp_file = tempfile::Builder::new()
-        .suffix(".md")
-        .tempfile()?;
-    temp_file.as_file().write_all(content.as_bytes())?;
-    launch_editor(config, temp_file.path())
 }

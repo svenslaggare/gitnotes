@@ -9,9 +9,9 @@ use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::Config;
-use crate::markdown;
+use crate::{editor, markdown};
 use crate::model::{NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, GitLog, HistoricContentFetcher, launch_editor_with_content, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, GitLog, HistoricContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub struct Application {
     config: Config,
@@ -145,9 +145,9 @@ print(np.square(np.arange(0, 10)))
                         only_output
                     )?;
 
-                    launch_editor_with_content(&self.config, &new_content)?;
+                    editor::launch_with_content(&self.config, &new_content)?;
                 } else {
-                    launch_editor_with_content(&self.config, &content)?;
+                    editor::launch_with_content(&self.config, &content)?;
                 }
             }
             InputCommand::ListDirectory { query } => {

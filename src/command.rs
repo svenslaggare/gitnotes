@@ -434,12 +434,7 @@ impl CommandInterpreter {
     }
 
     fn note_metadata_storage(&mut self) -> CommandInterpreterResult<&NoteMetadataStorage> {
-        if self.note_metadata_storage.is_some() {
-            Ok(self.note_metadata_storage.as_mut().unwrap())
-        } else {
-            self.note_metadata_storage = Some(NoteMetadataStorage::from_dir(&self.config.repository)?);
-            Ok(self.note_metadata_storage.as_mut().unwrap())
-        }
+        self.note_metadata_storage_mut().map(|x| &*x)
     }
 
     fn note_metadata_storage_mut(&mut self) -> CommandInterpreterResult<&mut NoteMetadataStorage> {

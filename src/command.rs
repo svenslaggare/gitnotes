@@ -36,6 +36,9 @@ pub enum Command {
         source: PathBuf,
         destination: PathBuf,
     },
+    RemoveNote {
+        path: PathBuf
+    },
     RunSnippet {
         path: PathBuf,
         save_output: bool
@@ -53,14 +56,15 @@ pub enum CommandInterpreterError {
     FailedToAddNote(String),
     #[error("Failed to edit note: {0}")]
     FailedToEditNote(String),
+    #[error("Failed to remove note: {0}")]
+    FailedToRemoveNote(String),
     #[error("Failed to commit: {0}")]
     FailedToCommit(String),
+
     #[error("Failed to update metadata: {0}")]
     FailedToUpdateMetadata(String),
-
     #[error("Note '{0}' not found")]
     NoteNotFound(String),
-
     #[error("Note '{0}' already exists")]
     NoteAlreadyExists(PathBuf),
 
@@ -198,6 +202,23 @@ impl CommandInterpreter {
                     self.try_change_last_updated(&id)?;
 
                     self.commit_message_lines.push(format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap()));
+                }
+                Command::RemoveNote { path } => {
+                    let id = self.get_note_id(&path)?;
+                    let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
+
+                    let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
+                    let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
+
+                    std::fs::remove_file(abs_content_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
+                    std::fs::remove_file(abs_metadata_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
+
+                    let index = self.index()?;
+                    index.remove_path(&relative_content_path)?;
+                    index.remove_path(&relative_metadata_path)?;
+                    index.write()?;
+
+                    self.commit_message_lines.push(format!("Deleted move '{}'.", real_path));
                 }
                 Command::RunSnippet { path, save_output } => {
                     let id = self.get_note_id(&path)?;

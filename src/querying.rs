@@ -112,15 +112,15 @@ fn is_datetime_match(datetime: &DateTime<Local>, parts: &Vec<i32>) -> bool {
     && is_part_match(datetime.second() as i32, parts.get(5))
 }
 
-pub struct Finder {
-    note_metadata_storage: NoteMetadataStorage
+pub struct Finder<'a> {
+    note_metadata_storage: &'a NoteMetadataStorage
 }
 
-impl Finder {
-    pub fn new(repository_path: &Path) -> QueryingResult<Finder> {
+impl<'a> Finder<'a> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<Finder<'a>> {
         Ok(
             Finder {
-                note_metadata_storage: NoteMetadataStorage::from_dir(repository_path)?
+                note_metadata_storage
             }
         )
     }
@@ -138,15 +138,15 @@ impl Finder {
     }
 }
 
-pub struct Searcher {
-    note_metadata_storage: NoteMetadataStorage
+pub struct Searcher<'a> {
+    note_metadata_storage: &'a NoteMetadataStorage
 }
 
-impl Searcher {
-    pub fn new(repository_path: &Path) -> QueryingResult<Searcher> {
+impl<'a> Searcher<'a> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<Searcher<'a>> {
         Ok(
             Searcher {
-                note_metadata_storage: NoteMetadataStorage::from_dir(repository_path)?
+                note_metadata_storage
             }
         )
     }
@@ -218,10 +218,10 @@ pub struct ListDirectory<'a> {
 }
 
 impl<'a> ListDirectory<'a> {
-    pub fn new(notes_metadata: &'a Vec<NoteMetadata>) -> QueryingResult<ListDirectory<'a>> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListDirectory<'a>> {
         Ok(
             ListDirectory {
-                root: NoteFileTree::from_iter(notes_metadata.iter()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
+                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
             }
         )
     }
@@ -273,10 +273,10 @@ pub struct ListTree<'a> {
 }
 
 impl<'a> ListTree<'a> {
-    pub fn new(notes_metadata: &'a Vec<NoteMetadata>) -> QueryingResult<ListTree<'a>> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListTree<'a>> {
         Ok(
             ListTree {
-                root: NoteFileTree::from_iter(notes_metadata.iter()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
+                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
             }
         )
     }

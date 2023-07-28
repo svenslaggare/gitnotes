@@ -10,7 +10,7 @@ use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::markdown;
-use crate::model::{NoteMetadata, NoteMetadataStorage};
+use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, RegexMatcher, Searcher, StringMatcher};
 
 #[derive(Debug, Deserialize)]
@@ -20,7 +20,8 @@ pub struct Config {
 
 pub struct Application {
     config: Config,
-    command_interpreter: CommandInterpreter
+    command_interpreter: CommandInterpreter,
+    note_metadata_storage: Option<NoteMetadataStorage>
 }
 
 impl Application {
@@ -29,7 +30,8 @@ impl Application {
         Ok(
             Application {
                 config,
-                command_interpreter
+                command_interpreter,
+                note_metadata_storage: None
             }
         )
     }
@@ -62,18 +64,21 @@ print(np.square(np.arange(0, 10)))
                     },
                     Command::Commit
                 ])?;
+                self.clear_cache();
             }
             InputCommand::Add { path, tags } => {
                 self.command_interpreter.execute(vec![
                     Command::AddNote { path, tags },
                     Command::Commit
                 ])?;
+                self.clear_cache();
             }
             InputCommand::Edit { path } => {
                 self.command_interpreter.execute(vec![
                     Command::EditNoteContent { path },
                     Command::Commit
                 ])?;
+                self.clear_cache();
             }
             InputCommand::RunSnippet { path, save_output } => {
                 let mut commands = vec![
@@ -85,9 +90,10 @@ print(np.square(np.arange(0, 10)))
                 }
 
                 self.command_interpreter.execute(commands)?;
+                self.clear_cache();
             }
             InputCommand::PrintContent { path, only_code } => {
-                let content = NoteMetadataStorage::from_dir(&self.config.repository)?.get_content(&path)?;
+                let content = self.note_metadata_storage()?.get_content(&path)?;
 
                 if only_code {
                     let arena = markdown::storage();
@@ -108,15 +114,12 @@ print(np.square(np.arange(0, 10)))
                 }
             }
             InputCommand::ListDirectory { query } => {
-                let notes_metadata = self.notes_metadata()?;
-                let list_directory = ListDirectory::new(&notes_metadata)?;
-
+                let list_directory = ListDirectory::new(self.note_metadata_storage()?)?;
                 let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
                 print_list_directory_results(&results)?
             }
             InputCommand::Tree { prefix } => {
-                let notes_metadata = self.notes_metadata()?;
-                let list_tree = ListTree::new(&notes_metadata)?;
+                let list_tree = ListTree::new(self.note_metadata_storage()?)?;
                 list_tree.list(prefix.as_ref().map(|x| x.as_path()));
             }
             InputCommand::Finder(finder) => {
@@ -138,7 +141,7 @@ print(np.square(np.arange(0, 10)))
                     }
                 };
 
-                let finder = Finder::new(&self.config.repository)?;
+                let finder = Finder::new(self.note_metadata_storage()?)?;
                 let results = finder.find(&query)?;
                 print_note_metadata_results(&results);
             }
@@ -148,7 +151,7 @@ print(np.square(np.arange(0, 10)))
                 }
                 let query = Regex::new(&query)?;
 
-                let searcher = Searcher::new(&self.config.repository)?;
+                let searcher = Searcher::new(self.note_metadata_storage()?)?;
                 searcher.search(&query)?;
             }
         }
@@ -156,8 +159,17 @@ print(np.square(np.arange(0, 10)))
         Ok(())
     }
 
-    fn notes_metadata(&self) -> std::io::Result<Vec<NoteMetadata>> {
-        NoteMetadata::load_all_to_vec(&self.config.repository)
+    fn clear_cache(&mut self) {
+        self.note_metadata_storage = None;
+    }
+
+    fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
+        if self.note_metadata_storage.is_none() {
+            let note_metadata_storage = NoteMetadataStorage::from_dir(&self.config.repository)?;
+            self.note_metadata_storage = Some(note_metadata_storage);
+        }
+
+        Ok(self.note_metadata_storage.as_ref().unwrap())
     }
 }
 

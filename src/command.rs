@@ -30,6 +30,8 @@ pub enum Command {
     },
     EditNoteSetContent {
         path: PathBuf,
+        clear_tags: bool,
+        add_tags: Vec<String>,
         content: String
     },
     MoveNote {
@@ -141,7 +143,7 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
-                Command::EditNoteContent { path, clear_tags, mut add_tags } => {
+                Command::EditNoteContent { path, clear_tags, add_tags } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
@@ -151,21 +153,7 @@ impl CommandInterpreter {
                     index.add_path(&relative_content_path)?;
                     index.write()?;
 
-                    self.change_note_metadata(&id, move |note_metadata| {
-                        let mut changed_tags = false;
-                        if clear_tags {
-                            note_metadata.tags.clear();
-                            changed_tags = true;
-                        }
-
-                        if !add_tags.is_empty() {
-                            note_metadata.tags.append(&mut add_tags);
-                            changed_tags = true;
-                        }
-
-                        changed_tags
-                    })?;
-
+                    self.change_note_tags(&id, clear_tags, add_tags)?;
                     self.try_change_last_updated(&id)?;
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
@@ -181,7 +169,7 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
-                Command::EditNoteSetContent { path, content } => {
+                Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
@@ -191,6 +179,7 @@ impl CommandInterpreter {
                     index.add_path(&relative_content_path)?;
                     index.write()?;
 
+                    self.change_note_tags(&id, clear_tags, add_tags)?;
                     self.try_change_last_updated(&id)?;
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
@@ -360,10 +349,29 @@ impl CommandInterpreter {
         Ok(())
     }
 
+    fn change_note_tags(&mut self, id: &NoteId, clear_tags: bool, mut add_tags: Vec<String>) -> CommandInterpreterResult<()> {
+        self.change_note_metadata(id, move |note_metadata| {
+            let mut changed_tags = false;
+            if clear_tags {
+                note_metadata.tags.clear();
+                changed_tags = true;
+            }
+
+            if !add_tags.is_empty() {
+                note_metadata.tags.append(&mut add_tags);
+                changed_tags = true;
+            }
+
+            changed_tags
+        })?;
+
+        Ok(())
+    }
+
     fn change_note_metadata<F: FnMut(&mut NoteMetadata) -> bool>(&mut self, id: &NoteId, mut apply: F) -> CommandInterpreterResult<()> {
         let mut internal = || -> CommandInterpreterResult<()> {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
-            let note_metadata = &mut self.get_note_metadata_mut(&id)?;
+            let note_metadata = self.get_note_metadata_mut(&id)?;
 
             if apply(note_metadata) {
                 note_metadata.save(&abs_metadata_path)?;

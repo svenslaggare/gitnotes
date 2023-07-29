@@ -1,4 +1,6 @@
+use std::io::{Read, stdin};
 use std::path::{Path, PathBuf};
+use atty::Stream;
 
 use regex::Regex;
 use thiserror::Error;
@@ -93,17 +95,37 @@ print(np.square(np.arange(0, 10)))
                 self.clear_cache();
             }
             InputCommand::Add { path, tags } => {
-                self.command_interpreter.execute(vec![
-                    Command::AddNote { path, tags },
-                    Command::Commit
-                ])?;
+                if atty::is(Stream::Stdin) {
+                    self.command_interpreter.execute(vec![
+                        Command::AddNote { path, tags },
+                        Command::Commit
+                    ])?;
+                } else {
+                    let mut content = String::new();
+                    stdin().read_to_string(&mut content)?;
+                    self.command_interpreter.execute(vec![
+                        Command::AddNoteWithContent { path, tags, content },
+                        Command::Commit
+                    ])?;
+                }
+
                 self.clear_cache();
             }
             InputCommand::Edit { path, clear_tags, add_tags } => {
-                self.command_interpreter.execute(vec![
-                    Command::EditNoteContent { path, clear_tags, add_tags },
-                    Command::Commit
-                ])?;
+                if atty::is(Stream::Stdin) {
+                    self.command_interpreter.execute(vec![
+                        Command::EditNoteContent { path, clear_tags, add_tags },
+                        Command::Commit
+                    ])?;
+                } else {
+                    let mut content = String::new();
+                    stdin().read_to_string(&mut content)?;
+                    self.command_interpreter.execute(vec![
+                        Command::EditNoteSetContent { path, clear_tags, add_tags, content },
+                        Command::Commit
+                    ])?;
+                }
+
                 self.clear_cache();
             }
             InputCommand::Move { source, destination } => {
@@ -558,6 +580,8 @@ print(np.square(np.arange(0, 11)))
     app.command_interpreter.execute(vec![
         Command::EditNoteSetContent {
             path: note_path.to_path_buf(),
+            clear_tags: false,
+            add_tags: vec![],
             content: note_content2.clone()
         },
         Command::Commit
@@ -640,5 +664,50 @@ print(np.square(np.arange(0, 10)))
     app.run(InputCommand::Remove { path: note_path.to_owned() }).unwrap();
     assert_eq!(false, app.note_metadata_storage().unwrap().get(note_path).is_some());
     assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note_path).is_ok());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_add_and_change_tags() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample.py");
+    let note_content = r#"Hello, World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 10)))
+```
+"#.to_string();
+
+    let mut app = Application::new(config).unwrap();
+
+    app.command_interpreter.execute(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content.clone()
+        },
+        Command::Commit
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.command_interpreter.execute(vec![
+        Command::EditNoteSetContent {
+            path: note_path.to_path_buf(),
+            clear_tags: false,
+            add_tags: vec!["snippet".to_owned()],
+            content: note_content.clone()
+        },
+        Command::Commit
+    ]).unwrap();
+    app.clear_cache();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(vec!["python".to_owned(), "snippet".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());
 }

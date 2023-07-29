@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use std::io::{stdout};
 use std::path::Path;
 
@@ -11,7 +12,7 @@ use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
 
-use crate::model::{NoteFileTree, NoteMetadata, NoteMetadataStorage};
+use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteMetadata, NoteMetadataStorage};
 
 pub type QueryingResult<T> = Result<T, QueryingError>;
 
@@ -184,48 +185,152 @@ impl<'a> Searcher<'a> {
             for line in self.note_metadata_storage.get_content_lines(&note_metadata.path)? {
                 let line = line?;
 
-                let mut remaining_line_start = 0;
-                let mut found_match = false;
-                for current_match in query.find_iter(&line) {
-                    if !found_match {
+                self.find_matches(
+                    query,
+                    &line,
+                    is_terminal,
+                    |is_terminal| {
+                        let info_text = note_metadata.info_text();
                         if is_terminal {
                             stdout()
                                 .execute(SetForegroundColor(Color::DarkMagenta))?
-                                .execute(Print(format!("{}: ", note_metadata.info_text())))?
+                                .execute(Print(format!("{}: ", info_text)))?
                                 .execute(ResetColor)?;
                         } else {
-                            print!("{}: ", note_metadata.info_text());
+                            print!("{}: ", info_text);
                         }
 
-                        found_match = true;
+                        Ok(())
                     }
+                )?;
+            }
+        }
 
-                    let before = &line[remaining_line_start..current_match.start()];
-                    let during = &line[current_match.range()];
-                    remaining_line_start = current_match.end();
+        Ok(())
+    }
 
-                    if is_terminal {
-                        stdout()
-                            .execute(Print(before))?
+    pub fn search_historic(&self,
+                           repository: &Path,
+                           query: &Regex,
+                           git_start: &str, git_end: &str) -> QueryingResult<()> {
+        let repository = git2::Repository::open(repository)?;
+        let is_terminal = atty::is(Stream::Stdout);
 
-                            .execute(SetAttribute(Bold))?
-                            .execute(SetForegroundColor(Color::Red))?
-                            .execute(Print(during))?
-                            .execute(ResetColor)?;
-                    } else {
-                        print!("{}{}", before, during);
+        let mut rev_walk = repository.revwalk()?;
+        rev_walk.push(repository.revparse_single(git_start)?.id())?;
+        rev_walk.hide(repository.revparse_single(git_end)?.id())?;
+
+        for commit_id in rev_walk {
+            let commit_id = commit_id?;
+            let commit = repository.find_commit(commit_id)?;
+            let tree = commit.tree()?;
+
+            let mut notes = BTreeMap::new();
+            for file_entry in tree.iter() {
+                let file_path = Path::new(file_entry.name().unwrap());
+                let note_id = file_path.file_stem().unwrap().to_os_string();
+
+                let note_entry = notes.entry(note_id).or_insert_with(|| (None, None));
+                match file_path.extension().map(|x| x.to_str().unwrap()) {
+                    Some(entry) if entry == NOTE_METADATA_EXT => {
+                        note_entry.0 = Some(file_entry);
+                    }
+                    Some(entry) if entry == NOTE_CONTENT_EXT => {
+                        note_entry.1 = Some(file_entry);
+                    }
+                    _ => {}
+                }
+            }
+
+            for note_entry in notes.values() {
+                if let (Some(metadata_entry), Some(content_entry)) = note_entry {
+                    let metadata_entry = metadata_entry.to_object(&repository)?;
+                    let metadata_content = metadata_entry
+                        .as_blob()
+                        .map(|blob| std::str::from_utf8(blob.content()).ok())
+                        .flatten();
+
+                    let content_entry = content_entry.to_object(&repository)?;
+                    let content = content_entry
+                        .as_blob()
+                        .map(|blob| std::str::from_utf8(blob.content()).ok())
+                        .flatten();
+
+                    if let (Some(metadata_content), Some(content)) = (metadata_content, content) {
+                        let note_metadata = NoteMetadata::parse(metadata_content)?;
+
+                        for line in content.lines() {
+                            self.find_matches(
+                                query,
+                                line,
+                                is_terminal,
+                                |is_terminal| {
+                                    let info_text = note_metadata.info_text();
+                                    let short_commit_id = commit.as_object().short_id()?.as_str().unwrap().to_owned();
+
+                                    if is_terminal {
+                                        stdout()
+                                            .execute(SetForegroundColor(Color::Yellow))?
+                                            .execute(Print(format!("{}", short_commit_id)))?
+                                            .execute(ResetColor)?
+                                            .execute(Print(format!(" - ")))?
+                                            .execute(SetForegroundColor(Color::DarkMagenta))?
+                                            .execute(Print(format!("{}: ", info_text)))?
+                                            .execute(ResetColor)?;
+                                    } else {
+                                        print!("{} - {}: ", short_commit_id, info_text);
+                                    }
+
+                                    Ok(())
+                                }
+                            )?;
+                        }
                     }
                 }
+            }
+        }
 
-                if found_match {
-                    if is_terminal {
-                        stdout()
-                            .execute(Print(&line[remaining_line_start..]))?
-                            .execute(Print("\n"))?;
-                    } else {
-                        println!("{}", &line[remaining_line_start..]);
-                    }
-                }
+        Ok(())
+    }
+
+    fn find_matches<FnFirst: Fn(bool) -> QueryingResult<()>>(
+        &self,
+        query: &Regex, line: &str,
+        is_terminal: bool,
+        before_first: FnFirst,
+    ) -> QueryingResult<()> {
+        let mut remaining_line_start = 0;
+        let mut found_match = false;
+        for current_match in query.find_iter(&line) {
+            if !found_match {
+                before_first(is_terminal)?;
+                found_match = true;
+            }
+
+            let before = &line[remaining_line_start..current_match.start()];
+            let during = &line[current_match.range()];
+            remaining_line_start = current_match.end();
+
+            if is_terminal {
+                stdout()
+                    .execute(Print(before))?
+
+                    .execute(SetAttribute(Bold))?
+                    .execute(SetForegroundColor(Color::Red))?
+                    .execute(Print(during))?
+                    .execute(ResetColor)?;
+            } else {
+                print!("{}{}", before, during);
+            }
+        }
+
+        if found_match {
+            if is_terminal {
+                stdout()
+                    .execute(Print(&line[remaining_line_start..]))?
+                    .execute(Print("\n"))?;
+            } else {
+                println!("{}", &line[remaining_line_start..]);
             }
         }
 
@@ -419,7 +524,7 @@ impl<'a> GitContentFetcher<'a> {
         let git_id = self.repository.revparse_single(spec)?.id();
         let tree = self.repository.find_commit(git_id)?.tree()?;
 
-        if let Some(entry) = tree.get_name(&(note_id.to_string() + ".md")) {
+        if let Some(entry) = tree.get_name(&(note_id.to_string() + "." + NOTE_CONTENT_EXT)) {
             let entry_object = entry.to_object(&self.repository).map_err(|err| QueryingError::Git(err))?;
             if let Some(entry_blob) = entry_object.as_blob() {
                 return Ok(Some(String::from_utf8_lossy(entry_blob.content()).to_string()))

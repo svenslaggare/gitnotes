@@ -5,6 +5,7 @@ use std::process::Stdio;
 use crate::command::{CommandInterpreterError, CommandInterpreterResult};
 use crate::config::Config;
 use crate::helpers::io_error;
+use crate::model::NOTE_CONTENT_EXT;
 
 pub fn launch(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
     let mut editor_command = std::process::Command::new(&config.editor);
@@ -28,8 +29,9 @@ pub fn launch(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
 }
 
 pub fn launch_with_content(config: &Config, content: &str) -> CommandInterpreterResult<()> {
+    let ext = ".".to_owned() + NOTE_CONTENT_EXT;
     let temp_file = tempfile::Builder::new()
-        .suffix(".md")
+        .suffix(&ext)
         .tempfile()?;
     temp_file.as_file().write_all(content.as_bytes())?;
     launch(config, temp_file.path())

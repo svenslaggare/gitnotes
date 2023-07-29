@@ -183,14 +183,27 @@ print(np.square(np.arange(0, 10)))
                 let results = finder.find(&query)?;
                 print_note_metadata_results(&results);
             }
-            InputCommand::Search { mut query, case_sensitive } => {
+            InputCommand::Search { mut query, case_sensitive, history } => {
                 if !case_sensitive {
                     query = format!("(?i)({})", query);
                 }
                 let query = Regex::new(&query)?;
 
+                let repository = self.config.repository.to_owned();
                 let searcher = Searcher::new(self.note_metadata_storage()?)?;
-                searcher.search(&query)?;
+
+                if history.len() == 0 {
+                    searcher.search(&query)?;
+                } else if history.len() == 2 {
+                    searcher.search_historic(
+                        &repository,
+                        &query,
+                        &history[0],
+                        &history[1]
+                    )?;
+                } else {
+                    return Err(AppError::Input("Expected two arguments".to_owned()));
+                }
             }
             InputCommand::Log { count } => {
                 let git_log = GitLog::new(&self.config.repository, count)?;
@@ -328,7 +341,10 @@ pub enum InputCommand {
         query: String,
         /// Indicates if the match is cans sensitive
         #[structopt(long="no-ignore-case")]
-        case_sensitive: bool
+        case_sensitive: bool,
+        /// Search through git history (reverse) instead between the given references (inclusive)
+        #[structopt(long)]
+        history: Vec<String>
     },
     /// Lists git commits
     Log {
@@ -384,6 +400,9 @@ pub enum AppError {
 
     #[error("{0}")]
     Querying(QueryingError),
+
+    #[error("Input error: {0}")]
+    Input(String),
 
     #[error("{0}")]
     Regex(regex::Error),

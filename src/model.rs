@@ -17,6 +17,9 @@ use serde::de::{Error, Visitor};
 
 use crate::helpers::io_error;
 
+pub const NOTE_METADATA_EXT: &str = "metadata";
+pub const NOTE_CONTENT_EXT: &str = "md";
+
 const NOTE_ID_SIZE: usize = 5;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -129,9 +132,13 @@ impl NoteMetadata {
         format!("{} (id: {})", self.path.to_str().unwrap(), self.id)
     }
 
+    pub fn parse(content: &str) -> std::io::Result<NoteMetadata> {
+        toml::from_str(&content).map_err(|err| io_error(err))
+    }
+
     pub fn load(path: &Path) -> std::io::Result<NoteMetadata> {
         let content = std::fs::read_to_string(path)?;
-        toml::from_str(&content).map_err(|err| io_error(err))
+        NoteMetadata::parse(&content)
     }
 
     pub fn save(&self, path: &Path) -> std::io::Result<()> {
@@ -143,7 +150,7 @@ impl NoteMetadata {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_file() && path.extension().unwrap().to_str() == Some("metadata") {
+            if path.is_file() && path.extension().unwrap().to_str() == Some(NOTE_METADATA_EXT) {
                 apply(NoteMetadata::load(&path)?);
             }
         }
@@ -234,13 +241,13 @@ impl NoteMetadataStorage {
     }
 
     pub fn get_note_storage_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
-        let relative_path = Path::new(&(id.to_string() + ".md")).to_path_buf();
+        let relative_path = Path::new(&(id.to_string() + "." + NOTE_CONTENT_EXT)).to_path_buf();
         let abs_path = root_dir.join(&relative_path);
         (relative_path, abs_path)
     }
 
     pub fn get_note_metadata_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
-        let relative_path = Path::new(&(id.to_string() + ".metadata")).to_path_buf();
+        let relative_path = Path::new(&(id.to_string() + "." + NOTE_METADATA_EXT)).to_path_buf();
         let abs_path = root_dir.join(&relative_path);
         (relative_path, abs_path)
     }

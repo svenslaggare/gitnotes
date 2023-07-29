@@ -93,7 +93,7 @@ fn config_path() -> PathBuf {
 }
 
 fn load_config(config_path: &Path) -> Config {
-    Config::load(&config_path).expect(&format!("Expected a valid config file at '{}'", config_path.to_str().unwrap()))
+    Config::load(&config_path).expect(&format!("Expected a valid config file at '{}', please run 'init' command to setup", config_path.to_str().unwrap()))
 }
 
 fn input_command_interactive(line: &str) -> Result<InputCommand, String> {

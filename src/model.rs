@@ -20,7 +20,7 @@ use crate::helpers::io_error;
 pub const NOTE_METADATA_EXT: &str = "metadata";
 pub const NOTE_CONTENT_EXT: &str = "md";
 
-const NOTE_ID_SIZE: usize = 5;
+const NOTE_ID_SIZE: usize = 6;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct NoteId([char; NOTE_ID_SIZE]);

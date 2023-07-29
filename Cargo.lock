@@ -453,7 +453,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "gitnotes-cli"
+name = "gitnotes"
 version = "0.1.0"
 dependencies = [
  "atty",

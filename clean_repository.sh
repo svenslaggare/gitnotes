@@ -1,7 +1,7 @@
 #!/bin/bash
 rm -rf .git/ *.md *.metadata ; git init
 
-EXE=../target/debug/gitnotes-cli
+EXE=../target/debug/gitnotes
 $EXE add 2022/05/test1 --tags x y <<EOF
 Hello, World!
 

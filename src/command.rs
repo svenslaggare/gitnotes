@@ -1,3 +1,4 @@
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use chrono::Local;
@@ -9,6 +10,7 @@ use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
+use crate::app::RepositoryRef;
 use crate::helpers::get_or_insert_with;
 use crate::snippets::{SnipperRunnerManger, SnippetError};
 
@@ -52,8 +54,6 @@ pub type CommandInterpreterResult<T> = Result<T, CommandInterpreterError>;
 
 #[derive(Error, Debug)]
 pub enum CommandInterpreterError {
-    #[error("Failed to open repository: {0}")]
-    FailedToOpenRepository(git2::Error),
     #[error("Failed to add note: {0}")]
     FailedToAddNote(String),
     #[error("Failed to edit note: {0}")]
@@ -96,7 +96,7 @@ impl From<std::io::Error> for CommandInterpreterError {
 pub struct CommandInterpreter {
     config: Config,
 
-    repository: git2::Repository,
+    repository: RepositoryRef,
 
     note_metadata_storage: Option<NoteMetadataStorage>,
     snippet_runner_manager: SnipperRunnerManger,
@@ -106,26 +106,18 @@ pub struct CommandInterpreter {
 }
 
 impl CommandInterpreter {
-    pub fn new(config: Config) -> CommandInterpreterResult<CommandInterpreter> {
-        let repository = git2::Repository::open(&config.repository).map_err(|err| CommandInterpreterError::FailedToOpenRepository(err))?;
+    pub fn new(config: Config, repository: RepositoryRef) -> CommandInterpreter {
+        CommandInterpreter {
+            config,
 
-        Ok(
-            CommandInterpreter {
-                config,
+            repository,
 
-                repository,
+            note_metadata_storage: None,
+            snippet_runner_manager: SnipperRunnerManger::default(),
 
-                note_metadata_storage: None,
-                snippet_runner_manager: SnipperRunnerManger::default(),
-
-                index: None,
-                commit_message_lines: Vec::new()
-            }
-        )
-    }
-
-    pub fn repository(&self) -> &git2::Repository {
-        &self.repository
+            index: None,
+            commit_message_lines: Vec::new()
+        }
     }
 
     pub fn execute(&mut self, commands: Vec<Command>) -> CommandInterpreterResult<()> {
@@ -273,12 +265,13 @@ impl CommandInterpreter {
                 }
                 Command::Commit => {
                     let new_tree = self.index()?.write_tree()?;
-                    let new_tree = self.repository.find_tree(new_tree)?;
+                    let repository = self.repository.borrow();
+                    let new_tree = repository.find_tree(new_tree)?;
 
                     // Handle that this might be the first commit
-                    let create = match CommandInterpreter::get_git_head(&self.repository) {
+                    let create = match CommandInterpreter::get_git_head(repository.deref()) {
                         Ok((head_commit, head_tree)) => {
-                            if CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)? {
+                            if CommandInterpreter::has_git_diff(repository.deref(), &head_tree, &new_tree)? {
                                 Some(Some(head_commit))
                             } else {
                                 None
@@ -294,7 +287,7 @@ impl CommandInterpreter {
 
                         let signature = git2::Signature::now(&self.config.user_name_and_email.0, &self.config.user_name_and_email.1)?;
                         let commit_message = self.commit_message_lines.join("\n");
-                        self.repository.commit(
+                        self.repository.borrow().commit(
                             Some("HEAD"),
                             &signature,
                             &signature,
@@ -389,10 +382,11 @@ impl CommandInterpreter {
 
     fn has_git_changes(&mut self) -> CommandInterpreterResult<bool> {
         let new_tree = self.index()?.write_tree()?;
-        let new_tree = self.repository.find_tree(new_tree)?;
+        let repository = self.repository.borrow();
+        let new_tree = repository.find_tree(new_tree)?;
 
-        let (_, head_tree) = CommandInterpreter::get_git_head(&self.repository)?;
-        CommandInterpreter::has_git_diff(&self.repository, &head_tree, &new_tree)
+        let (_, head_tree) = CommandInterpreter::get_git_head(repository.deref())?;
+        CommandInterpreter::has_git_diff(repository.deref(), &head_tree, &new_tree)
     }
 
     fn get_git_head(repository: &git2::Repository) -> CommandInterpreterResult<(git2::Commit, git2::Tree)> {
@@ -458,7 +452,7 @@ impl CommandInterpreter {
     }
 
     fn index(&mut self) -> CommandInterpreterResult<&mut git2::Index> {
-        CommandInterpreter::get_index(&self.repository, &mut self.index)
+        CommandInterpreter::get_index(self.repository.borrow().deref(), &mut self.index)
     }
 
     fn get_index<'a>(repository: &git2::Repository,

@@ -1,11 +1,14 @@
+use std::cell::RefCell;
 use std::io::{Read, stdin};
+use std::ops::Deref;
 use std::path::{Path, PathBuf};
-use atty::Stream;
+use std::rc::Rc;
 
 use regex::Regex;
 use thiserror::Error;
 
 use structopt::StructOpt;
+use atty::Stream;
 
 use comrak::nodes::NodeValue;
 
@@ -16,19 +19,25 @@ use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, GitContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
+pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
+
 pub struct Application {
     config: Config,
+    repository: RepositoryRef,
     command_interpreter: CommandInterpreter,
     note_metadata_storage: Option<NoteMetadataStorage>
 }
 
 impl Application {
     pub fn new(config: Config) -> Result<Application, AppError> {
-        let command_interpreter = CommandInterpreter::new(config.clone())?;
+        let repository = git2::Repository::open(&config.repository).map_err(|err| AppError::FailedToOpenRepository(err))?;
+        let repository = Rc::new(RefCell::new(repository));
+
         Ok(
             Application {
-                config,
-                command_interpreter,
+                config: config.clone(),
+                repository: repository.clone(),
+                command_interpreter: CommandInterpreter::new(config, repository),
                 note_metadata_storage: None
             }
         )
@@ -47,7 +56,7 @@ impl Application {
                 };
 
                 self.config.repository = repository_path.clone();
-                self.command_interpreter = CommandInterpreter::new(self.config.clone())?;
+                self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone());
                 self.clear_cache();
 
                 let config_file = &base_dir().join("config.toml");
@@ -218,7 +227,7 @@ impl Application {
                     searcher.search(&query)?;
                 } else if history.len() == 2 {
                     searcher.search_historic(
-                        self.command_interpreter.repository(),
+                        self.repository.borrow().deref(),
                         &query,
                         &history[0],
                         &history[1]
@@ -228,7 +237,8 @@ impl Application {
                 }
             }
             InputCommand::Log { count } => {
-                let git_log = GitLog::new(self.command_interpreter.repository(), count)?;
+                let repository = self.repository.borrow();
+                let git_log = GitLog::new(repository.deref(), count)?;
                 git_log.print()?;
             }
         }
@@ -239,8 +249,9 @@ impl Application {
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         if let Some(git_reference) = git_reference {
             self.note_metadata_storage()?;
+            let repository = self.repository.borrow();
             let git_content_fetcher = GitContentFetcher::new(
-                self.command_interpreter.repository(),
+                repository.deref(),
                 self.note_metadata_storage_ref()?
             )?;
 
@@ -430,6 +441,9 @@ pub enum InputCommandFinder {
 
 #[derive(Error, Debug)]
 pub enum AppError {
+    #[error("Failed to open repository: {0}")]
+    FailedToOpenRepository(git2::Error),
+
     #[error("{0}")]
     Command(CommandInterpreterError),
 

@@ -36,9 +36,6 @@ impl Application {
 
     pub fn run(&mut self, input_command: InputCommand) -> Result<(), AppError> {
         match input_command {
-            InputCommand::Interactive => {
-                println!("Not supported in interactive mode.");
-            }
             InputCommand::Initialize { .. } => {
                 println!("Not supported in interactive mode.");
             }
@@ -273,18 +270,22 @@ impl Application {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(StructOpt)]
 #[structopt(about="CLI & Git based notes/snippet application")]
+pub struct MainInputCommand {
+    #[structopt(subcommand)]
+    pub command: Option<InputCommand>,
+}
+
+#[derive(Debug, StructOpt)]
 #[structopt(global_setting=structopt::clap::AppSettings::AllowNegativeNumbers)]
 pub enum InputCommand {
-    /// Runs in interactive mode
-    Interactive,
     /// Creates a new repository. Also creates config file if it doesn't exist.
     #[structopt(name="init")]
     Initialize {
         name: String
     },
-    /// Switches the active repository to the given one. If relative, then it is relative to $HOME/.gitnotes
+    /// Switches the active repository to the given one. If path is relative, then it is relative to $HOME/.gitnotes
     Switch {
         path: PathBuf
     },

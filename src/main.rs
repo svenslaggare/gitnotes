@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rustyline::{DefaultEditor};
 use structopt::{clap, StructOpt};
@@ -13,40 +13,40 @@ mod snippets;
 mod editor;
 mod app;
 
-use crate::app::{AppError, Application, InputCommand};
+use crate::app::{AppError, Application, InputCommand, MainInputCommand};
 use crate::config::{Config, FileConfig};
 use crate::helpers::base_dir;
 
 fn main() {
-    let input_command: InputCommand = InputCommand::from_args();
-    if let Err(err) = run(&base_dir(), input_command) {
-        println!("{}.", err.to_string());
-        std::process::exit(1);
+    let main_input_command = MainInputCommand::from_args();
+    if let Some(input_command) = main_input_command.command {
+        if let Err(err) = run( input_command) {
+            println!("{}.", err.to_string());
+            std::process::exit(1);
+        }
+    } else  {
+        if let Err(err) = run_interactive() {
+            println!("{}.", err.to_string());
+            std::process::exit(1);
+        }
     }
 }
 
-fn run(base_dir: &Path, input_command: InputCommand) -> Result<(), AppError> {
-    let config_path = base_dir.join("config.toml");
-    let load_config = || {
-        Config::load(&config_path).expect(&format!("Expected a valid config file at '{}'", config_path.to_str().unwrap()))
-    };
-
+fn run(input_command: InputCommand) -> Result<(), AppError> {
+    let config_path = config_path();
     match input_command {
-        InputCommand::Interactive => {
-            run_interactive(load_config())
-        }
         InputCommand::Initialize { .. } => {
-            run_init(base_dir, &config_path, input_command)
+            run_init(&config_path, input_command)
         }
         _ => {
-            Application::new(load_config())?.run(input_command)
+            Application::new(load_config(&config_path))?.run(input_command)
         }
     }
 }
 
-fn run_init(base_dir: &Path, config_path: &Path, input_command: InputCommand) -> Result<(), AppError> {
+fn run_init(config_path: &Path, input_command: InputCommand) -> Result<(), AppError> {
     if let InputCommand::Initialize { name } = input_command {
-        let repository_path = base_dir.join(name);
+        let repository_path = base_dir().join(name);
 
         let file_config = FileConfig::load(&config_path).unwrap_or_else(|_| FileConfig::new(&repository_path));
 
@@ -59,7 +59,9 @@ fn run_init(base_dir: &Path, config_path: &Path, input_command: InputCommand) ->
     Ok(())
 }
 
-fn run_interactive(config: Config) -> Result<(), AppError> {
+fn run_interactive() -> Result<(), AppError> {
+    let config = load_config(&config_path());
+
     let mut app = Application::new(config)?;
 
     let mut line_editor = DefaultEditor::new().unwrap();
@@ -84,6 +86,14 @@ fn run_interactive(config: Config) -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+fn config_path() -> PathBuf {
+    base_dir().join("config.toml")
+}
+
+fn load_config(config_path: &Path) -> Config {
+    Config::load(&config_path).expect(&format!("Expected a valid config file at '{}'", config_path.to_str().unwrap()))
 }
 
 fn input_command_interactive(line: &str) -> Result<InputCommand, String> {

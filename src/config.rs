@@ -38,7 +38,7 @@ pub struct Config {
 impl Config {
     pub fn from_env(file_config: FileConfig) -> Config {
         Config {
-            repository: file_config.repository,
+            repository: std::env::var("GITNOTES_REPOSITORY").map(|path| Path::new(&path).to_owned()).unwrap_or_else(|_| file_config.repository),
             user_name_and_email: get_user_name_and_email(),
             editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("code".to_owned())),
         }

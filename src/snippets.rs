@@ -6,7 +6,7 @@ use fnv::FnvHashMap;
 
 use thiserror::Error;
 
-use tempfile::NamedTempFile;
+use tempfile::{tempdir};
 
 pub type SnippetResult<T> = Result<T, SnippetError>;
 
@@ -63,6 +63,7 @@ impl Default for SnipperRunnerManger {
         let mut manager = SnipperRunnerManger::new();
         manager.add_runner("python", Box::new(PythonSnippetRunner::default()));
         manager.add_runner("cpp", Box::new(CppSnippetRunner::default()));
+        manager.add_runner("rust", Box::new(RustSnippetRunner::default()));
         manager
     }
 }
@@ -91,7 +92,9 @@ impl Default for PythonSnippetRunner {
 
 impl SnippetRunner for PythonSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
-        let mut source_code_file = NamedTempFile::new()?;
+        let mut source_code_file = tempfile::Builder::new()
+            .suffix(".py")
+            .tempfile()?;
         source_code_file.write_all(source_code.as_bytes())?;
 
         run_and_capture(Command::new(&self.executable).arg(source_code_file.path()))
@@ -153,6 +156,50 @@ impl SnippetRunner for CppSnippetRunner {
     }
 }
 
+pub struct RustSnippetRunner {
+    cargo_executable: PathBuf,
+    cargo_flags: Vec<String>
+}
+
+impl RustSnippetRunner {
+    pub fn new(cargo_executable: PathBuf,
+               cargo_flags: Vec<String>) -> RustSnippetRunner {
+        RustSnippetRunner {
+            cargo_executable,
+            cargo_flags
+        }
+    }
+}
+
+impl Default for RustSnippetRunner {
+    fn default() -> Self {
+        RustSnippetRunner::new(Path::new("cargo").to_owned(), vec![])
+    }
+}
+
+impl SnippetRunner for RustSnippetRunner {
+    fn run(&self, source_code: &str) -> SnippetResult<String> {
+        let project_dir = tempdir()?;
+        std::fs::write(project_dir.path().join("Cargo.toml"), r#"
+            [package]
+            name = "snippet"
+            version = "0.1.0"
+            edition = "2021"
+        "#)?;
+
+        std::fs::create_dir(project_dir.path().join("src"))?;
+        std::fs::write(project_dir.path().join("src").join("main.rs"), source_code)?;
+
+        run_and_capture(
+            Command::new(&self.cargo_executable)
+                .current_dir(project_dir.path())
+                .arg("-q")
+                .arg("run")
+                .args(self.cargo_flags.iter())
+        )
+    }
+}
+
 fn run_and_capture(command: &mut Command) -> SnippetResult<String> {
     let output = unsafe {
         command
@@ -191,6 +238,42 @@ impl Drop for DeleteFileGuard {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.path);
     }
+}
+
+#[test]
+fn test_manager_success1() {
+    let manager = SnipperRunnerManger::default();
+    let result = manager.run("python", r#"
+xs = list(range(0, 10))
+print([x * x for x in xs])
+    "#);
+
+    assert_eq!("[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]\n".to_owned(), result.unwrap());
+}
+
+#[test]
+fn test_manager_success2() {
+    let manager = SnipperRunnerManger::default();
+    let result = manager.run("cpp", r#"
+#include <iostream>
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+}
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
+}
+
+#[test]
+fn test_manager_success3() {
+    let manager = SnipperRunnerManger::default();
+    let result = manager.run("rust", r#"
+fn main() {
+    println!("Hello, World!");
+}
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
 }
 
 #[test]
@@ -253,12 +336,26 @@ int main() {
 }
 
 #[test]
-fn test_manager_success1() {
-    let manager = SnipperRunnerManger::default();
-    let result = manager.run("python", r#"
-xs = list(range(0, 10))
-print([x * x for x in xs])
+fn test_rust_success1() {
+    let runner = RustSnippetRunner::default();
+    let result = runner.run(r#"
+fn main() {
+    println!("Hello, World!");
+}
     "#);
 
-    assert_eq!("[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]\n".to_owned(), result.unwrap());
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
+}
+
+#[test]
+fn test_rust_success2() {
+    let mut runner = RustSnippetRunner::default();
+    runner.cargo_flags = vec!["--release".to_owned()];
+    let result = runner.run(r#"
+fn main() {
+    println!("Hello, World!");
+}
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
 }

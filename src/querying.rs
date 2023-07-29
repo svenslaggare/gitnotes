@@ -398,15 +398,15 @@ impl GitLog {
     }
 }
 
-pub struct HistoricContentFetcher<'a> {
+pub struct GitContentFetcher<'a> {
     repository: git2::Repository,
     node_metadata_storage: &'a NoteMetadataStorage
 }
 
-impl<'a> HistoricContentFetcher<'a> {
-    pub fn new(repository: &Path, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<HistoricContentFetcher<'a>> {
+impl<'a> GitContentFetcher<'a> {
+    pub fn new(repository: &Path, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<GitContentFetcher<'a>> {
         Ok(
-            HistoricContentFetcher {
+            GitContentFetcher {
                 repository: git2::Repository::open(repository)?,
                 node_metadata_storage
             }

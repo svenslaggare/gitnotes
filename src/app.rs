@@ -12,7 +12,7 @@ use crate::config::Config;
 use crate::{editor, markdown};
 use crate::helpers::get_or_insert_with;
 use crate::model::{NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, GitLog, HistoricContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, GitLog, GitContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub struct Application {
     config: Config,
@@ -185,7 +185,7 @@ print(np.square(np.arange(0, 10)))
             }
             InputCommand::Search { mut query, case_sensitive } => {
                 if !case_sensitive {
-                    query = "(?i)".to_owned() + &query;
+                    query = format!("(?i)({})", query);
                 }
                 let query = Regex::new(&query)?;
 
@@ -204,9 +204,9 @@ print(np.square(np.arange(0, 10)))
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         if let Some(git_reference) = git_reference {
             let repository = self.config.repository.to_owned();
-            let historic_content_fetcher = HistoricContentFetcher::new(&repository, self.note_metadata_storage()?)?;
+            let git_content_fetcher = GitContentFetcher::new(&repository, self.note_metadata_storage()?)?;
 
-            if let Some(commit_content) = historic_content_fetcher.fetch(&path, &git_reference)? {
+            if let Some(commit_content) = git_content_fetcher.fetch(&path, &git_reference)? {
                 Ok(commit_content)
             } else {
                 Err(QueryingError::NoteNotFoundAtGitReference(git_reference))
@@ -284,7 +284,7 @@ pub enum InputCommand {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
         /// Prints the content at the given git reference
-        #[structopt(long="git-ref")]
+        #[structopt(long="ref")]
         git_reference: Option<String>,
         /// Print only code content.
         #[structopt(long="code")]
@@ -298,7 +298,7 @@ pub enum InputCommand {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
         /// Prints the content at the given git reference
-        #[structopt(long="git-ref")]
+        #[structopt(long="ref")]
         git_reference: Option<String>,
         /// Print only code content.
         #[structopt(long="code")]

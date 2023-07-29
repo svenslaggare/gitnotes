@@ -490,7 +490,7 @@ fn test_add_and_run_snippet() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");
@@ -575,7 +575,7 @@ fn test_add_and_move() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");
@@ -612,7 +612,7 @@ fn test_add_and_remove() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(&temp_repository_dir.path().to_path_buf());
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample.py");

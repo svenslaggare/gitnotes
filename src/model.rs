@@ -37,7 +37,7 @@ impl NoteId {
         NoteId(id)
     }
 
-    pub fn from_vec(chars: Vec<char>) -> Option<NoteId> {
+    fn from_vec(chars: Vec<char>) -> Option<NoteId> {
         if chars.len() == NOTE_ID_SIZE {
             let mut id: [char; NOTE_ID_SIZE] = Default::default();
 
@@ -66,7 +66,7 @@ impl Display for NoteId {
     }
 }
 
-const NOTE_ID_ERROR_MESSAGE: &str = "string of length 5 that only contains digits";
+const NOTE_ID_ERROR_MESSAGE: &str = "string of length 6 that only contains digits";
 
 impl FromStr for NoteId {
     type Err = String;

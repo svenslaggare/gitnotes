@@ -1,4 +1,12 @@
 use std::error;
+use std::path::PathBuf;
+
+use home::home_dir;
+
+pub fn base_dir() -> PathBuf {
+    let home = home_dir().expect("Unable to determine home folder.");
+    home.join(".gitnotes")
+}
 
 pub fn io_error<E: Into<Box<dyn error::Error + Send + Sync>>>(err: E) -> std::io::Error {
     std::io::Error::new(std::io::ErrorKind::Other, err)

@@ -8,9 +8,9 @@ use structopt::StructOpt;
 use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
-use crate::config::Config;
+use crate::config::{Config, FileConfig};
 use crate::{editor, markdown};
-use crate::helpers::{get_or_insert_with, io_error};
+use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, GitContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
@@ -39,6 +39,31 @@ impl Application {
             }
             InputCommand::Initialize { .. } => {
                 println!("Not supported in interactive mode.");
+            }
+            InputCommand::Switch { path } => {
+                let repository_path = if path.is_absolute() {
+                    path
+                } else {
+                    base_dir().join(path)
+                };
+
+                self.config.repository = repository_path.clone();
+                self.command_interpreter = CommandInterpreter::new(self.config.clone())?;
+                self.clear_cache();
+
+                let config_file = &base_dir().join("config.toml");
+                let mut file_config = FileConfig::load(&config_file)?;
+                file_config.repository = repository_path;
+                file_config.save(config_file)?;
+
+                self.config.print();
+            }
+            InputCommand::Config { only_repository } => {
+                if only_repository {
+                    println!("{}", self.config.repository.to_str().unwrap());
+                } else {
+                    self.config.print();
+                }
             }
             InputCommand::AddFakeData => {
                 self.command_interpreter.execute(vec![
@@ -263,6 +288,15 @@ pub enum InputCommand {
     #[structopt(name="init")]
     Initialize {
         name: String
+    },
+    /// Switches the active repository to the given one. If relative, then it is relative to $HOME/.gitnotes
+    Switch {
+        path: PathBuf
+    },
+    /// Prints the active config
+    Config {
+        #[structopt(long="repo")]
+        only_repository: bool,
     },
     /// Adds fake data.
     AddFakeData,

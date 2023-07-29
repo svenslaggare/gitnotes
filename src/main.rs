@@ -1,5 +1,4 @@
 use std::path::Path;
-use home::home_dir;
 
 use rustyline::{DefaultEditor};
 use structopt::{clap, StructOpt};
@@ -16,13 +15,11 @@ mod app;
 
 use crate::app::{AppError, Application, InputCommand};
 use crate::config::{Config, FileConfig};
+use crate::helpers::base_dir;
 
 fn main() {
-    let home = home_dir().expect("Unable to determine home folder.");
-    let base_dir = home.join(".gitnotes");
-
     let input_command: InputCommand = InputCommand::from_args();
-    if let Err(err) = run(&base_dir, input_command) {
+    if let Err(err) = run(&base_dir(), input_command) {
         println!("{}.", err.to_string());
         std::process::exit(1);
     }

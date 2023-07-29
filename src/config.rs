@@ -48,6 +48,12 @@ impl Config {
         let config = FileConfig::load(&path)?;
         Ok(Config::from_env(config))
     }
+
+    pub fn print(&self) {
+        println!("Repository: {}", self.repository.to_str().unwrap());
+        println!("User name: {}, email: {}", self.user_name_and_email.0, self.user_name_and_email.1);
+        println!("Editor: {}", self.editor);
+    }
 }
 
 fn get_user_name_and_email() -> (String, String) {

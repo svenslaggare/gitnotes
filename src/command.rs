@@ -12,7 +12,7 @@ use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
 use crate::app::RepositoryRef;
 use crate::helpers::get_or_insert_with;
-use crate::snippets::{SnipperRunnerManger, SnippetError};
+use crate::snippets::{SnippetRunnerManger, SnippetError};
 
 #[derive(Debug)]
 pub enum Command {
@@ -99,7 +99,7 @@ pub struct CommandInterpreter {
     repository: RepositoryRef,
 
     note_metadata_storage: Option<NoteMetadataStorage>,
-    snippet_runner_manager: SnipperRunnerManger,
+    snippet_runner_manager: SnippetRunnerManger,
 
     index: Option<git2::Index>,
     commit_message_lines: Vec<String>
@@ -113,7 +113,7 @@ impl CommandInterpreter {
             repository,
 
             note_metadata_storage: None,
-            snippet_runner_manager: SnipperRunnerManger::default(),
+            snippet_runner_manager: SnippetRunnerManger::default(),
 
             index: None,
             commit_message_lines: Vec::new()

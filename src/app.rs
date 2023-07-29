@@ -56,6 +56,8 @@ impl Application {
                 };
 
                 self.config.repository = repository_path.clone();
+                let repository = git2::Repository::open(&config.repository).map_err(|err| AppError::FailedToOpenRepository(err))?;
+                *self.repository.borrow_mut() = repository;
                 self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone());
                 self.clear_cache();
 

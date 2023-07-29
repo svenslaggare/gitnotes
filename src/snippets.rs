@@ -37,13 +37,13 @@ impl From<std::io::Error> for SnippetError {
     }
 }
 
-pub struct SnipperRunnerManger {
+pub struct SnippetRunnerManger {
     runners: FnvHashMap<String, Box<dyn SnippetRunner>>
 }
 
-impl SnipperRunnerManger {
-    pub fn new() -> SnipperRunnerManger {
-        SnipperRunnerManger {
+impl SnippetRunnerManger {
+    pub fn new() -> SnippetRunnerManger {
+        SnippetRunnerManger {
             runners: FnvHashMap::default()
         }
     }
@@ -58,9 +58,9 @@ impl SnipperRunnerManger {
     }
 }
 
-impl Default for SnipperRunnerManger {
+impl Default for SnippetRunnerManger {
     fn default() -> Self {
-        let mut manager = SnipperRunnerManger::new();
+        let mut manager = SnippetRunnerManger::new();
         manager.add_runner("python", Box::new(PythonSnippetRunner::default()));
         manager.add_runner("cpp", Box::new(CppSnippetRunner::default()));
         manager.add_runner("rust", Box::new(RustSnippetRunner::default()));
@@ -242,7 +242,7 @@ impl Drop for DeleteFileGuard {
 
 #[test]
 fn test_manager_success1() {
-    let manager = SnipperRunnerManger::default();
+    let manager = SnippetRunnerManger::default();
     let result = manager.run("python", r#"
 xs = list(range(0, 10))
 print([x * x for x in xs])
@@ -253,7 +253,7 @@ print([x * x for x in xs])
 
 #[test]
 fn test_manager_success2() {
-    let manager = SnipperRunnerManger::default();
+    let manager = SnippetRunnerManger::default();
     let result = manager.run("cpp", r#"
 #include <iostream>
 int main() {
@@ -266,7 +266,7 @@ int main() {
 
 #[test]
 fn test_manager_success3() {
-    let manager = SnipperRunnerManger::default();
+    let manager = SnippetRunnerManger::default();
     let result = manager.run("rust", r#"
 fn main() {
     println!("Hello, World!");

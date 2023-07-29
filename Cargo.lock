@@ -462,6 +462,7 @@ dependencies = [
  "crossterm",
  "fnv",
  "git2",
+ "home",
  "libc",
  "rand",
  "regex",

@@ -1,6 +1,32 @@
 use std::path::{Path, PathBuf};
 
-use serde::Deserialize;
+use serde::{Serialize, Deserialize};
+use crate::helpers::io_error;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct FileConfig {
+    pub repository: PathBuf,
+    pub editor: Option<String>,
+}
+
+impl FileConfig {
+    pub fn new(repository: &Path) -> FileConfig {
+        FileConfig {
+            repository: repository.to_owned(),
+            editor: None,
+        }
+    }
+
+    pub fn load(path: &Path) -> std::io::Result<FileConfig> {
+        let content = std::fs::read_to_string(path)?;
+        toml::from_str(&content).map_err(|err| io_error(err))
+    }
+
+    pub fn save(&self, path: &Path) -> std::io::Result<()> {
+        let toml = toml::to_string(self).map_err(|err| io_error(err))?;
+        std::fs::write(path, toml)
+    }
+}
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Config {
@@ -10,12 +36,17 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn from_env(repository: &Path) -> Config {
+    pub fn from_env(file_config: FileConfig) -> Config {
         Config {
-            repository: repository.to_owned(),
+            repository: file_config.repository,
             user_name_and_email: get_user_name_and_email(),
-            editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| "code".to_owned()),
+            editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("code".to_owned())),
         }
+    }
+
+    pub fn load(path: &Path) -> std::io::Result<Config> {
+        let config = FileConfig::load(&path)?;
+        Ok(Config::from_env(config))
     }
 }
 

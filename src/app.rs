@@ -34,7 +34,12 @@ impl Application {
 
     pub fn run(&mut self, input_command: InputCommand) -> Result<(), AppError> {
         match input_command {
-            InputCommand::Interactive => {}
+            InputCommand::Interactive => {
+                println!("Not supported in interactive mode.");
+            }
+            InputCommand::Initialize { .. } => {
+                println!("Not supported in interactive mode.");
+            }
             InputCommand::AddFakeData => {
                 self.command_interpreter.execute(vec![
                     Command::AddNoteWithContent {
@@ -254,6 +259,11 @@ print(np.square(np.arange(0, 10)))
 pub enum InputCommand {
     /// Runs in interactive mode
     Interactive,
+    /// Creates a new repository. Also creates config file if it doesn't exist.
+    #[structopt(name="init")]
+    Initialize {
+        name: String
+    },
     /// Adds fake data.
     AddFakeData,
     /// Creates a new note.
@@ -361,16 +371,6 @@ pub enum InputCommand {
     }
 }
 
-impl InputCommand {
-    pub fn is_interactive(&self) -> bool {
-        if let InputCommand::Interactive = self {
-            true
-        } else {
-            false
-        }
-    }
-}
-
 #[derive(Debug, StructOpt)]
 pub enum InputCommandFinder {
     /// Searches based on tags.
@@ -415,6 +415,9 @@ pub enum AppError {
     Regex(regex::Error),
 
     #[error("{0}")]
+    Git(git2::Error),
+
+    #[error("{0}")]
     IO(std::io::Error)
 }
 
@@ -433,6 +436,12 @@ impl From<QueryingError> for AppError {
 impl From<regex::Error> for AppError {
     fn from(err: regex::Error) -> Self {
         AppError::Regex(err)
+    }
+}
+
+impl From<git2::Error> for AppError {
+    fn from(err: git2::Error) -> Self {
+        AppError::Git(err)
     }
 }
 

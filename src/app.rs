@@ -10,7 +10,7 @@ use comrak::nodes::NodeValue;
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::Config;
 use crate::{editor, markdown};
-use crate::helpers::get_or_insert_with;
+use crate::helpers::{get_or_insert_with, io_error};
 use crate::model::{NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, GitContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
@@ -189,14 +189,14 @@ print(np.square(np.arange(0, 10)))
                 }
                 let query = Regex::new(&query)?;
 
-                let repository = self.config.repository.to_owned();
-                let searcher = Searcher::new(self.note_metadata_storage()?)?;
+                self.note_metadata_storage()?;
+                let searcher = Searcher::new(self.note_metadata_storage_ref()?)?;
 
                 if history.len() == 0 {
                     searcher.search(&query)?;
                 } else if history.len() == 2 {
                     searcher.search_historic(
-                        &repository,
+                        self.command_interpreter.repository(),
                         &query,
                         &history[0],
                         &history[1]
@@ -206,7 +206,7 @@ print(np.square(np.arange(0, 10)))
                 }
             }
             InputCommand::Log { count } => {
-                let git_log = GitLog::new(&self.config.repository, count)?;
+                let git_log = GitLog::new(self.command_interpreter.repository(), count)?;
                 git_log.print()?;
             }
         }
@@ -216,8 +216,11 @@ print(np.square(np.arange(0, 10)))
 
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         if let Some(git_reference) = git_reference {
-            let repository = self.config.repository.to_owned();
-            let git_content_fetcher = GitContentFetcher::new(&repository, self.note_metadata_storage()?)?;
+            self.note_metadata_storage()?;
+            let git_content_fetcher = GitContentFetcher::new(
+                self.command_interpreter.repository(),
+                self.note_metadata_storage_ref()?
+            )?;
 
             if let Some(commit_content) = git_content_fetcher.fetch(&path, &git_reference)? {
                 Ok(commit_content)
@@ -238,6 +241,10 @@ print(np.square(np.arange(0, 10)))
             &mut self.note_metadata_storage,
             || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
         ).map(|x| &*x)
+    }
+
+    fn note_metadata_storage_ref(&self) -> std::io::Result<&NoteMetadataStorage> {
+        self.note_metadata_storage.as_ref().ok_or_else(|| io_error("note_metadata_storage not created"))
     }
 }
 

@@ -210,10 +210,9 @@ impl<'a> Searcher<'a> {
     }
 
     pub fn search_historic(&self,
-                           repository: &Path,
+                           repository: &git2::Repository,
                            query: &Regex,
                            git_start: &str, git_end: &str) -> QueryingResult<()> {
-        let repository = git2::Repository::open(repository)?;
         let is_terminal = atty::is(Stream::Stdout);
 
         let mut rev_walk = repository.revwalk()?;
@@ -463,16 +462,16 @@ impl<'a> ListTree<'a> {
     }
 }
 
-pub struct GitLog {
-    repository: git2::Repository,
+pub struct GitLog<'a> {
+    repository: &'a git2::Repository,
     count: isize
 }
 
-impl GitLog {
-    pub fn new(repository: &Path, count: isize) -> QueryingResult<GitLog> {
+impl<'a> GitLog<'a> {
+    pub fn new(repository: &'a git2::Repository, count: isize) -> QueryingResult<GitLog> {
         Ok(
             GitLog {
-                repository: git2::Repository::open(repository)?,
+                repository,
                 count
             }
         )
@@ -504,15 +503,15 @@ impl GitLog {
 }
 
 pub struct GitContentFetcher<'a> {
-    repository: git2::Repository,
+    repository: &'a git2::Repository,
     node_metadata_storage: &'a NoteMetadataStorage
 }
 
 impl<'a> GitContentFetcher<'a> {
-    pub fn new(repository: &Path, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<GitContentFetcher<'a>> {
+    pub fn new(repository: &'a git2::Repository, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<GitContentFetcher<'a>> {
         Ok(
             GitContentFetcher {
-                repository: git2::Repository::open(repository)?,
+                repository,
                 node_metadata_storage
             }
         )

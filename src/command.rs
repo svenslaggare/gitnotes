@@ -122,6 +122,10 @@ impl CommandInterpreter {
         )
     }
 
+    pub fn repository(&self) -> &git2::Repository {
+        &self.repository
+    }
+
     pub fn execute(&mut self, commands: Vec<Command>) -> CommandInterpreterResult<()> {
         use CommandInterpreterError::*;
 

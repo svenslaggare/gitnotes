@@ -67,33 +67,6 @@ impl Application {
                     self.config.print();
                 }
             }
-            InputCommand::AddFakeData => {
-                self.command_interpreter.execute(vec![
-                    Command::AddNoteWithContent {
-                        path: Path::new("2022/05/test1").to_owned(),
-                        tags: vec!["x".to_owned(), "y".to_owned()],
-                        content: r#"Hello, World!
-
-``` python
-import numpy as np
-print(np.square(np.arange(0, 10)))
-```
-"#.to_string()
-                    },
-                    Command::AddNoteWithContent {
-                        path: Path::new("2023/05/test2").to_owned(),
-                        tags: vec!["x".to_owned(), "z".to_owned()],
-                        content: "Hello, Stupid World!".to_string()
-                    },
-                    Command::AddNoteWithContent {
-                        path: Path::new("2023/test3").to_owned(),
-                        tags: vec!["x".to_owned(), "y".to_owned()],
-                        content: "Hello, New World!".to_string()
-                    },
-                    Command::Commit
-                ])?;
-                self.clear_cache();
-            }
             InputCommand::Add { path, tags } => {
                 if atty::is(Stream::Stdin) {
                     self.command_interpreter.execute(vec![
@@ -320,8 +293,6 @@ pub enum InputCommand {
         #[structopt(long="repo")]
         only_repository: bool,
     },
-    /// Adds fake data.
-    AddFakeData,
     /// Creates a new note.
     Add {
         /// The path of the note.

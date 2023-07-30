@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 
 use rustyline::{DefaultEditor};
 use structopt::{clap, StructOpt};
@@ -14,7 +14,7 @@ mod editor;
 mod app;
 
 use crate::app::{AppError, Application, InputCommand, MainInputCommand};
-use crate::config::{Config, FileConfig};
+use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
 
 fn main() {
@@ -84,10 +84,6 @@ fn run_interactive() -> Result<(), AppError> {
     }
 
     Ok(())
-}
-
-fn config_path() -> PathBuf {
-    base_dir().join("config.toml")
 }
 
 fn load_config(config_path: &Path) -> Config {

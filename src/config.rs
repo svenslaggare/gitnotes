@@ -1,7 +1,11 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Serialize, Deserialize};
-use crate::helpers::io_error;
+use crate::helpers::{base_dir, io_error};
+
+pub fn config_path() -> PathBuf {
+    base_dir().join("config.toml")
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileConfig {

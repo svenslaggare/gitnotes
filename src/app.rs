@@ -13,7 +13,7 @@ use atty::Stream;
 use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
-use crate::config::{Config, FileConfig};
+use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, markdown, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteFileTreeCreateConfig, NoteMetadataStorage};
@@ -59,18 +59,42 @@ impl Application {
                 self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone());
                 self.clear_cache();
 
-                let config_file = &base_dir().join("config.toml");
-                let mut file_config = FileConfig::load(&config_file)?;
+                let mut file_config = FileConfig::load(&config_path())?;
                 file_config.repository = repository_path;
-                file_config.save(config_file)?;
+                file_config.save(&config_path())?;
 
                 self.config.print();
             }
-            InputCommand::Config { only_repository } => {
-                if only_repository {
-                    println!("{}", self.config.repository.to_str().unwrap());
+            InputCommand::Config { only_repository, set } => {
+                if let Some(set) = set {
+                    let parts = set.split("=").collect::<Vec<_>>();
+                    if let &[key, value] = &parts[..] {
+                        let mut file_config = FileConfig::load(&config_path())?;
+
+                        match key {
+                            "repository" => {
+                                file_config.repository = Path::new(value).to_path_buf();
+                            }
+                            "editor" => {
+                                file_config.editor = Some(value.to_owned());
+                            }
+                            _ => {
+                                return Err(AppError::Input(format!("Undefined key: {}", key)));
+                            }
+                        }
+
+                        file_config.save(&config_path())?;
+                        self.config = Config::from_env(file_config);
+                        self.config.print();
+                    } else {
+                        return Err(AppError::Input(format!("Format: key=value")));
+                    }
                 } else {
-                    self.config.print();
+                    if only_repository {
+                        println!("{}", self.config.repository.to_str().unwrap());
+                    } else {
+                        self.config.print();
+                    }
                 }
             }
             InputCommand::Add { path, tags } => {
@@ -299,6 +323,9 @@ pub enum InputCommand {
     Config {
         #[structopt(long="repo")]
         only_repository: bool,
+        /// Sets the given config value (format var=value)
+        #[structopt(long)]
+        set: Option<String>
     },
     /// Creates a new note.
     Add {

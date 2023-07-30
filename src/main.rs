@@ -20,7 +20,7 @@ use crate::helpers::base_dir;
 fn main() {
     let main_input_command = MainInputCommand::from_args();
     if let Some(input_command) = main_input_command.command {
-        if let Err(err) = run( input_command) {
+        if let Err(err) = run(input_command) {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
@@ -61,11 +61,9 @@ fn run_init(config_path: &Path, input_command: InputCommand) -> Result<(), AppEr
 
 fn run_interactive() -> Result<(), AppError> {
     let config = load_config(&config_path());
-
     let mut app = Application::new(config)?;
 
     let mut line_editor = DefaultEditor::new().unwrap();
-
     while let Ok(mut line) = line_editor.readline("> ") {
         if line.ends_with('\n') {
             line.pop();

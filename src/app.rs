@@ -30,8 +30,7 @@ pub struct Application {
 
 impl Application {
     pub fn new(config: Config) -> Result<Application, AppError> {
-        let repository = git2::Repository::open(&config.repository).map_err(|err| AppError::FailedToOpenRepository(err))?;
-        let repository = Rc::new(RefCell::new(repository));
+        let repository = Rc::new(RefCell::new(open_repository(&config.repository)?));
 
         Ok(
             Application {
@@ -56,8 +55,7 @@ impl Application {
                 };
 
                 self.config.repository = repository_path.clone();
-                let repository = git2::Repository::open(&config.repository).map_err(|err| AppError::FailedToOpenRepository(err))?;
-                *self.repository.borrow_mut() = repository;
+                *self.repository.borrow_mut() = open_repository(&self.config.repository)?;
                 self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone());
                 self.clear_cache();
 
@@ -493,6 +491,10 @@ impl From<std::io::Error> for AppError {
     fn from(err: std::io::Error) -> Self {
         AppError::IO(err)
     }
+}
+
+fn open_repository(path: &Path) -> Result<git2::Repository, AppError> {
+    git2::Repository::open(path).map_err(|err| AppError::FailedToOpenRepository(err))
 }
 
 #[test]

@@ -70,20 +70,9 @@ impl Application {
                     let parts = set.split("=").collect::<Vec<_>>();
                     if let &[key, value] = &parts[..] {
                         let mut file_config = FileConfig::load(&config_path())?;
-
-                        match key {
-                            "repository" => {
-                                file_config.repository = Path::new(value).to_path_buf();
-                            }
-                            "editor" => {
-                                file_config.editor = Some(value.to_owned());
-                            }
-                            _ => {
-                                return Err(AppError::Input(format!("Undefined key: {}", key)));
-                            }
-                        }
-
+                        file_config.change(key, value).map_err(|err| AppError::Input(err))?;
                         file_config.save(&config_path())?;
+
                         self.config = Config::from_env(file_config);
                         self.config.print();
                     } else {

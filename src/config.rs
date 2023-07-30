@@ -30,6 +30,22 @@ impl FileConfig {
         let toml = toml::to_string(self).map_err(|err| io_error(err))?;
         std::fs::write(path, toml)
     }
+
+    pub fn change(&mut self, key: &str, value: &str) -> Result<(), String> {
+        match key {
+            "repository" => {
+                self.repository = Path::new(value).to_path_buf();
+            }
+            "editor" => {
+                self.editor = Some(value.to_owned());
+            }
+            _ => {
+                return Err(format!("Undefined key: {}", key));
+            }
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]

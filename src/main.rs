@@ -11,6 +11,7 @@ mod command;
 mod markdown;
 mod snippets;
 mod editor;
+mod tags;
 mod app;
 
 use crate::app::{AppError, Application, InputCommand, MainInputCommand};

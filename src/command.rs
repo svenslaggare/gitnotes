@@ -9,10 +9,10 @@ use comrak::nodes::NodeValue;
 use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
-use crate::{editor, helpers, markdown};
+use crate::{editor, markdown};
 use crate::app::RepositoryRef;
 use crate::helpers::get_or_insert_with;
-use crate::snippets::{SnippetRunnerManger, SnippetError};
+use crate::snippets::{SnippetError, SnippetRunnerManger};
 
 #[derive(Debug)]
 pub enum Command {
@@ -310,11 +310,12 @@ impl CommandInterpreter {
                 id: NoteId, relative_path: &Path,
                 path: PathBuf, mut tags: Vec<String>) -> CommandInterpreterResult<()> {
         use CommandInterpreterError::*;
+        use crate::tags;
 
         if tags.is_empty() {
             let (_, abs_content_path) = self.get_note_storage_path(&id);
             let content = std::fs::read_to_string(abs_content_path)?;
-            tags = helpers::automatic_tags(&content);
+            tags = tags::automatic(&content);
         }
 
         let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
@@ -326,7 +327,7 @@ impl CommandInterpreter {
         index.add_path(&relative_metadata_path)?;
         index.write()?;
 
-        self.commit_message_lines.push(format!("Added note '{}'.", path.to_str().unwrap()));
+        self.commit_message_lines.push(format!("Added note '{}' using tags: {}.", path.to_str().unwrap(), metadata.tags.join(", ")));
 
         Ok(())
     }

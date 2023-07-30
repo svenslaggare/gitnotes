@@ -513,44 +513,44 @@ fn test_add_and_run_snippet() {
     let note_content = r#"Hello, World!
 
 ``` python
-import numpy as np
-print(np.square(np.arange(0, 10)))
+xs = list(range(0, 10))
+print([x * x for x in xs])
 ```
 "#.to_string();
 
     let note_content_output = r#"Hello, World\!
 
 ``` python
-import numpy as np
-print(np.square(np.arange(0, 10)))
+xs = list(range(0, 10))
+print([x * x for x in xs])
 ```
 
 ``` output
-[ 0  1  4  9 16 25 36 49 64 81]
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 ```
 "#.to_string();
 
     let note_content2 = r#"Hello, World!
 
 ``` python
-import numpy as np
-print(np.square(np.arange(0, 11)))
+xs = list(range(0, 11))
+print([x * x for x in xs])
 ```
 
 ``` output
-[ 0  1  4  9 16 25 36 49 64 81]
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81]
 ```
 "#.to_string();
 
     let note_content_output2 = r#"Hello, World\!
 
 ``` python
-import numpy as np
-print(np.square(np.arange(0, 11)))
+xs = list(range(0, 11))
+print([x * x for x in xs])
 ```
 
 ``` output
-[  0   1   4   9  16  25  36  49  64  81 100]
+[0, 1, 4, 9, 16, 25, 36, 49, 64, 81, 100]
 ```
 "#.to_string();
 

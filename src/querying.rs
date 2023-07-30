@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::io::{stdout};
 use std::path::Path;
 
-use chrono::{Datelike, DateTime, FixedOffset, Local, NaiveDateTime, Timelike, TimeZone};
+use chrono::{Datelike, DateTime, Local, Timelike};
 use regex::Regex;
 use thiserror::Error;
 
@@ -11,6 +11,7 @@ use atty::Stream;
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
+use crate::helpers::ToChronoDateTime;
 
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteMetadata, NoteMetadataStorage};
 
@@ -486,9 +487,7 @@ impl<'a> GitLog<'a> {
             let commit = self.repository.find_commit(commit_id)?;
 
             let short_commit_hash = commit.as_object().short_id()?.as_str().unwrap().to_owned();
-
-            let commit_time = NaiveDateTime::from_timestamp_opt(commit.time().seconds(), 0).unwrap();
-            let commit_time = FixedOffset::east_opt(commit.time().offset_minutes() * 60).unwrap().from_utc_datetime(&commit_time);
+            let commit_time = commit.time().to_date_time().unwrap();
 
             println!(
                 "{} ({}): {}",
@@ -499,6 +498,22 @@ impl<'a> GitLog<'a> {
         }
 
         Ok(())
+    }
+}
+
+pub fn get_note_content(repository: &git2::Repository,
+                        note_metadata_storage: &NoteMetadataStorage,
+                        path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
+    if let Some(git_reference) = git_reference {
+        let git_content_fetcher = GitContentFetcher::new(repository, note_metadata_storage)?;
+
+        if let Some(commit_content) = git_content_fetcher.fetch(&path, &git_reference)? {
+            Ok(commit_content)
+        } else {
+            Err(QueryingError::NoteNotFoundAtGitReference(git_reference))
+        }
+    } else {
+        Ok(note_metadata_storage.get_content(&path)?)
     }
 }
 

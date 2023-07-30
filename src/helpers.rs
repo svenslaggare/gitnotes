@@ -1,6 +1,8 @@
 use std::error;
 use std::path::PathBuf;
 
+use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
+
 use home::home_dir;
 
 pub fn base_dir() -> PathBuf {
@@ -18,5 +20,16 @@ pub fn get_or_insert_with<T, E, F: Fn() -> Result<T, E>>(option: &mut Option<T>,
     } else {
         *option = Some(create()?);
         Ok(option.as_mut().unwrap())
+    }
+}
+
+pub trait ToChronoDateTime {
+    fn to_date_time(&self) -> Option<DateTime<FixedOffset>>;
+}
+
+impl ToChronoDateTime for git2::Time {
+    fn to_date_time(&self) -> Option<DateTime<FixedOffset>> {
+        let time = NaiveDateTime::from_timestamp_opt(self.seconds(), 0)?;
+        Some(FixedOffset::east_opt(self.offset_minutes() * 60).unwrap().from_utc_datetime(&time))
     }
 }

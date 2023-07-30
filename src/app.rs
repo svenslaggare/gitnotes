@@ -14,10 +14,10 @@ use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::{Config, FileConfig};
-use crate::{editor, markdown};
+use crate::{editor, markdown, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteMetadataStorage};
-use crate::querying::{Finder, FindQuery, GitLog, GitContentFetcher, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
+use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
 
@@ -253,22 +253,14 @@ impl Application {
     }
 
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
-        if let Some(git_reference) = git_reference {
-            self.note_metadata_storage()?;
-            let repository = self.repository.borrow();
-            let git_content_fetcher = GitContentFetcher::new(
-                repository.deref(),
-                self.note_metadata_storage_ref()?
-            )?;
-
-            if let Some(commit_content) = git_content_fetcher.fetch(&path, &git_reference)? {
-                Ok(commit_content)
-            } else {
-                Err(QueryingError::NoteNotFoundAtGitReference(git_reference))
-            }
-        } else {
-            Ok(self.note_metadata_storage()?.get_content(&path)?)
-        }
+        self.note_metadata_storage()?;
+        let repository = self.repository.borrow();
+        querying::get_note_content(
+            repository.deref(),
+            self.note_metadata_storage_ref()?,
+            path,
+            git_reference
+        )
     }
 
     fn clear_cache(&mut self) {

@@ -31,7 +31,7 @@ impl NoteId {
 
         let mut id: [char; NOTE_ID_SIZE] = Default::default();
         for i in 0..NOTE_ID_SIZE {
-            id[i] = CHARACTERS[rng.gen_range(0..CHARACTERS.len())];
+            id[i] = CHARACTERS[rng.gen_range(0..CHARACTERS.len())].clone();
         }
 
         NoteId(id)
@@ -46,7 +46,7 @@ impl NoteId {
                     return None;
                 }
 
-                id[i] = chars[i];
+                id[i] = chars[i].clone();
             }
 
             Some(NoteId(id))
@@ -262,7 +262,7 @@ impl Default for NoteFileTreeCreateConfig {
     fn default() -> Self {
         NoteFileTreeCreateConfig {
             using_date: false,
-            using_tags: true
+            using_tags: false
         }
     }
 }
@@ -428,6 +428,8 @@ macro_rules! assert_tree_eq {
 
 #[test]
 fn test_create_tree1() {
+    use crate::querying::ListTree;
+
     let note_metadata = vec![
         NoteMetadata::new(NoteId::new(), Path::new("00.md").to_path_buf(), Vec::new()),
         NoteMetadata::new(NoteId::new(), Path::new("2023/01.md").to_path_buf(), Vec::new()),
@@ -449,6 +451,8 @@ fn test_create_tree1() {
 
 #[test]
 fn test_find_tree1() {
+    use crate::querying::ListTree;
+
     let note_metadata = vec![
         NoteMetadata::new(NoteId::new(), Path::new("00.md").to_path_buf(), Vec::new()),
         NoteMetadata::new(NoteId::new(), Path::new("2023/01.md").to_path_buf(), Vec::new()),

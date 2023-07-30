@@ -6,8 +6,6 @@ use fnv::FnvHashMap;
 
 use thiserror::Error;
 
-use tempfile::{tempdir};
-
 pub type SnippetResult<T> = Result<T, SnippetError>;
 
 #[derive(Error, Debug)]
@@ -157,46 +155,60 @@ impl SnippetRunner for CppSnippetRunner {
 }
 
 pub struct RustSnippetRunner {
-    cargo_executable: PathBuf,
-    cargo_flags: Vec<String>
+    compiler_executable: PathBuf,
+    compiler_flags: Vec<String>
 }
 
 impl RustSnippetRunner {
-    pub fn new(cargo_executable: PathBuf,
-               cargo_flags: Vec<String>) -> RustSnippetRunner {
+    pub fn new(compiler_executable: PathBuf,
+               compiler_flags: Vec<String>) -> RustSnippetRunner {
         RustSnippetRunner {
-            cargo_executable,
-            cargo_flags
+            compiler_executable,
+            compiler_flags
         }
     }
 }
 
 impl Default for RustSnippetRunner {
     fn default() -> Self {
-        RustSnippetRunner::new(Path::new("cargo").to_owned(), vec![])
+        RustSnippetRunner::new(
+            Path::new("rustc").to_owned(),
+            vec![
+                "--edition".to_owned(), "2021".to_owned()
+            ]
+        )
     }
 }
 
 impl SnippetRunner for RustSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
-        let project_dir = tempdir()?;
-        std::fs::write(project_dir.path().join("Cargo.toml"), r#"
-            [package]
-            name = "snippet"
-            version = "0.1.0"
-            edition = "2021"
-        "#)?;
+        let mut source_code_file = tempfile::Builder::new()
+            .suffix(".rs")
+            .tempfile()?;
+        source_code_file.write_all(source_code.as_bytes())?;
 
-        std::fs::create_dir(project_dir.path().join("src"))?;
-        std::fs::write(project_dir.path().join("src").join("main.rs"), source_code)?;
+        let compiled_executable = {
+            tempfile::Builder::new()
+                .suffix(".out")
+                .tempfile()?
+                .path().to_path_buf()
+        };
+        let _delete_compiled_executable = DeleteFileGuard::new(&compiled_executable);
 
-        run_and_capture(
-            Command::new(&self.cargo_executable)
-                .current_dir(project_dir.path())
-                .arg("-q")
-                .arg("run")
-                .args(self.cargo_flags.iter())
-        )
+        let output = Command::new(&self.compiler_executable)
+            .args(self.compiler_flags.iter())
+            .arg(source_code_file.path())
+            .args(["--crate-name", "snippet"])
+            .arg("-o")
+            .arg(&compiled_executable)
+            .spawn()?
+            .wait()?;
+
+        if !output.success() {
+            return Err(SnippetError::Compiler);
+        }
+
+        run_and_capture(&mut Command::new(&compiled_executable))
     }
 }
 
@@ -350,7 +362,7 @@ fn main() {
 #[test]
 fn test_rust_success2() {
     let mut runner = RustSnippetRunner::default();
-    runner.cargo_flags = vec!["--release".to_owned()];
+    runner.compiler_flags = vec!["--edition".to_owned(), "2021".to_owned(), "-O".to_owned()];
     let result = runner.run(r#"
 fn main() {
     println!("Hello, World!");

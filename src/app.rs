@@ -306,7 +306,7 @@ impl Application {
 }
 
 #[derive(StructOpt)]
-#[structopt(about="CLI notes & snippet application powered by Git.")]
+#[structopt(about="CLI based notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
     #[structopt(subcommand)]
     pub command: Option<InputCommand>,

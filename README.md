@@ -1,5 +1,5 @@
 # GitNotes
-CLI notes & snippet application powered by Git.
+CLI based notes & snippet application powered by Git.
 
 ## Features
 * Notes stored in markdown format in a Git repository.

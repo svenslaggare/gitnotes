@@ -16,6 +16,7 @@ use serde::{Serialize, Deserialize, Deserializer, Serializer};
 use serde::de::{Error, Visitor};
 
 use crate::helpers::io_error;
+use crate::querying::ListTree;
 
 pub const NOTE_METADATA_EXT: &str = "metadata";
 pub const NOTE_CONTENT_EXT: &str = "md";
@@ -313,31 +314,6 @@ impl<'a> NoteFileTree<'a> {
         Some(root)
     }
 
-    pub fn walk<F: FnMut(usize, &OsString, &'a NoteFileTree) -> bool>(&'a self, mut apply: F) {
-        fn do_walk<'a, F: FnMut(usize, &OsString, &'a NoteFileTree) -> bool>(apply: &mut F, level: usize, tree: &'a NoteFileTree) {
-            if let Some(children) = tree.children() {
-                for (name, child) in children {
-                    match child {
-                        NoteFileTree::Note(_) => {
-                            if !apply(level, name, child) {
-                                return;
-                            }
-                        }
-                        NoteFileTree::Tree { .. } => {
-                            if !apply(level, name, child) {
-                                return;
-                            }
-
-                            do_walk(apply, level + 1, child);
-                        }
-                    }
-                }
-            }
-        }
-
-        do_walk(&mut apply, 0, self);
-    }
-
     pub fn find(&self, path: &Path) -> Option<&NoteFileTree> {
         let mut found = false;
 
@@ -362,22 +338,34 @@ impl<'a> NoteFileTree<'a> {
         }
     }
 
-    pub fn print(&self) {
-        self.walk(
-            |level, name, tree| {
-                let padding = "  ".repeat(level);
-                match tree {
-                    NoteFileTree::Note(note_metadata) => {
-                        println!("{}* {} (id: {})", padding, name.to_str().unwrap(), note_metadata.id);
-                    }
-                    NoteFileTree::Tree { .. } => {
-                        println!("{}* {}", padding, name.to_str().unwrap());
+    pub fn walk<F: FnMut(usize, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(&'a self, mut apply: F) {
+        fn do_walk<'a, F: FnMut(usize, &OsString, &'a NoteFileTree,( bool, bool, &Vec<bool>)) -> bool>(apply: &mut F, level: usize, is_last_stack: &mut Vec<bool>, tree: &'a NoteFileTree) {
+            if let Some(children) = tree.children() {
+                let num_children = children.len();
+                for (child_index, (name, child)) in children.iter().enumerate() {
+                    let is_first = child_index == 0;
+                    let is_last = child_index == (num_children - 1);
+                    match child {
+                        NoteFileTree::Note(_) => {
+                            if !apply(level, name, child, (is_first, is_last, is_last_stack)) {
+                                return;
+                            }
+                        }
+                        NoteFileTree::Tree { .. } => {
+                            if !apply(level, name, child, (is_first, is_last, is_last_stack)) {
+                                return;
+                            }
+
+                            is_last_stack.push(is_last);
+                            do_walk(apply, level + 1, is_last_stack, child);
+                            is_last_stack.pop();
+                        }
                     }
                 }
-
-                true
             }
-        );
+        }
+
+        do_walk(&mut apply, 0, &mut Vec::new(), self);
     }
 
     fn children(&self) -> Option<&BTreeMap<OsString, NoteFileTree>> {
@@ -393,7 +381,7 @@ macro_rules! assert_tree_eq {
     ($left:expr, $right:expr) => {
         {
            let mut results = Vec::new();
-           $right.walk(|_, name, _| {
+           $right.walk(|_, name, _, _| {
                results.push(name.to_str().unwrap().to_owned());
                true
            });
@@ -419,7 +407,7 @@ fn test_create_tree1() {
     ];
 
     let tree = NoteFileTree::from_iter(note_metadata.iter()).unwrap();
-    tree.print();
+    ListTree::print_tree(&tree, "");
 
     assert_tree_eq!(
         vec!["00.md", "2023", "01", "01", "03.md", "04.md", "02", "05.md", "01.md", "02", "01", "06.md", "02.md"],
@@ -443,7 +431,7 @@ fn test_find_tree1() {
     let tree = NoteFileTree::from_iter(note_metadata.iter()).unwrap();
 
     let found = tree.find(Path::new("2023/01")).unwrap();
-    found.print();
+    ListTree::print_tree(&found, "");
 
     assert_tree_eq!(
         vec!["00.md", "2023", "01", "01", "03.md", "04.md", "02", "05.md", "06.md", "01.md", "02", "01", "07.md", "02.md"],

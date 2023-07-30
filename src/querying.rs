@@ -290,7 +290,7 @@ impl<'a> ListDirectory<'a> {
         };
 
         if let Some(found_tree) = found_tree {
-            found_tree.walk(|level, name, tree| {
+            found_tree.walk(|level, name, tree, _| {
                 if level != 0 {
                     return false;
                 }
@@ -375,14 +375,64 @@ impl<'a> ListTree<'a> {
     pub fn list(&self, prefix: Option<&Path>) {
         match prefix {
             None => {
-                self.root.print();
+                ListTree::print_tree(&self.root, ".");
             }
             Some(prefix) => {
                 if let Some(tree) = self.root.find(prefix) {
-                    tree.print();
+                    ListTree::print_tree(&tree, prefix.to_str().unwrap());
                 }
             }
         }
+    }
+
+    pub fn print_tree(tree: &NoteFileTree, dir: &str) {
+        let is_terminal = atty::is(Stream::Stdout);
+
+        if !dir.is_empty() {
+            if is_terminal {
+                stdout()
+                    .execute(SetForegroundColor(Color::Blue)).unwrap()
+                    .execute(Print(dir)).unwrap()
+                    .execute(ResetColor).unwrap()
+                    .execute(Print("\n")).unwrap();
+            } else {
+                println!("{}", dir);
+            }
+        }
+
+        tree.walk(
+            |_, name, tree, (_, is_last, is_last_stack)| {
+                for current in is_last_stack {
+                    if !current {
+                        print!("│   ");
+                    } else {
+                        print!("     ");
+                    }
+                }
+
+                print!("{}── ", if is_last {"└"} else {"├"});
+                let (content, color) = match tree {
+                    NoteFileTree::Note(note_metadata) => {
+                        (format!("{} (id: {})", name.to_str().unwrap(), note_metadata.id), Color::Green)
+                    }
+                    NoteFileTree::Tree { .. } => {
+                        (format!("{}", name.to_str().unwrap().to_owned()), Color::Blue)
+                    }
+                };
+
+                if is_terminal {
+                    stdout()
+                        .execute(SetForegroundColor(color)).unwrap()
+                        .execute(Print(content)).unwrap()
+                        .execute(ResetColor).unwrap()
+                        .execute(Print("\n")).unwrap();
+                } else {
+                    println!("{}", content);
+                }
+
+                true
+            }
+        );
     }
 }
 

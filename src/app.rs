@@ -75,51 +75,45 @@ impl Application {
             }
             InputCommand::Add { path, tags } => {
                 if atty::is(Stream::Stdin) {
-                    self.command_interpreter.execute(vec![
+                    self.execute_commands(vec![
                         Command::AddNote { path, tags },
                         Command::Commit
                     ])?;
                 } else {
                     let mut content = String::new();
                     stdin().read_to_string(&mut content)?;
-                    self.command_interpreter.execute(vec![
+                    self.execute_commands(vec![
                         Command::AddNoteWithContent { path, tags, content },
                         Command::Commit
                     ])?;
                 }
-
-                self.clear_cache();
             }
             InputCommand::Edit { path, clear_tags, add_tags } => {
                 if atty::is(Stream::Stdin) {
-                    self.command_interpreter.execute(vec![
+                    self.execute_commands(vec![
                         Command::EditNoteContent { path, clear_tags, add_tags },
                         Command::Commit
                     ])?;
                 } else {
                     let mut content = String::new();
                     stdin().read_to_string(&mut content)?;
-                    self.command_interpreter.execute(vec![
+                    self.execute_commands(vec![
                         Command::EditNoteSetContent { path, clear_tags, add_tags, content },
                         Command::Commit
                     ])?;
                 }
-
-                self.clear_cache();
             }
             InputCommand::Move { source, destination, force } => {
-                self.command_interpreter.execute(vec![
+                self.execute_commands(vec![
                     Command::MoveNote { source, destination, force },
                     Command::Commit
                 ])?;
-                self.clear_cache();
             }
             InputCommand::Remove { path } => {
-                self.command_interpreter.execute(vec![
+                self.execute_commands(vec![
                     Command::RemoveNote { path },
                     Command::Commit
                 ])?;
-                self.clear_cache();
             }
             InputCommand::RunSnippet { path, save_output } => {
                 let mut commands = vec![
@@ -130,8 +124,7 @@ impl Application {
                     commands.push(Command::Commit);
                 }
 
-                self.command_interpreter.execute(commands)?;
-                self.clear_cache();
+                self.execute_commands(commands)?;
             }
             InputCommand::PrintContent { path, git_reference, only_code, only_output } => {
                 let content = self.get_note_content(&path, git_reference)?;

@@ -13,7 +13,7 @@ use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColo
 use crossterm::style::Attribute::Bold;
 use crate::helpers::ToChronoDateTime;
 
-use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteMetadata, NoteMetadataStorage};
+use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
 
 pub type QueryingResult<T> = Result<T, QueryingError>;
 
@@ -364,10 +364,13 @@ pub struct ListTree<'a> {
 }
 
 impl<'a> ListTree<'a> {
-    pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListTree<'a>> {
+    pub fn new(note_metadata_storage: &'a NoteMetadataStorage, config: NoteFileTreeCreateConfig) -> QueryingResult<ListTree<'a>> {
         Ok(
             ListTree {
-                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
+                root: NoteFileTree::from_iter_with_config(
+                    note_metadata_storage.notes(),
+                    config
+                ).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
             }
         )
     }

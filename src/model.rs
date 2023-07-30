@@ -6,7 +6,7 @@ use std::io::{BufRead, BufReader, Lines};
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use chrono::{DateTime, Local};
+use chrono::{Datelike, DateTime, Local, Timelike};
 
 use fnv::FnvHashMap;
 
@@ -16,7 +16,6 @@ use serde::{Serialize, Deserialize, Deserializer, Serializer};
 use serde::de::{Error, Visitor};
 
 use crate::helpers::io_error;
-use crate::querying::ListTree;
 
 pub const NOTE_METADATA_EXT: &str = "metadata";
 pub const NOTE_CONTENT_EXT: &str = "md";
@@ -254,6 +253,20 @@ impl NoteMetadataStorage {
     }
 }
 
+pub struct NoteFileTreeCreateConfig {
+    pub using_date: bool,
+    pub using_tags: bool,
+}
+
+impl Default for NoteFileTreeCreateConfig {
+    fn default() -> Self {
+        NoteFileTreeCreateConfig {
+            using_date: false,
+            using_tags: true
+        }
+    }
+}
+
 pub enum NoteFileTree<'a> {
     Note(&'a NoteMetadata),
     Tree {
@@ -278,12 +291,31 @@ impl<'a> NoteFileTree<'a> {
     }
 
     pub fn from_iter(iter: impl Iterator<Item=&'a NoteMetadata>) -> Option<NoteFileTree<'a>> {
+        NoteFileTree::from_iter_with_config(iter, NoteFileTreeCreateConfig::default())
+    }
+
+    pub fn from_iter_with_config(iter: impl Iterator<Item=&'a NoteMetadata>, config: NoteFileTreeCreateConfig) -> Option<NoteFileTree<'a>> {
         let mut root = NoteFileTree::new();
 
         for note_metadata in iter {
             let mut current = &mut root;
 
-            let parts = note_metadata.path.iter().collect::<Vec<_>>();
+            let mut path = note_metadata.path.clone();
+            if config.using_date {
+                path = Path::new(&note_metadata.created.year().to_string())
+                    .join(format!("{:0>2}", note_metadata.created.month()))
+                    .join(format!("{:0>2}", note_metadata.created.day()))
+                    .join(format!("{:0>2}", note_metadata.created.hour()))
+                    .join(note_metadata.path.file_name().unwrap())
+            }
+
+            if config.using_tags {
+                path = PathBuf::from_iter(note_metadata.tags.iter())
+                    .join(note_metadata.path.file_name().unwrap());
+            }
+
+            let parts = path.iter().collect::<Vec<_>>();
+
             for (part_index, part) in parts.iter().enumerate() {
                 let is_last = part_index == parts.len() - 1;
                 match current {

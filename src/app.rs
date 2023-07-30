@@ -16,7 +16,7 @@ use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::{Config, FileConfig};
 use crate::{editor, markdown, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
-use crate::model::{NoteMetadataStorage};
+use crate::model::{NoteFileTreeCreateConfig, NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
@@ -187,8 +187,12 @@ impl Application {
                 let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
                 print_list_directory_results(&results)?
             }
-            InputCommand::Tree { prefix } => {
-                let list_tree = ListTree::new(self.note_metadata_storage()?)?;
+            InputCommand::Tree { prefix, using_date, using_tags, } => {
+                let mut config = NoteFileTreeCreateConfig::default();
+                config.using_date = using_date;
+                config.using_tags = using_tags;
+
+                let list_tree = ListTree::new(self.note_metadata_storage()?, config)?;
                 list_tree.list(prefix.as_ref().map(|x| x.as_path()));
             }
             InputCommand::Finder(finder) => {
@@ -383,10 +387,16 @@ pub enum InputCommand {
         /// The directory to list.
         query: Option<String>
     },
-    /// Lists note tree structure.
+    /// Lists note in a tree structure.
     Tree {
         /// List tree starting at the given prefix.
-        prefix: Option<PathBuf>
+        prefix: Option<PathBuf>,
+        /// Uses creation date as the path instead (file name is still used)
+        #[structopt(long, short="-d")]
+        using_date: bool,
+        /// Uses tags as the path instead (file name is still used)
+        #[structopt(long, short="-t")]
+        using_tags: bool
     },
     /// Searches for note based on properties.
     #[structopt(name="find")]

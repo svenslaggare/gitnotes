@@ -401,10 +401,10 @@ pub enum InputCommand {
         /// List tree starting at the given prefix.
         prefix: Option<PathBuf>,
         /// Uses creation date as the path instead (file name is still used)
-        #[structopt(long, short="-d")]
+        #[structopt(long="date", short="-d")]
         using_date: bool,
         /// Uses tags as the path instead (file name is still used)
-        #[structopt(long, short="-t")]
+        #[structopt(long="tags", short="-t")]
         using_tags: bool
     },
     /// Searches for note based on properties.

@@ -326,9 +326,10 @@ pub enum InputCommand {
     },
     /// Prints the active config
     Config {
+        /// Prints only the name of the repository.
         #[structopt(long="repo")]
         only_repository: bool,
-        /// Sets the given config value (format var=value)
+        /// Sets the given config value (format key=value).
         #[structopt(long)]
         set: Option<String>
     },
@@ -448,7 +449,7 @@ pub enum InputCommand {
     Info {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
-        /// Prints only the file system path
+        /// Prints only the file system path.
         #[structopt(long="file-system")]
         only_file_system_path: bool,
     }

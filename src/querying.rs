@@ -48,85 +48,6 @@ pub trait Matcher {
     fn is_match(&self, text: &str) -> bool;
 }
 
-pub struct StringMatcher(String);
-impl StringMatcher {
-    pub fn new(str: &str) -> StringMatcher {
-        StringMatcher(str.to_owned())
-    }
-}
-
-impl Matcher for StringMatcher {
-    fn is_match(&self, text: &str) -> bool {
-        self.0 == text
-    }
-}
-
-pub struct RegexMatcher(Regex);
-impl RegexMatcher {
-    pub fn new(str: &str) -> RegexMatcher {
-        RegexMatcher(Regex::new(str).expect("Invalid regex."))
-    }
-}
-
-impl Matcher for RegexMatcher {
-    fn is_match(&self, text: &str) -> bool {
-        self.0.is_match(text)
-    }
-}
-
-pub enum FindQuery {
-    Tags(Vec<StringMatcher>),
-    Path(RegexMatcher),
-    Id(RegexMatcher),
-    Created(Vec<i32>),
-    LastUpdated(Vec<i32>)
-}
-
-impl FindQuery {
-    pub fn is_match(&self, note_metadata: &NoteMetadata) -> bool {
-        match self {
-            FindQuery::Tags(tags) => {
-                for tag in tags {
-                    if !note_metadata.tags.iter().any(|current_tag| tag.is_match(current_tag)) {
-                        return false;
-                    }
-                }
-
-                true
-            }
-            FindQuery::Path(path) => {
-                path.is_match(note_metadata.path.to_str().unwrap())
-            }
-            FindQuery::Id(id) => {
-                id.is_match(&note_metadata.id.to_string())
-            }
-            FindQuery::Created(parts) => {
-                is_datetime_match(&note_metadata.created, parts)
-            }
-            FindQuery::LastUpdated(parts) => {
-                is_datetime_match(&note_metadata.last_updated, parts)
-            }
-        }
-    }
-}
-
-fn is_datetime_match(datetime: &DateTime<Local>, parts: &Vec<i32>) -> bool {
-    fn is_part_match(value: i32, part: Option<&i32>) -> bool {
-        if part.is_some() {
-            &value == part.unwrap()
-        } else {
-            true
-        }
-    }
-
-    is_part_match(datetime.year(), parts.get(0))
-    && is_part_match(datetime.month() as i32, parts.get(1))
-    && is_part_match(datetime.day() as i32, parts.get(2))
-    && is_part_match(datetime.hour() as i32, parts.get(3))
-    && is_part_match(datetime.minute() as i32, parts.get(4))
-    && is_part_match(datetime.second() as i32, parts.get(5))
-}
-
 pub struct Finder<'a> {
     note_metadata_storage: &'a NoteMetadataStorage
 }
@@ -273,7 +194,9 @@ impl<'a> Searcher<'a> {
                                             .execute(SetForegroundColor(Color::Yellow))?
                                             .execute(Print(format!("{}", short_commit_id)))?
                                             .execute(ResetColor)?
+
                                             .execute(Print(format!(" - ")))?
+
                                             .execute(SetForegroundColor(Color::DarkMagenta))?
                                             .execute(Print(format!("{}: ", info_text)))?
                                             .execute(ResetColor)?;
@@ -547,4 +470,83 @@ impl<'a> GitContentFetcher<'a> {
 
         Ok(None)
     }
+}
+
+pub struct StringMatcher(String);
+impl StringMatcher {
+    pub fn new(str: &str) -> StringMatcher {
+        StringMatcher(str.to_owned())
+    }
+}
+
+impl Matcher for StringMatcher {
+    fn is_match(&self, text: &str) -> bool {
+        self.0 == text
+    }
+}
+
+pub struct RegexMatcher(Regex);
+impl RegexMatcher {
+    pub fn new(str: &str) -> RegexMatcher {
+        RegexMatcher(Regex::new(str).expect("Invalid regex."))
+    }
+}
+
+impl Matcher for RegexMatcher {
+    fn is_match(&self, text: &str) -> bool {
+        self.0.is_match(text)
+    }
+}
+
+pub enum FindQuery {
+    Tags(Vec<StringMatcher>),
+    Path(RegexMatcher),
+    Id(RegexMatcher),
+    Created(Vec<i32>),
+    LastUpdated(Vec<i32>)
+}
+
+impl FindQuery {
+    pub fn is_match(&self, note_metadata: &NoteMetadata) -> bool {
+        match self {
+            FindQuery::Tags(tags) => {
+                for tag in tags {
+                    if !note_metadata.tags.iter().any(|current_tag| tag.is_match(current_tag)) {
+                        return false;
+                    }
+                }
+
+                true
+            }
+            FindQuery::Path(path) => {
+                path.is_match(note_metadata.path.to_str().unwrap())
+            }
+            FindQuery::Id(id) => {
+                id.is_match(&note_metadata.id.to_string())
+            }
+            FindQuery::Created(parts) => {
+                is_datetime_match(&note_metadata.created, parts)
+            }
+            FindQuery::LastUpdated(parts) => {
+                is_datetime_match(&note_metadata.last_updated, parts)
+            }
+        }
+    }
+}
+
+fn is_datetime_match(datetime: &DateTime<Local>, parts: &Vec<i32>) -> bool {
+    fn is_part_match(value: i32, part: Option<&i32>) -> bool {
+        if part.is_some() {
+            &value == part.unwrap()
+        } else {
+            true
+        }
+    }
+
+    is_part_match(datetime.year(), parts.get(0))
+    && is_part_match(datetime.month() as i32, parts.get(1))
+    && is_part_match(datetime.day() as i32, parts.get(2))
+    && is_part_match(datetime.hour() as i32, parts.get(3))
+    && is_part_match(datetime.minute() as i32, parts.get(4))
+    && is_part_match(datetime.second() as i32, parts.get(5))
 }

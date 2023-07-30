@@ -246,6 +246,12 @@ impl Application {
         Ok(())
     }
 
+    pub fn execute_commands(&mut self, commands: Vec<Command>) -> Result<(), AppError> {
+        self.command_interpreter.execute(commands)?;
+        self.clear_cache();
+        Ok(())
+    }
+
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         if let Some(git_reference) = git_reference {
             self.note_metadata_storage()?;
@@ -555,7 +561,7 @@ print(np.square(np.arange(0, 11)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -570,7 +576,7 @@ print(np.square(np.arange(0, 11)))
     assert_eq!(note_content_output, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::EditNoteSetContent {
             path: note_path.to_path_buf(),
             clear_tags: false,
@@ -607,7 +613,7 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -639,7 +645,7 @@ fn test_add_and_move_to_existing1() {
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -652,6 +658,8 @@ fn test_add_and_move_to_existing1() {
         },
         Command::Commit
     ]).unwrap();
+    let note_id = app.note_metadata_storage().unwrap().get_id(note_path).unwrap();
+    let note_id2 = app.note_metadata_storage().unwrap().get_id(note_path2).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -659,6 +667,8 @@ fn test_add_and_move_to_existing1() {
     let err = app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: false }).err().unwrap();
     if let AppError::Command(CommandInterpreterError::NoteAtDestination(err_path)) = err {
         assert_eq!(note_path2, err_path);
+        assert_eq!(note_id, app.note_metadata_storage().unwrap().get_id(note_path).unwrap());
+        assert_eq!(note_id2, app.note_metadata_storage().unwrap().get_id(note_path2).unwrap());
     } else {
         assert!(false, "Expected 'NoteAtDestination' error");
     }
@@ -679,7 +689,7 @@ fn test_add_and_move_to_existing2() {
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -692,6 +702,7 @@ fn test_add_and_move_to_existing2() {
         },
         Command::Commit
     ]).unwrap();
+    let note_id = app.note_metadata_storage().unwrap().get_id(note_path).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -699,6 +710,7 @@ fn test_add_and_move_to_existing2() {
     app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: true }).unwrap();
     assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note_path).is_ok());
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
+    assert_eq!(note_id, app.note_metadata_storage().unwrap().get(note_path2).unwrap().id);
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());
 }
 
@@ -721,7 +733,7 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -757,7 +769,7 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -768,7 +780,7 @@ print(np.square(np.arange(0, 10)))
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
 
-    app.command_interpreter.execute(vec![
+    app.execute_commands(vec![
         Command::EditNoteSetContent {
             path: note_path.to_path_buf(),
             clear_tags: false,
@@ -777,7 +789,6 @@ print(np.square(np.arange(0, 10)))
         },
         Command::Commit
     ]).unwrap();
-    app.clear_cache();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(vec!["python".to_owned(), "snippet".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());

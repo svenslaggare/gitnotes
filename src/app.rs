@@ -306,7 +306,7 @@ impl Application {
 }
 
 #[derive(StructOpt)]
-#[structopt(about="CLI & Git based notes/snippet application")]
+#[structopt(about="CLI notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
     #[structopt(subcommand)]
     pub command: Option<InputCommand>,
@@ -332,7 +332,7 @@ pub enum InputCommand {
         #[structopt(long)]
         set: Option<String>
     },
-    /// Creates a new note.
+    /// Create a new note.
     Add {
         /// The path of the note.
         path: PathBuf,
@@ -340,7 +340,7 @@ pub enum InputCommand {
         #[structopt(long)]
         tags: Vec<String>
     },
-    /// Edits an existing note.
+    /// Edit an existing note.
     Edit {
         /// The absolute path of the note. Id also work.
         path: PathBuf,

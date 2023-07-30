@@ -542,6 +542,38 @@ fn open_repository(path: &Path) -> Result<git2::Repository, AppError> {
 }
 
 #[test]
+fn test_add() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample.py");
+    let note_content = r#"Hello, World!
+
+``` python
+xs = list(range(0, 10))
+print([x * x for x in xs])
+```
+"#.to_string();
+
+    let mut app = Application::new(config).unwrap();
+
+    app.execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec![],
+            content: note_content.clone()
+        },
+        Command::Commit
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+    assert_eq!(vec!["snippet".to_owned(), "python".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);
+}
+
+#[test]
 fn test_add_and_run_snippet() {
     use tempfile::TempDir;
 

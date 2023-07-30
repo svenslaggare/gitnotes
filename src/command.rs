@@ -9,7 +9,7 @@ use comrak::nodes::NodeValue;
 use crate::config::Config;
 
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
-use crate::{editor, markdown};
+use crate::{editor, helpers, markdown};
 use crate::app::RepositoryRef;
 use crate::helpers::get_or_insert_with;
 use crate::snippets::{SnippetRunnerManger, SnippetError};
@@ -20,15 +20,15 @@ pub enum Command {
         path: PathBuf,
         tags: Vec<String>
     },
-    EditNoteContent {
-        path: PathBuf,
-        clear_tags: bool,
-        add_tags: Vec<String>
-    },
     AddNoteWithContent {
         path: PathBuf,
         tags: Vec<String>,
         content: String
+    },
+    EditNoteContent {
+        path: PathBuf,
+        clear_tags: bool,
+        add_tags: Vec<String>
     },
     EditNoteSetContent {
         path: PathBuf,
@@ -138,6 +138,16 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
+                Command::AddNoteWithContent { path, tags, content } => {
+                    self.check_if_note_exists(&path)?;
+
+                    let id = NoteId::new();
+                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
+
+                    std::fs::write(&abs_note_path, content).map_err(|err| FailedToAddNote(err.to_string()))?;
+
+                    self.add_note(id, &relative_note_path, path, tags)?;
+                }
                 Command::EditNoteContent { path, clear_tags, add_tags } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
@@ -153,16 +163,6 @@ impl CommandInterpreter {
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
                     self.commit_message_lines.push(format!("Updated note '{}'.", real_path));
-                }
-                Command::AddNoteWithContent { path, tags, content } => {
-                    self.check_if_note_exists(&path)?;
-
-                    let id = NoteId::new();
-                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
-
-                    std::fs::write(&abs_note_path, content).map_err(|err| FailedToAddNote(err.to_string()))?;
-
-                    self.add_note(id, &relative_note_path, path, tags)?;
                 }
                 Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {
                     let id = self.get_note_id(&path)?;
@@ -308,8 +308,14 @@ impl CommandInterpreter {
 
     fn add_note(&mut self,
                 id: NoteId, relative_path: &Path,
-                path: PathBuf, tags: Vec<String>) -> CommandInterpreterResult<()> {
+                path: PathBuf, mut tags: Vec<String>) -> CommandInterpreterResult<()> {
         use CommandInterpreterError::*;
+
+        if tags.is_empty() {
+            let (_, abs_content_path) = self.get_note_storage_path(&id);
+            let content = std::fs::read_to_string(abs_content_path)?;
+            tags = helpers::automatic_tags(&content);
+        }
 
         let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
         let metadata = NoteMetadata::new(id, path.to_owned(), tags);

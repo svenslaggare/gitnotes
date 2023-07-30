@@ -31,6 +31,20 @@ pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root
     Ok(())
 }
 
+pub fn visit_non_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root: &'a AstNode<'a>, mut apply: F) -> Result<(), E> {
+    for current_node in root.children() {
+        match &current_node.data.borrow().value {
+            NodeValue::CodeBlock(_) => {}
+            NodeValue::Code(_) => {}
+            _ => {
+                apply(current_node)?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
 pub fn ast_to_string<'a>(root: &'a AstNode<'a>) -> std::io::Result<String> {
     let mut output = Vec::new();
     comrak::format_commonmark(root, &ComrakOptions::default(), &mut output)?;

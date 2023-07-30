@@ -39,6 +39,7 @@ pub enum Command {
     MoveNote {
         source: PathBuf,
         destination: PathBuf,
+        force: bool
     },
     RemoveNote {
         path: PathBuf
@@ -62,6 +63,8 @@ pub enum CommandInterpreterError {
     FailedToRemoveNote(String),
     #[error("Failed to commit: {0}")]
     FailedToCommit(String),
+    #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
+    NoteAtDestination(PathBuf),
 
     #[error("Failed to update metadata: {0}")]
     FailedToUpdateMetadata(String),
@@ -177,9 +180,18 @@ impl CommandInterpreter {
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
                     self.commit_message_lines.push(format!("Updated note '{}'.", real_path));
                 }
-                Command::MoveNote { source, destination } => {
+                Command::MoveNote { source, destination, force } => {
                     let id = self.get_note_id(&source)?;
                     let real_source_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
+
+                    let destination_exist = self.get_note_id(&destination).is_ok();
+                    if destination_exist {
+                        if force {
+                            self.remove_note(&destination)?;
+                        } else {
+                            return Err(NoteAtDestination(destination))?;
+                        }
+                    }
 
                     self.change_note_metadata(&id, |note_metadata| {
                         note_metadata.path = destination.clone();
@@ -191,21 +203,7 @@ impl CommandInterpreter {
                     self.commit_message_lines.push(format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap()));
                 }
                 Command::RemoveNote { path } => {
-                    let id = self.get_note_id(&path)?;
-                    let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-
-                    let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
-                    let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
-
-                    std::fs::remove_file(abs_content_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
-                    std::fs::remove_file(abs_metadata_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
-
-                    let index = self.index()?;
-                    index.remove_path(&relative_content_path)?;
-                    index.remove_path(&relative_metadata_path)?;
-                    index.write()?;
-
-                    self.commit_message_lines.push(format!("Deleted note '{}'.", real_path));
+                    self.remove_note(&path)?;
                 }
                 Command::RunSnippet { path, save_output } => {
                     let id = self.get_note_id(&path)?;
@@ -327,6 +325,28 @@ impl CommandInterpreter {
         Ok(())
     }
 
+    fn remove_note(&mut self, path: &Path) -> CommandInterpreterResult<()> {
+        use CommandInterpreterError::*;
+
+        let id = self.get_note_id(path)?;
+        let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
+
+        let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
+        let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
+
+        std::fs::remove_file(abs_content_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
+        std::fs::remove_file(abs_metadata_path).map_err(|err| FailedToRemoveNote(err.to_string()))?;
+
+        let index = self.index()?;
+        index.remove_path(&relative_content_path)?;
+        index.remove_path(&relative_metadata_path)?;
+        index.write()?;
+
+        self.commit_message_lines.push(format!("Deleted note '{}'.", real_path));
+
+        Ok(())
+    }
+
     fn try_change_last_updated(&mut self, id: &NoteId) -> CommandInterpreterResult<()> {
         if self.has_git_changes()? {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
@@ -413,7 +433,7 @@ impl CommandInterpreter {
         NoteMetadataStorage::get_note_metadata_path(&self.config.repository, id)
     }
 
-    fn get_note_id(&mut self, path: &PathBuf) -> CommandInterpreterResult<NoteId> {
+    fn get_note_id(&mut self, path: &Path) -> CommandInterpreterResult<NoteId> {
         self.note_metadata_storage()?
             .get_id(path)
             .ok_or_else(|| CommandInterpreterError::NoteNotFound(path.to_str().unwrap().to_owned()))

@@ -107,9 +107,9 @@ impl Application {
 
                 self.clear_cache();
             }
-            InputCommand::Move { source, destination } => {
+            InputCommand::Move { source, destination, force } => {
                 self.command_interpreter.execute(vec![
-                    Command::MoveNote { source, destination },
+                    Command::MoveNote { source, destination, force },
                     Command::Commit
                 ])?;
                 self.clear_cache();
@@ -331,6 +331,9 @@ pub enum InputCommand {
         source: PathBuf,
         /// The absolute path of the new destination.
         destination: PathBuf,
+        /// Deletes note if it exists at destination
+        #[structopt(long, short)]
+        force: bool
     },
     /// Removes a note
     #[structopt(name="rm")]
@@ -615,7 +618,85 @@ print(np.square(np.arange(0, 10)))
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
 
-    app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned() }).unwrap();
+    app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: false }).unwrap();
+    assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note_path).is_ok());
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_add_and_move_to_existing1() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample.py");
+    let note_path2 = Path::new("2023/07/01/sample.py");
+    let note_content = "Hello, World #1".to_owned();
+    let note_content2 = "Hello, World #2".to_owned();
+
+    let mut app = Application::new(config).unwrap();
+
+    app.command_interpreter.execute(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note_path2.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content2.clone()
+        },
+        Command::Commit
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    let err = app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: false }).err().unwrap();
+    if let AppError::Command(CommandInterpreterError::NoteAtDestination(err_path)) = err {
+        assert_eq!(note_path2, err_path);
+    } else {
+        assert!(false, "Expected 'NoteAtDestination' error");
+    }
+}
+
+#[test]
+fn test_add_and_move_to_existing2() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample.py");
+    let note_path2 = Path::new("2023/07/01/sample.py");
+    let note_content = "Hello, World #1".to_owned();
+    let note_content2 = "Hello, World #2".to_owned();
+
+    let mut app = Application::new(config).unwrap();
+
+    app.command_interpreter.execute(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note_path2.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content2.clone()
+        },
+        Command::Commit
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: true }).unwrap();
     assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note_path).is_ok());
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());

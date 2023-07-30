@@ -251,6 +251,22 @@ impl Application {
                 let git_log = GitLog::new(repository.deref(), count)?;
                 git_log.print()?;
             }
+            InputCommand::Info { path, only_file_system_path } => {
+                self.note_metadata_storage()?;
+                let note_metadata = self.note_metadata_storage_ref()?.get(&path).ok_or_else(|| QueryingError::NoteNotFound(path.to_str().unwrap().to_owned()))?;
+                let file_system_path = NoteMetadataStorage::get_note_storage_path(&self.config.repository, &note_metadata.id).1.to_str().unwrap().to_owned();
+
+                if !only_file_system_path {
+                    println!("Id: {}", note_metadata.id);
+                    println!("Path: {}", note_metadata.path.to_str().unwrap());
+                    println!("File system path: {}", file_system_path);
+                    println!("Tags: {}", note_metadata.tags.join(", "));
+                    println!("Created: {}", note_metadata.created);
+                    println!("Last updated: {}", note_metadata.last_updated);
+                } else {
+                    println!("{}", file_system_path);
+                }
+            }
         }
 
         Ok(())
@@ -427,6 +443,14 @@ pub enum InputCommand {
         /// The number of commits to show. -1 for all.
         #[structopt(default_value="5")]
         count: isize
+    },
+    /// Shows information about a note
+    Info {
+        /// The absolute path of the note. Id also work.
+        path: PathBuf,
+        /// Prints only the file system path
+        #[structopt(long="file-system")]
+        only_file_system_path: bool,
     }
 }
 

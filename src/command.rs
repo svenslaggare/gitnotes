@@ -78,9 +78,9 @@ pub enum CommandInterpreterError {
 
     #[error("Subprocess error: {0}")]
     SubProcess(std::io::Error),
-    #[error("Git error: {0}")]
+    #[error("{0}")]
     Git(git2::Error),
-    #[error("I/O error: {0}")]
+    #[error(" {0}")]
     IO(std::io::Error)
 }
 

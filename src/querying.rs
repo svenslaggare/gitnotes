@@ -21,9 +21,10 @@ pub type QueryingResult<T> = Result<T, QueryingError>;
 pub enum QueryingError {
     #[error("Failed to create note file tree")]
     FailedToCreateNoteFileTree,
-
     #[error("Note not found at git reference '{0}'")]
     NoteNotFoundAtGitReference(String),
+    #[error("Note '{0}' not found")]
+    NoteNotFound(String),
 
     #[error("{0}")]
     Git(git2::Error),

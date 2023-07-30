@@ -409,7 +409,7 @@ impl<'a> ListTree<'a> {
                     if !current {
                         print!("│   ");
                     } else {
-                        print!("     ");
+                        print!("    ");
                     }
                 }
 

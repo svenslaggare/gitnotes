@@ -1,7 +1,5 @@
 body {
-    /*background-color: #DDD;*/
     min-height: 100vh;
-    /*padding-top: 20px;*/
 }
 
 html {
@@ -20,6 +18,7 @@ html {
 
 .markdown {
     margin-left: 14px;
+    margin-right: 14px;
 }
 
 .btn {

@@ -6,6 +6,7 @@ import "ace-builds/src-noconflict/mode-markdown";
 import "ace-builds/src-noconflict/theme-textmate";
 
 import ReactMarkdown from "react-markdown";
+import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 
 import axios from "axios";
 
@@ -135,7 +136,27 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
         return (
             <div className={this.numViewsVisible() == 2 ? "col-6" : "col"}>
-                <ReactMarkdown className="markdown">{this.state.content}</ReactMarkdown>
+                <ReactMarkdown
+                    className="markdown"
+                    children={this.state.content}
+                    components={{
+                        code({node, inline, className, children, ...props}) {
+                            const match = /language-(\w+)/.exec(className || '')
+                            return !inline && match ? (
+                                <SyntaxHighlighter
+                                    {...props}
+                                    children={String(children).replace(/\n$/, '')}
+                                    language={match[1]}
+                                    PreTag="div"
+                                />
+                            ) : (
+                                <code {...props} className={className}>
+                                    {children}
+                                </code>
+                            )
+                        }
+                    }}
+                />
             </div>
         );
     }

@@ -14,6 +14,28 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || function () {
+    __assign = Object.assign || function(t) {
+        for (var s, i = 1, n = arguments.length; i < n; i++) {
+            s = arguments[i];
+            for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+                t[p] = s[p];
+        }
+        return t;
+    };
+    return __assign.apply(this, arguments);
+};
+var __rest = (this && this.__rest) || function (s, e) {
+    var t = {};
+    for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p) && e.indexOf(p) < 0)
+        t[p] = s[p];
+    if (s != null && typeof Object.getOwnPropertySymbols === "function")
+        for (var i = 0, p = Object.getOwnPropertySymbols(s); i < p.length; i++) {
+            if (e.indexOf(p[i]) < 0 && Object.prototype.propertyIsEnumerable.call(s, p[i]))
+                t[p[i]] = s[p[i]];
+        }
+    return t;
+};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -24,6 +46,7 @@ var react_ace_1 = __importDefault(require("react-ace"));
 require("ace-builds/src-noconflict/mode-markdown");
 require("ace-builds/src-noconflict/theme-textmate");
 var react_markdown_1 = __importDefault(require("react-markdown"));
+var react_syntax_highlighter_1 = require("react-syntax-highlighter");
 var axios_1 = __importDefault(require("axios"));
 var WebEditorMainProps = /** @class */ (function () {
     function WebEditorMainProps() {
@@ -104,7 +127,13 @@ var WebEditorMain = /** @class */ (function (_super) {
             return null;
         }
         return (react_1["default"].createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
-            react_1["default"].createElement(react_markdown_1["default"], { className: "markdown" }, this.state.content)));
+            react_1["default"].createElement(react_markdown_1["default"], { className: "markdown", children: this.state.content, components: {
+                    code: function (_a) {
+                        var node = _a.node, inline = _a.inline, className = _a.className, children = _a.children, props = __rest(_a, ["node", "inline", "className", "children"]);
+                        var match = /language-(\w+)/.exec(className || '');
+                        return !inline && match ? (react_1["default"].createElement(react_syntax_highlighter_1.Prism, __assign({}, props, { children: String(children).replace(/\n$/, ''), language: match[1], PreTag: "div" }))) : (react_1["default"].createElement("code", __assign({}, props, { className: className }), children));
+                    }
+                } })));
     };
     WebEditorMain.prototype.renderExited = function () {
         return (react_1["default"].createElement("div", { className: "modal fade", id: "exitedModal", tabIndex: -1, "aria-labelledby": "exitedModalLabel", "aria-hidden": "true" },

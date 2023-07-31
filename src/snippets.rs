@@ -1,10 +1,13 @@
+use std::any::Any;
 use std::io::{Write};
 use std::os::unix::process::CommandExt;
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
-use fnv::FnvHashMap;
 
+use serde::{Serialize, Deserialize};
+use fnv::FnvHashMap;
 use thiserror::Error;
+use crate::config::SnippetFileConfig;
 
 pub type SnippetResult<T> = Result<T, SnippetError>;
 
@@ -13,7 +16,10 @@ pub enum SnippetError {
     #[error("No runner found for '{0}'")]
     RunnerNotFound(String),
 
-    #[error("Run command error: {0}")]
+    #[error("The configuration type is not valid for this runner")]
+    InvalidConfigType,
+
+    #[error("{0}")]
     RunCommand(std::io::Error),
 
     #[error("Failed to compile (see console output)")]
@@ -54,6 +60,28 @@ impl SnippetRunnerManger {
         let runner = self.runners.get(name).ok_or_else(|| SnippetError::RunnerNotFound(name.to_owned()))?;
         runner.run(source_code)
     }
+
+    pub fn apply_config(&mut self, file_config: &SnippetFileConfig) -> SnippetResult<()> {
+        if let Some(python_config) = file_config.python.as_ref() {
+            self.change_config("python", python_config)?;
+        }
+
+        if let Some(cpp_config) = file_config.cpp.as_ref() {
+            self.change_config("cpp", cpp_config)?;
+        }
+
+        if let Some(rust_config) = file_config.rust.as_ref() {
+            self.change_config("rust", rust_config)?;
+        }
+
+        Ok(())
+    }
+
+    pub fn change_config(&mut self, name: &str, config: &dyn Any) -> SnippetResult<()> {
+        let runner = self.runners.get_mut(name).ok_or_else(|| SnippetError::RunnerNotFound(name.to_owned()))?;
+        runner.change_config(config)?;
+        Ok(())
+    }
 }
 
 impl Default for SnippetRunnerManger {
@@ -68,23 +96,35 @@ impl Default for SnippetRunnerManger {
 
 pub trait SnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String>;
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()>;
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PythonSnippetRunnerConfig {
+    pub executable: PathBuf
 }
 
 pub struct PythonSnippetRunner {
-    executable: PathBuf
+    config: PythonSnippetRunnerConfig
 }
 
 impl PythonSnippetRunner {
-    pub fn new(executable: PathBuf) -> PythonSnippetRunner {
+    pub fn new(config: PythonSnippetRunnerConfig) -> PythonSnippetRunner {
         PythonSnippetRunner {
-            executable
+            config
         }
     }
 }
 
 impl Default for PythonSnippetRunner {
     fn default() -> Self {
-        PythonSnippetRunner::new(Path::new("python3").to_owned())
+        PythonSnippetRunner::new(
+            PythonSnippetRunnerConfig {
+                executable: Path::new("python3").to_owned(),
+            }
+        )
     }
 }
 
@@ -95,21 +135,34 @@ impl SnippetRunner for PythonSnippetRunner {
             .tempfile()?;
         source_code_file.write_all(source_code.as_bytes())?;
 
-        run_and_capture(Command::new(&self.executable).arg(source_code_file.path()))
+        run_and_capture(Command::new(&self.config.executable).arg(source_code_file.path()))
+    }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<PythonSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
     }
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CppSnippetRunnerConfig {
+    pub compiler_executable: PathBuf,
+    pub compiler_flags: Vec<String>
+}
+
 pub struct CppSnippetRunner {
-    compiler_executable: PathBuf,
-    compiler_flags: Vec<String>
+    config: CppSnippetRunnerConfig
 }
 
 impl CppSnippetRunner {
-    pub fn new(compiler_executable: PathBuf,
-               compiler_flags: Vec<String>) -> CppSnippetRunner {
+    pub fn new(config: CppSnippetRunnerConfig) -> CppSnippetRunner {
         CppSnippetRunner {
-            compiler_executable,
-            compiler_flags
+            config
         }
     }
 }
@@ -117,8 +170,10 @@ impl CppSnippetRunner {
 impl Default for CppSnippetRunner {
     fn default() -> Self {
         CppSnippetRunner::new(
-            Path::new("c++").to_owned(),
-            vec!["-std=c++14".to_owned()]
+            CppSnippetRunnerConfig {
+                compiler_executable: Path::new("c++").to_owned(),
+                compiler_flags: vec!["-std=c++14".to_owned()],
+            }
         )
     }
 }
@@ -138,8 +193,8 @@ impl SnippetRunner for CppSnippetRunner {
         };
         let _delete_compiled_executable = DeleteFileGuard::new(&compiled_executable);
 
-        let output = Command::new(&self.compiler_executable)
-            .args(self.compiler_flags.iter())
+        let output = Command::new(&self.config.compiler_executable)
+            .args(self.config.compiler_flags.iter())
             .arg(source_code_file.path())
             .arg("-o")
             .arg(&compiled_executable)
@@ -152,19 +207,32 @@ impl SnippetRunner for CppSnippetRunner {
 
         run_and_capture(&mut Command::new(&compiled_executable))
     }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<CppSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RustSnippetRunnerConfig {
+    pub compiler_executable: PathBuf,
+    pub compiler_flags: Vec<String>
 }
 
 pub struct RustSnippetRunner {
-    compiler_executable: PathBuf,
-    compiler_flags: Vec<String>
+    config: RustSnippetRunnerConfig
 }
 
 impl RustSnippetRunner {
-    pub fn new(compiler_executable: PathBuf,
-               compiler_flags: Vec<String>) -> RustSnippetRunner {
+    pub fn new(config: RustSnippetRunnerConfig) -> RustSnippetRunner {
         RustSnippetRunner {
-            compiler_executable,
-            compiler_flags
+            config
         }
     }
 }
@@ -172,10 +240,12 @@ impl RustSnippetRunner {
 impl Default for RustSnippetRunner {
     fn default() -> Self {
         RustSnippetRunner::new(
-            Path::new("rustc").to_owned(),
-            vec![
-                "--edition".to_owned(), "2021".to_owned()
-            ]
+            RustSnippetRunnerConfig {
+                compiler_executable: Path::new("rustc").to_owned(),
+                compiler_flags: vec![
+                    "--edition".to_owned(), "2021".to_owned()
+                ]
+            }
         )
     }
 }
@@ -195,8 +265,8 @@ impl SnippetRunner for RustSnippetRunner {
         };
         let _delete_compiled_executable = DeleteFileGuard::new(&compiled_executable);
 
-        let output = Command::new(&self.compiler_executable)
-            .args(self.compiler_flags.iter())
+        let output = Command::new(&self.config.compiler_executable)
+            .args(self.config.compiler_flags.iter())
             .arg(source_code_file.path())
             .args(["--crate-name", "snippet"])
             .arg("-o")
@@ -209,6 +279,15 @@ impl SnippetRunner for RustSnippetRunner {
         }
 
         run_and_capture(&mut Command::new(&compiled_executable))
+    }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<RustSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
     }
 }
 
@@ -319,6 +398,16 @@ print([x * x for x in xs])
 }
 
 #[test]
+fn test_python_change_config1() {
+    let mut runner = PythonSnippetRunner::default();
+    runner.change_config(&PythonSnippetRunnerConfig {
+        executable: Path::new("python2").to_path_buf(),
+    }).unwrap();
+
+    assert_eq!(Path::new("python2"), runner.config.executable);
+}
+
+#[test]
 fn test_cpp_success1() {
     let runner = CppSnippetRunner::default();
     let result = runner.run(r#"
@@ -362,7 +451,7 @@ fn main() {
 #[test]
 fn test_rust_success2() {
     let mut runner = RustSnippetRunner::default();
-    runner.compiler_flags = vec!["--edition".to_owned(), "2021".to_owned(), "-O".to_owned()];
+    runner.config.compiler_flags = vec!["--edition".to_owned(), "2021".to_owned(), "-O".to_owned()];
     let result = runner.run(r#"
 fn main() {
     println!("Hello, World!");

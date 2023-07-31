@@ -36,7 +36,7 @@ impl Application {
             Application {
                 config: config.clone(),
                 repository: repository.clone(),
-                command_interpreter: CommandInterpreter::new(config, repository),
+                command_interpreter: CommandInterpreter::new(config, repository)?,
                 note_metadata_storage: None
             }
         )
@@ -56,7 +56,7 @@ impl Application {
 
                 self.config.repository = repository_path.clone();
                 *self.repository.borrow_mut() = open_repository(&self.config.repository)?;
-                self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone());
+                self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone())?;
                 self.clear_cache();
 
                 let mut file_config = FileConfig::load(&config_path())?;

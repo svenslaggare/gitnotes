@@ -1,16 +1,20 @@
 use std::path::{Path, PathBuf};
 
 use serde::{Serialize, Deserialize};
+
 use crate::helpers::{base_dir, io_error};
+use crate::snippets::{PythonSnippetRunnerConfig, RustSnippetRunnerConfig};
 
 pub fn config_path() -> PathBuf {
     base_dir().join("config.toml")
 }
 
 #[derive(Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct FileConfig {
     pub repository: PathBuf,
     pub editor: Option<String>,
+    pub snippet: Option<SnippetFileConfig>
 }
 
 impl FileConfig {
@@ -18,6 +22,7 @@ impl FileConfig {
         FileConfig {
             repository: repository.to_owned(),
             editor: None,
+            snippet: None,
         }
     }
 
@@ -48,11 +53,20 @@ impl FileConfig {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SnippetFileConfig {
+    pub python: Option<PythonSnippetRunnerConfig>,
+    pub cpp: Option<RustSnippetRunnerConfig>,
+    pub rust: Option<RustSnippetRunnerConfig>
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Config {
     pub repository: PathBuf,
     pub user_name_and_email: (String, String),
     pub editor: String,
+    pub snippet: Option<SnippetFileConfig>
 }
 
 impl Config {
@@ -61,6 +75,7 @@ impl Config {
             repository: std::env::var("GITNOTES_REPOSITORY").map(|path| Path::new(&path).to_owned()).unwrap_or_else(|_| file_config.repository),
             user_name_and_email: get_user_name_and_email(),
             editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("code".to_owned())),
+            snippet: file_config.snippet
         }
     }
 

@@ -109,18 +109,26 @@ pub struct CommandInterpreter {
 }
 
 impl CommandInterpreter {
-    pub fn new(config: Config, repository: RepositoryRef) -> CommandInterpreter {
-        CommandInterpreter {
-            config,
+    pub fn new(config: Config, repository: RepositoryRef) -> CommandInterpreterResult<CommandInterpreter> {
+        let mut snippet_runner_manager = SnippetRunnerManger::default();
 
-            repository,
-
-            note_metadata_storage: None,
-            snippet_runner_manager: SnippetRunnerManger::default(),
-
-            index: None,
-            commit_message_lines: Vec::new()
+        if let Some(snippet_config) = config.snippet.as_ref() {
+            snippet_runner_manager.apply_config(snippet_config).map_err(|err| CommandInterpreterError::Snippet(err))?;
         }
+
+        Ok(
+            CommandInterpreter {
+                config,
+
+                repository,
+
+                note_metadata_storage: None,
+                snippet_runner_manager,
+
+                index: None,
+                commit_message_lines: Vec::new()
+            }
+        )
     }
 
     pub fn execute(&mut self, commands: Vec<Command>) -> CommandInterpreterResult<()> {

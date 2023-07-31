@@ -479,7 +479,7 @@ pub enum InputCommand {
         #[structopt(long="file-system")]
         only_file_system_path: bool,
     },
-    /// Runs web editor in stand alone mode
+    /// Runs web editor in stand alone mode (use web-editor in editor config to use it)
     WebEditor {
         /// The (file system) path to edit
         path: PathBuf,

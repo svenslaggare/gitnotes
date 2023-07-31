@@ -233,11 +233,11 @@ impl CommandInterpreter {
 
                                 let output_stdout = match snippet_result {
                                     Ok(output_stdout) => {
-                                        println!("{}", output_stdout);
+                                        print!("{}", output_stdout);
                                         output_stdout
                                     }
                                     Err(SnippetError::Execution { status, output }) => {
-                                        println!("{}", output);
+                                        print!("{}", output);
                                         return Err(Snippet(SnippetError::Execution { status, output }));
                                     }
                                     Err(err) => {

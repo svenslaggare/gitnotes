@@ -1,16 +1,21 @@
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path};
 use std::process::Stdio;
 
 use crate::command::{CommandInterpreterError, CommandInterpreterResult};
 use crate::config::Config;
 use crate::helpers::io_error;
 use crate::model::NOTE_CONTENT_EXT;
+use crate::web_editor;
 
 pub fn launch(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
+        "web-editor" => {
+            web_editor::launch_sync(9000, path);
+            return Ok(());
+        }
         _ => {}
     }
 

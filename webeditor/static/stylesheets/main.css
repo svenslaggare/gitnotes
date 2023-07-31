@@ -1,0 +1,27 @@
+body {
+    /*background-color: #DDD;*/
+    min-height: 100vh;
+    /*padding-top: 20px;*/
+}
+
+html {
+    min-height: 100vh;
+}
+
+@media (min-width: 600px) {
+    .container {
+        max-width: 56em;
+    }
+}
+
+.editor {
+    min-height: 90em;
+}
+
+.markdown {
+    margin-left: 14px;
+}
+
+.btn {
+    margin-right: 7px;
+}

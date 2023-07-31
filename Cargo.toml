@@ -23,6 +23,7 @@ shellwords = "1"
 
 serde = { version = "1", features=["derive"] }
 toml = "0.7"
+serde_json = "1"
 
 git2 = "0.17"
 comrak = "0.18"
@@ -33,3 +34,8 @@ atty = "0.2"
 home = "0.5"
 
 rake = "0.3"
+
+axum = "0.6"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.4", features = ["fs"] }
+askama = "0.12"

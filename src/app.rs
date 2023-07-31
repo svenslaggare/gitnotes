@@ -270,6 +270,9 @@ impl Application {
                     println!("{}", file_system_path);
                 }
             }
+            InputCommand::WebEditor { .. } => {
+                println!("Not supported in interactive mode.");
+            }
         }
 
         Ok(())
@@ -324,7 +327,7 @@ impl Application {
 #[structopt(about="CLI based notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
     #[structopt(subcommand)]
-    pub command: Option<InputCommand>,
+    pub command: Option<InputCommand>
 }
 
 #[derive(Debug, StructOpt)]
@@ -475,6 +478,14 @@ pub enum InputCommand {
         /// Prints only the file system path.
         #[structopt(long="file-system")]
         only_file_system_path: bool,
+    },
+    /// Runs web editor in stand alone mode
+    WebEditor {
+        /// The (file system) path to edit
+        path: PathBuf,
+        /// The part to run the web server at (default: 9000)
+        #[structopt(long, default_value="9000")]
+        port: u16
     }
 }
 

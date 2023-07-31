@@ -11,6 +11,7 @@ mod command;
 mod markdown;
 mod snippets;
 mod editor;
+mod web_editor;
 mod tags;
 mod app;
 
@@ -38,6 +39,10 @@ fn run(input_command: InputCommand) -> Result<(), AppError> {
     match input_command {
         InputCommand::Initialize { .. } => {
             run_init(&config_path, input_command)
+        }
+        InputCommand::WebEditor { path, port } => {
+            web_editor::launch_sync(port, &path);
+            Ok(())
         }
         _ => {
             Application::new(load_config(&config_path))?.run(input_command)

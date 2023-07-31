@@ -226,11 +226,24 @@ impl CommandInterpreter {
                         &root,
                         |current_node| {
                             if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                                let output_stdout = self.snippet_runner_manager.run(
+                                let snippet_result = self.snippet_runner_manager.run(
                                     &block.info,
                                     &block.literal
-                                ).map_err(|err| Snippet(err))?;
-                                println!("{}", output_stdout);
+                                );
+
+                                let output_stdout = match snippet_result {
+                                    Ok(output_stdout) => {
+                                        println!("{}", output_stdout);
+                                        output_stdout
+                                    }
+                                    Err(SnippetError::Execution { status, output }) => {
+                                        println!("{}", output);
+                                        return Err(Snippet(SnippetError::Execution { status, output }));
+                                    }
+                                    Err(err) => {
+                                        return Err(Snippet(err));
+                                    }
+                                };
 
                                 let mut create_output_node = true;
                                 if let Some(next_node) = current_node.next_sibling() {

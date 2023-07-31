@@ -7,6 +7,7 @@ use std::process::{Command, ExitStatus};
 use serde::{Serialize, Deserialize};
 use fnv::FnvHashMap;
 use thiserror::Error;
+
 use crate::config::SnippetFileConfig;
 
 pub type SnippetResult<T> = Result<T, SnippetError>;

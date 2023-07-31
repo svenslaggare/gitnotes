@@ -25,7 +25,8 @@ pub struct Application {
     config: Config,
     repository: RepositoryRef,
     command_interpreter: CommandInterpreter,
-    note_metadata_storage: Option<NoteMetadataStorage>
+    note_metadata_storage: Option<NoteMetadataStorage>,
+    auto_commit: bool
 }
 
 impl Application {
@@ -37,7 +38,8 @@ impl Application {
                 config: config.clone(),
                 repository: repository.clone(),
                 command_interpreter: CommandInterpreter::new(config, repository)?,
-                note_metadata_storage: None
+                note_metadata_storage: None,
+                auto_commit: true
             }
         )
     }
@@ -88,44 +90,38 @@ impl Application {
             }
             InputCommand::Add { path, tags } => {
                 if atty::is(Stream::Stdin) {
-                    self.execute_commands(vec![
-                        Command::AddNote { path, tags },
-                        Command::Commit
+                    self.create_and_execute_commands(vec![
+                        Command::AddNote { path, tags }
                     ])?;
                 } else {
                     let mut content = String::new();
                     stdin().read_to_string(&mut content)?;
-                    self.execute_commands(vec![
-                        Command::AddNoteWithContent { path, tags, content },
-                        Command::Commit
+                    self.create_and_execute_commands(vec![
+                        Command::AddNoteWithContent { path, tags, content }
                     ])?;
                 }
             }
             InputCommand::Edit { path, clear_tags, add_tags } => {
                 if atty::is(Stream::Stdin) {
-                    self.execute_commands(vec![
-                        Command::EditNoteContent { path, clear_tags, add_tags },
-                        Command::Commit
+                    self.create_and_execute_commands(vec![
+                        Command::EditNoteContent { path, clear_tags, add_tags }
                     ])?;
                 } else {
                     let mut content = String::new();
                     stdin().read_to_string(&mut content)?;
-                    self.execute_commands(vec![
-                        Command::EditNoteSetContent { path, clear_tags, add_tags, content },
-                        Command::Commit
+                    self.create_and_execute_commands(vec![
+                        Command::EditNoteSetContent { path, clear_tags, add_tags, content }
                     ])?;
                 }
             }
             InputCommand::Move { source, destination, force } => {
-                self.execute_commands(vec![
-                    Command::MoveNote { source, destination, force },
-                    Command::Commit
+                self.create_and_execute_commands(vec![
+                    Command::MoveNote { source, destination, force }
                 ])?;
             }
             InputCommand::Remove { path } => {
-                self.execute_commands(vec![
-                    Command::RemoveNote { path },
-                    Command::Commit
+                self.create_and_execute_commands(vec![
+                    Command::RemoveNote { path }
                 ])?;
             }
             InputCommand::RunSnippet { path, save_output } => {
@@ -133,11 +129,18 @@ impl Application {
                     Command::RunSnippet { path, save_output }
                 ];
 
-                if save_output {
+                if save_output && self.auto_commit {
                     commands.push(Command::Commit);
                 }
 
                 self.execute_commands(commands)?;
+            }
+            InputCommand::Begin { } => {
+                self.auto_commit = false;
+            }
+            InputCommand::Commit { } => {
+                self.execute_commands(vec![Command::Commit])?;
+                self.auto_commit = true;
             }
             InputCommand::PrintContent { path, git_reference, only_code, only_output } => {
                 let content = self.get_note_content(&path, git_reference)?;
@@ -278,6 +281,18 @@ impl Application {
         Ok(())
     }
 
+    pub fn create_commands(&self, mut commands: Vec<Command>) -> Vec<Command> {
+        if self.auto_commit {
+            commands.push(Command::Commit);
+        }
+
+        commands
+    }
+
+    pub fn create_and_execute_commands(&mut self, commands: Vec<Command>) -> Result<(), AppError> {
+        self.execute_commands(self.create_commands(commands))
+    }
+
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         self.note_metadata_storage()?;
         let repository = self.repository.borrow();
@@ -377,6 +392,14 @@ pub enum InputCommand {
         /// Saves the output of the snippet inside the note.
         #[structopt(long="save")]
         save_output: bool
+    },
+    /// Begins a commit. All subsequent operations are done within this commit. Only makes sense in interactive mode.
+    Begin {
+
+    },
+    /// Commits the started transaction. If no changes have been made, a commit is not created. Only makes sense in interactive mode.
+    Commit {
+
     },
     /// Prints the content of a note.
     #[structopt(name="cat")]
@@ -561,13 +584,12 @@ print([x * x for x in xs])
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec![],
             content: note_content.clone()
         },
-        Command::Commit
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -629,13 +651,12 @@ print([x * x for x in xs])
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -644,15 +665,14 @@ print([x * x for x in xs])
     assert_eq!(note_content_output, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());
 
-    app.execute_commands(vec![
+    app.execute_commands(app.create_commands(vec![
         Command::EditNoteSetContent {
             path: note_path.to_path_buf(),
             clear_tags: false,
             add_tags: vec![],
             content: note_content2.clone()
-        },
-        Command::Commit
-    ]).unwrap();
+        }
+    ])).unwrap();
     assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(3, repository.reflog("HEAD").unwrap().len());
 
@@ -681,13 +701,12 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -713,7 +732,7 @@ fn test_add_and_move_to_existing1() {
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -723,8 +742,7 @@ fn test_add_and_move_to_existing1() {
             path: note_path2.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content2.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     let note_id = app.note_metadata_storage().unwrap().get_id(note_path).unwrap();
     let note_id2 = app.note_metadata_storage().unwrap().get_id(note_path2).unwrap();
@@ -757,7 +775,7 @@ fn test_add_and_move_to_existing2() {
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
@@ -767,8 +785,7 @@ fn test_add_and_move_to_existing2() {
             path: note_path2.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content2.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     let note_id = app.note_metadata_storage().unwrap().get_id(note_path).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
@@ -801,13 +818,12 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
@@ -837,25 +853,23 @@ print(np.square(np.arange(0, 10)))
 
     let mut app = Application::new(config).unwrap();
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
             path: note_path.to_path_buf(),
             tags: vec!["python".to_owned()],
             content: note_content.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
 
-    app.execute_commands(vec![
+    app.create_and_execute_commands(vec![
         Command::EditNoteSetContent {
             path: note_path.to_path_buf(),
             clear_tags: false,
             add_tags: vec!["snippet".to_owned()],
             content: note_content.clone()
-        },
-        Command::Commit
+        }
     ]).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(vec!["python".to_owned(), "snippet".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);

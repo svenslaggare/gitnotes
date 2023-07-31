@@ -11,7 +11,7 @@ use crate::config::Config;
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
 use crate::app::RepositoryRef;
-use crate::helpers::get_or_insert_with;
+use crate::helpers::{get_or_insert_with, OrderedSet};
 use crate::snippets::{SnippetError, SnippetRunnerManger};
 
 #[derive(Debug)]
@@ -105,7 +105,7 @@ pub struct CommandInterpreter {
     snippet_runner_manager: SnippetRunnerManger,
 
     index: Option<git2::Index>,
-    commit_message_lines: Vec<String>
+    commit_message_lines: OrderedSet<String>
 }
 
 impl CommandInterpreter {
@@ -126,7 +126,7 @@ impl CommandInterpreter {
                 snippet_runner_manager,
 
                 index: None,
-                commit_message_lines: Vec::new()
+                commit_message_lines: OrderedSet::new()
             }
         )
     }
@@ -170,7 +170,7 @@ impl CommandInterpreter {
                     self.try_change_last_updated(&id)?;
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-                    self.commit_message_lines.push(format!("Updated note '{}'.", real_path));
+                    self.commit_message_lines.insert(format!("Updated note '{}'.", real_path));
                 }
                 Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {
                     let id = self.get_note_id(&path)?;
@@ -186,7 +186,7 @@ impl CommandInterpreter {
                     self.try_change_last_updated(&id)?;
 
                     let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-                    self.commit_message_lines.push(format!("Updated note '{}'.", real_path));
+                    self.commit_message_lines.insert(format!("Updated note '{}'.", real_path));
                 }
                 Command::MoveNote { source, destination, force } => {
                     let id = self.get_note_id(&source)?;
@@ -208,7 +208,7 @@ impl CommandInterpreter {
 
                     self.try_change_last_updated(&id)?;
 
-                    self.commit_message_lines.push(format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap()));
+                    self.commit_message_lines.insert(format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap()));
                 }
                 Command::RemoveNote { path } => {
                     self.remove_note(&path)?;
@@ -279,7 +279,7 @@ impl CommandInterpreter {
                         self.try_change_last_updated(&id)?;
 
                         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-                        self.commit_message_lines.push(format!("Saved run output for note '{}'.", real_path));
+                        self.commit_message_lines.insert(format!("Saved run output for note '{}'.", real_path));
                     }
                 }
                 Command::Commit => {
@@ -305,7 +305,7 @@ impl CommandInterpreter {
                         let head_commit = head_commit.as_ref().map(|h| vec![h]).unwrap_or_else(|| vec![]);
 
                         let signature = git2::Signature::now(&self.config.user_name_and_email.0, &self.config.user_name_and_email.1)?;
-                        let commit_message = self.commit_message_lines.join("\n");
+                        let commit_message = self.commit_message_lines.iter().cloned().collect::<Vec<_>>().join("\n");
                         self.repository.borrow().commit(
                             Some("HEAD"),
                             &signature,
@@ -348,7 +348,7 @@ impl CommandInterpreter {
         index.add_path(&relative_metadata_path)?;
         index.write()?;
 
-        self.commit_message_lines.push(format!("Added note '{}' using tags: {}.", path.to_str().unwrap(), metadata.tags.join(", ")));
+        self.commit_message_lines.insert(format!("Added note '{}' using tags: {}.", path.to_str().unwrap(), metadata.tags.join(", ")));
 
         Ok(())
     }
@@ -370,7 +370,7 @@ impl CommandInterpreter {
         index.remove_path(&relative_metadata_path)?;
         index.write()?;
 
-        self.commit_message_lines.push(format!("Deleted note '{}'.", real_path));
+        self.commit_message_lines.insert(format!("Deleted note '{}'.", real_path));
 
         Ok(())
     }

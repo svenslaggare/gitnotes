@@ -7,10 +7,11 @@ use lazy_static::lazy_static;
 use comrak::nodes::NodeValue;
 use rake::{KeywordScore, Rake, StopWords};
 
+use crate::helpers::OrderedSet;
 use crate::markdown;
 
 pub fn automatic(content: &str) -> Vec<String> {
-    let mut tags = Vec::new();
+    let mut tags = OrderedSet::new();
     let mut added_snippet_tag = false;
 
     let arena = markdown::storage();
@@ -22,13 +23,13 @@ pub fn automatic(content: &str) -> Vec<String> {
             if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
                 if !block.info.is_empty() {
                     if !added_snippet_tag {
-                        tags.push("snippet".to_owned());
+                        tags.insert("snippet".to_owned());
                         added_snippet_tag = true;
                     }
 
                     let tag = &block.info;
                     if !tags.contains(tag) {
-                        tags.push(tag.clone());
+                        tags.insert(tag.clone());
                     }
                 }
             }
@@ -72,12 +73,12 @@ pub fn automatic(content: &str) -> Vec<String> {
         if score >= 3.0 {
             let tag = word.to_owned();
             if !tags.contains(&tag) {
-                tags.push(tag);
+                tags.insert(tag);
             }
         }
     }
 
-    tags
+    tags.iter().cloned().collect()
 }
 
 lazy_static! {

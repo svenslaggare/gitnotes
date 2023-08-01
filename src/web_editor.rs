@@ -39,7 +39,7 @@ pub async fn launch(port: u16, path: &Path) {
 
     let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), port);
     let web_address = format!("http://{}", address);
-    println!("Opening file '{}' with web editor available at {}", path.to_str().unwrap(), web_address);
+    println!("Opening file '{}' with web editor available at {}.", path.to_str().unwrap(), web_address);
 
     open::that(web_address).unwrap();
     tokio::select! {
@@ -140,7 +140,8 @@ struct SaveContent {
 }
 
 async fn save_content(Json(input): Json<SaveContent>) -> WebServerResult<Response> {
-    std::fs::write(input.path, input.content)?;
+    std::fs::write(&input.path, input.content)?;
+    println!("Saved content for '{}'.",  input.path.to_str().unwrap());
     Ok(Json(json!({})).into_response())
 }
 

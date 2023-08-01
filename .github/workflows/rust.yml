@@ -25,7 +25,7 @@ jobs:
     - name: Release Build
       run: cargo build --release --verbose
     - name: Build Debian package
-      run: yarn install --dev && cargo install cargo-deb && ./build_deb.sh
+      run: cargo install cargo-deb && ./build_deb.sh
     - uses: actions/upload-artifact@v2
       with:
         name: gitnotes_linux_x86_64

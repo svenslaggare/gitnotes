@@ -31,9 +31,9 @@ Remember, the content of a note is just markdown.
 
 You can also add tags to a note with `--tags x y` argument.
 
-The path used is _virtual_ in the sense that it doesn't affect the actual folder structure. All notes also have a numeric ID that can be used to refer to the note instead of the path.
-
 It is also possible to pipe input instead of launching an editor.
+
+The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property). All notes also have a numeric ID that can be used to refer to the note instead of the path.
 
 ### Editing an existing note
 To edit a note, use `gitnotes edit <path>`. This will launch an editor where you can change the content of the note.

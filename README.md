@@ -8,7 +8,7 @@ CLI based notes & snippet application powered by Git.
 * Possible to run snippets (currently: Python, C++ & Rust) and save output inside notes.
 * Ability to search through notes using either content "grep" or note properties.
 * Includes an optional web based Markdown editor called "web-editor'.
-* 
+
 ## Build
 * Currently only supported on Linux.
 * Requires cargo (https://rustup.rs/).

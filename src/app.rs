@@ -193,7 +193,7 @@ impl Application {
             }
             InputCommand::ListDirectory { query } => {
                 let list_directory = ListDirectory::new(self.note_metadata_storage()?)?;
-                let results = list_directory.list(query.as_ref().map(|x| x.as_str()));
+                let results = list_directory.list(query.as_ref().map(|x| x.as_str()))?;
                 print_list_directory_results(&results)?
             }
             InputCommand::Tree { prefix, using_date, using_tags, } => {

@@ -25,6 +25,8 @@ pub enum QueryingError {
     NoteNotFoundAtGitReference(String),
     #[error("Note '{0}' not found")]
     NoteNotFound(String),
+    #[error("Current tree is not a directory")]
+    TreeNotDirectory,
 
     #[error("{0}")]
     Git(git2::Error),
@@ -281,7 +283,7 @@ impl<'a> ListDirectory<'a> {
         )
     }
 
-    pub fn list(&'a self, query: Option<&str>) -> Vec<ListDirectoryEntry<'a>> {
+    pub fn list(&'a self, query: Option<&str>) -> QueryingResult<Vec<ListDirectoryEntry<'a>>> {
         let mut results = Vec::new();
 
         let found_tree = if let Some(query) = query {
@@ -291,6 +293,10 @@ impl<'a> ListDirectory<'a> {
         };
 
         if let Some(found_tree) = found_tree {
+            if found_tree.is_leaf() {
+                return Err(QueryingError::TreeNotDirectory);
+            }
+
             found_tree.walk(|level, name, tree, _| {
                 if level != 0 {
                     return false;
@@ -317,9 +323,11 @@ impl<'a> ListDirectory<'a> {
 
                 true
             });
+        } else {
+            return Err(QueryingError::NoteNotFound(query.unwrap_or("").to_owned()));
         }
 
-        results
+        Ok(results)
     }
 }
 

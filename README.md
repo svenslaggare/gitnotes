@@ -41,7 +41,7 @@ Notes can be searched through in different way. The simplest way is to use the (
 
 More advanced searching can be done with `gitnotes find` for searching based on properties or `gitnotes grep` to search based on content.
 
-As the data is stored in a git repository, it is possible to grep using historic content as well using the `--historic` option to `gitnotes grep`.
+As the data is stored in a git repository, it is possible to grep using historic content as well using the `--history` option to `gitnotes grep`.
 
 ### Interactive mode
 The interactive mode allows some new features, such as the ability of combining different operations into one commit:

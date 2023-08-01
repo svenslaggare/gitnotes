@@ -35,11 +35,7 @@ pub async fn launch(port: u16, path: &Path) {
     let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), port);
     println!("Listening on {}", address);
 
-    tokio::process::Command::new("xdg-open")
-        .arg(format!("http://{}", address))
-        .spawn().unwrap()
-        .wait().await.unwrap();
-
+    open::that(format!("http://{}", address)).unwrap();
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
             result.unwrap();

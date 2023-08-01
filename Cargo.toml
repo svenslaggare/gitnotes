@@ -7,6 +7,12 @@ description = "CLI & Git based notes/snippet application"
 license = "MIT"
 homepage = "https://github.com/svenslaggare/gitnotes"
 
+[package.metadata.deb]
+assets = [
+    ["target/release/gitnotes", "usr/bin/gitnotes", "755"],
+    ["webeditor/static/**/*", "etc/gitnotes/static", "644"],
+]
+
 [dependencies]
 thiserror = "1.0.40"
 chrono = { version = "0.4", features=["serde"] }

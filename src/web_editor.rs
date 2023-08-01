@@ -22,9 +22,14 @@ use tower_http::services::ServeDir;
 use askama::{Template};
 
 pub async fn launch(port: u16, path: &Path) {
+    let mut content_dir = Path::new("webeditor/static");
+    if !content_dir.exists() {
+        content_dir = Path::new("/etc/gitnotes/static");
+    }
+
     let state = Arc::new(WebServerState::new(path.to_owned()));
     let app = Router::new()
-        .nest_service("/content", ServeDir::new("webeditor/static"))
+        .nest_service("/content", ServeDir::new(content_dir))
         .route("/", get(index))
         .route("/api/stop", post(stop))
         .route("/api/content", get(get_content))
@@ -33,9 +38,10 @@ pub async fn launch(port: u16, path: &Path) {
         ;
 
     let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), port);
-    println!("Listening on {}", address);
+    let web_address = format!("http://{}", address);
+    println!("Opening file '{}' with web editor available at {}", path.to_str().unwrap(), web_address);
 
-    open::that(format!("http://{}", address)).unwrap();
+    open::that(web_address).unwrap();
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
             result.unwrap();

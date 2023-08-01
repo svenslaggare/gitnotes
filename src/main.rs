@@ -52,13 +52,23 @@ fn run(input_command: InputCommand) -> Result<(), AppError> {
 }
 
 fn run_init(config_path: &Path, input_command: InputCommand) -> Result<(), AppError> {
-    if let InputCommand::Initialize { name } = input_command {
-        let repository_path = base_dir().join(name);
+    if let InputCommand::Initialize { name, use_existing } = input_command {
+        let repository_path = if !use_existing {
+            base_dir().join(name)
+        } else {
+            Path::new(&name).to_owned()
+        };
 
         let file_config = FileConfig::load(&config_path).unwrap_or_else(|_| FileConfig::new(&repository_path));
 
-        std::fs::create_dir_all(&repository_path)?;
-        git2::Repository::init(&repository_path)?;
+        if !use_existing {
+            std::fs::create_dir_all(&repository_path)?;
+            git2::Repository::init(&repository_path)?;
+        } else {
+            if !repository_path.exists() {
+                return Err(AppError::Input("Repository does not exist.".to_owned()));
+            }
+        }
 
         file_config.save(&config_path)?;
     }

@@ -336,7 +336,11 @@ pub enum InputCommand {
     /// Creates a new repository. Also creates config file if it doesn't exist.
     #[structopt(name="init")]
     Initialize {
-        name: String
+        /// The name of the repository
+        name: String,
+        /// The name refers to an existing git repository.
+        #[structopt(long)]
+        use_existing: bool
     },
     /// Switches the active repository to the given one. If path is relative, then it is relative to $HOME/.gitnotes
     Switch {
@@ -396,11 +400,11 @@ pub enum InputCommand {
         #[structopt(long="save")]
         save_output: bool
     },
-    /// Begins a commit. All subsequent operations are done within this commit. Only makes sense in interactive mode.
+    /// Begins a commit. All subsequent operations are done within this commit (interactive mode only).
     Begin {
 
     },
-    /// Commits the started transaction. If no changes have been made, a commit is not created. Only makes sense in interactive mode.
+    /// Commits the started transaction. If no changes have been made, a commit is not created (interactive mode only).
     Commit {
 
     },

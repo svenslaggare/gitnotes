@@ -16,6 +16,7 @@ class WebEditorMainProps {
 
 interface WebEditorMainState {
     content: string;
+    isReadOnly: boolean;
     showCode: boolean;
     showMarkdown: boolean;
 
@@ -31,6 +32,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
         this.state = {
             content: "",
+            isReadOnly: false,
             showCode: true,
             showMarkdown: true,
             success: null,
@@ -116,6 +118,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     name="editor"
                     editorProps={{ $blockScrolling: true }}
                     value={this.state.content}
+                    readOnly={this.state.isReadOnly}
                     onChange={(newValue) => {
                         this.setState({
                             content: newValue
@@ -239,7 +242,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         axios.post(`/api/stop`)
             .then(_ => {
                 this.setState({
-                    error: null
+                    error: null,
+                    isReadOnly: true
                 });
 
                 // @ts-ignore

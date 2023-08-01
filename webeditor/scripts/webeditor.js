@@ -59,6 +59,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         var _this = _super.call(this, props) || this;
         _this.state = {
             content: "",
+            isReadOnly: false,
             showCode: true,
             showMarkdown: true,
             success: null,
@@ -116,7 +117,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             return null;
         }
         return (react_1["default"].createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
-            react_1["default"].createElement(react_ace_1["default"], { ref: this.editArea, mode: "markdown", theme: "textmate", name: "editor", editorProps: { $blockScrolling: true }, value: this.state.content, onChange: function (newValue) {
+            react_1["default"].createElement(react_ace_1["default"], { ref: this.editArea, mode: "markdown", theme: "textmate", name: "editor", editorProps: { $blockScrolling: true }, value: this.state.content, readOnly: this.state.isReadOnly, onChange: function (newValue) {
                     _this.setState({
                         content: newValue
                     });
@@ -201,7 +202,8 @@ var WebEditorMain = /** @class */ (function (_super) {
         axios_1["default"].post("/api/stop")
             .then(function (_) {
             _this.setState({
-                error: null
+                error: null,
+                isReadOnly: true
             });
             // @ts-ignore
             var modal = new bootstrap.Modal(document.getElementById("exitedModal"));

@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::collections::HashSet;
 
 use structopt::{clap, StructOpt};
@@ -23,7 +23,7 @@ pub fn run() -> Result<(), AppError> {
     let note_file_tree = NoteFileTree::from_iter(notes_metadata.iter()).unwrap();
 
     let mut line_editor = Editor::new().unwrap();
-    line_editor.set_helper(Some(InputValidator::new(note_file_tree)));
+    line_editor.set_helper(Some(AutoCompletion::new(note_file_tree)));
 
     while let Ok(mut line) = line_editor.readline("> ") {
         if line.ends_with('\n') {
@@ -59,15 +59,15 @@ fn input_command_interactive(line: &str) -> Result<InputCommand, String> {
 }
 
 #[derive(Helper, Highlighter, Hinter)]
-struct InputValidator<'a> {
+struct AutoCompletion<'a> {
     subcommands: Vec<String>,
     path_subcommands: HashSet<String>,
     note_file_tree: NoteFileTree<'a>
 }
 
-impl<'a> InputValidator<'a> {
-    pub fn new(note_file_tree: NoteFileTree<'a>) -> InputValidator<'a> {
-        InputValidator {
+impl<'a> AutoCompletion<'a> {
+    pub fn new(note_file_tree: NoteFileTree<'a>) -> AutoCompletion<'a> {
+        AutoCompletion {
             subcommands: vec![
                 "add".to_owned(),
                 "begin".to_owned(),
@@ -102,13 +102,13 @@ impl<'a> InputValidator<'a> {
     }
 }
 
-impl<'a> Validator for InputValidator<'a> {
+impl<'a> Validator for AutoCompletion<'a> {
     fn validate(&self, _ctx: &mut ValidationContext) -> Result<ValidationResult, ReadlineError> {
         Ok(ValidationResult::Valid(None))
     }
 }
 
-impl<'a> Completer for InputValidator<'a> {
+impl<'a> Completer for AutoCompletion<'a> {
     type Candidate = Pair;
 
     fn complete(&self, line: &str, pos: usize, _ctx: &Context<'_>) -> Result<(usize, Vec<Pair>), ReadlineError> {
@@ -150,7 +150,14 @@ impl<'a> Completer for InputValidator<'a> {
                 current_completion_length = current_path_segment_length;
 
                 let note_file_tree = if path_segment_done {
-                    self.note_file_tree.find(Path::new(&current_word))
+                    let path = Path::new(&current_word);
+                    let path = if current_word.ends_with("/") {
+                        path
+                    } else {
+                        path.parent().unwrap_or(path)
+                    };
+
+                    self.note_file_tree.find(&path)
                 } else {
                     Some(&self.note_file_tree)
                 };
@@ -182,7 +189,7 @@ impl<'a> Completer for InputValidator<'a> {
     }
 }
 
-impl<'a> InputValidator<'a> {
+impl<'a> AutoCompletion<'a> {
     fn current_command<'b>(&'b self, line: &'b str) -> Option<&'b str> {
         for (index, current) in line.chars().enumerate() {
             if current.is_whitespace() {

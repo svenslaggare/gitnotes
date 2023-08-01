@@ -57,4 +57,4 @@ $ gitnotes
 > commit
 ```
 
-These command will first enter interactive mode, then start a new commit that will combine the edits to two notes into one commit.
+With these command, we will first enter interactive mode, then start a new commit that will combine the edits to two notes into one commit.

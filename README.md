@@ -33,8 +33,6 @@ You can also add tags to a note with `--tags x y` argument.
 
 It is also possible to pipe input instead of launching an editor.
 
-The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property). All notes also have a numeric ID that can be used to refer to the note instead of the path.
-
 ### Editing an existing note
 To edit a note, use `gitnotes edit <path>`. This will launch an editor where you can change the content of the note.
 
@@ -42,9 +40,11 @@ To edit a note, use `gitnotes edit <path>`. This will launch an editor where you
 With the `gitnotes run <path>` command, you can run the code blocks that are embedded in the note. If you supply the `--save` arguments, the output is stored in the note.
 
 ### Searching for notes
-Notes can be searched through in different way. The simplest way is to use the (virtual) file system using `gitnotes ls`. 
+Notes can be searched through in different way. The simplest way is to use the (virtual) file system using `gitnotes ls` or `gitnotes tree`. 
 
 More advanced searching can be done with `gitnotes find` for searching based on properties or `gitnotes grep` to search based on content.
+
+As the data is stored in a git repository, it is possible to grep using historic content as well.
 
 ### Interactive mode
 The interactive mode removes the need to start new processes of `gitnotes` all the time, but also allows you to combine several changes into one commit:
@@ -58,3 +58,8 @@ $ gitnotes
 ```
 
 With these command, we will first enter interactive mode, then start a new commit that will combine the edits to two notes into one commit.
+
+### Virtual file system
+The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property). All notes also have a numeric ID that can be used to refer to the note instead of the path.
+
+The purpose is to allow different structures depending on need of users. Example: folder structure that is only based on creation date (currently previewed by `gitnotes tree --date` command).

@@ -11,6 +11,7 @@ homepage = "https://github.com/svenslaggare/gitnotes"
 assets = [
     ["target/release/gitnotes", "usr/bin/gitnotes", "755"],
     ["webeditor/static/**/*", "etc/gitnotes/static", "644"],
+    ["completions/gitnotes.bash", "etc/bash_completion.d/gitnotes", "644"]
 ]
 
 [dependencies]
@@ -21,6 +22,7 @@ fnv = "1"
 regex = "1"
 lazy_static = "1"
 float-ord = "0.3"
+substring = "1"
 
 structopt = "0.3"
 rustyline = "12.0"

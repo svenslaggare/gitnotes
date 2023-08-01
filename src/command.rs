@@ -142,6 +142,10 @@ impl CommandInterpreter {
                     let id = NoteId::new();
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
 
+                    if !abs_note_path.exists() {
+                        std::fs::write(&abs_note_path, "").map_err(|err| FailedToAddNote(err.to_string()))?;
+                    }
+
                     editor::launch(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;

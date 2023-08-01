@@ -107,7 +107,7 @@ impl Serialize for NoteId {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct NoteMetadata {
     pub id: NoteId,
     pub created: DateTime<Local>,
@@ -400,11 +400,18 @@ impl<'a> NoteFileTree<'a> {
         do_walk(&mut apply, 0, &mut Vec::new(), self);
     }
 
-    fn children(&self) -> Option<&BTreeMap<OsString, NoteFileTree>> {
+    pub fn children(&self) -> Option<&BTreeMap<OsString, NoteFileTree>> {
         if let NoteFileTree::Tree { children, .. } = self {
             Some(children)
         } else {
             None
+        }
+    }
+
+    pub fn is_leaf(&self) -> bool {
+        match self {
+            NoteFileTree::Note(_) => true,
+            NoteFileTree::Tree { .. } => false
         }
     }
 }

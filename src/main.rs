@@ -1,7 +1,6 @@
-use std::path::{Path};
+use std::path::Path;
 
-use rustyline::{DefaultEditor};
-use structopt::{clap, StructOpt};
+use structopt::StructOpt;
 
 mod config;
 mod helpers;
@@ -13,6 +12,7 @@ mod snippets;
 mod editor;
 mod web_editor;
 mod tags;
+mod interactive;
 mod app;
 
 use crate::app::{AppError, Application, InputCommand, MainInputCommand};
@@ -21,13 +21,14 @@ use crate::helpers::base_dir;
 
 fn main() {
     let main_input_command = MainInputCommand::from_args();
+
     if let Some(input_command) = main_input_command.command {
         if let Err(err) = run(input_command) {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
     } else  {
-        if let Err(err) = run_interactive() {
+        if let Err(err) = interactive::run() {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
@@ -65,42 +66,6 @@ fn run_init(config_path: &Path, input_command: InputCommand) -> Result<(), AppEr
     Ok(())
 }
 
-fn run_interactive() -> Result<(), AppError> {
-    let config = load_config(&config_path());
-    let mut app = Application::new(config)?;
-
-    let mut line_editor = DefaultEditor::new().unwrap();
-    while let Ok(mut line) = line_editor.readline("> ") {
-        if line.ends_with('\n') {
-            line.pop();
-        }
-
-        line_editor.add_history_entry(line.clone()).unwrap();
-
-        match input_command_interactive(&line) {
-            Ok(input_command) => {
-                if let Err(err) = app.run(input_command) {
-                    println!("{}.", err);
-                }
-            }
-            Err(err) => {
-                println!("{}", err);
-            }
-        }
-    }
-
-    Ok(())
-}
-
 fn load_config(config_path: &Path) -> Config {
     Config::load(&config_path).expect(&format!("Expected a valid config file at '{}', please run 'init' command to setup", config_path.to_str().unwrap()))
-}
-
-fn input_command_interactive(line: &str) -> Result<InputCommand, String> {
-    let words = shellwords::split(line).map_err(|err| err.to_string())?;
-    Ok(InputCommand::from_clap(
-        &InputCommand::clap()
-            .setting(clap::AppSettings::NoBinaryName)
-            .get_matches_from_safe(words).map_err(|err| err.to_string())?
-    ))
 }

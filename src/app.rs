@@ -311,14 +311,14 @@ impl Application {
         self.note_metadata_storage = None;
     }
 
-    fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
+    pub fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
         get_or_insert_with(
             &mut self.note_metadata_storage,
             || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
         ).map(|x| &*x)
     }
 
-    fn note_metadata_storage_ref(&self) -> std::io::Result<&NoteMetadataStorage> {
+    pub fn note_metadata_storage_ref(&self) -> std::io::Result<&NoteMetadataStorage> {
         self.note_metadata_storage.as_ref().ok_or_else(|| io_error("note_metadata_storage not created"))
     }
 }

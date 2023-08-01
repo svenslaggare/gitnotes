@@ -91,6 +91,8 @@ impl<'a> AutoCompletion<'a> {
             path_subcommands: HashSet::from_iter(vec![
                "add".to_owned(),
                "edit".to_owned(),
+               "mv".to_owned(),
+               "rm".to_owned(),
                "cat".to_owned(),
                "show".to_owned(),
                "ls".to_owned(),

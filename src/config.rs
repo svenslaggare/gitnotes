@@ -74,7 +74,7 @@ impl Config {
         Config {
             repository: std::env::var("GITNOTES_REPOSITORY").map(|path| Path::new(&path).to_owned()).unwrap_or_else(|_| file_config.repository),
             user_name_and_email: get_user_name_and_email(),
-            editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("nano".to_owned())),
+            editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("web-editor".to_owned())),
             snippet: file_config.snippet
         }
     }

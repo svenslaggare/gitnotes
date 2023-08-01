@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use structopt::StructOpt;
+use structopt::clap::Shell;
 
 mod config;
 mod helpers;
@@ -20,6 +21,13 @@ use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
 
 fn main() {
+    if std::env::args().skip(1).next() == Some("generate-completions".to_owned()) {
+        let output_dir = "completions";
+        std::fs::create_dir_all(output_dir).unwrap();
+        MainInputCommand::clap().gen_completions("gitnotes", Shell::Bash, output_dir);
+        return;
+    }
+
     let main_input_command = MainInputCommand::from_args();
 
     if let Some(input_command) = main_input_command.command {

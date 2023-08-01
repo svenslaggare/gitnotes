@@ -6,4 +6,5 @@ yarn install --dev
 ./build_js.sh
 popd
 
+cargo run --release generate-completions
 cargo deb

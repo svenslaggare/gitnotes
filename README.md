@@ -23,7 +23,7 @@ First, create a repository using `gitnotes init <name>`. This will create a new 
 It's also possible to use an existing git repository (at an arbitrary path) using `gitnotes init <path> --use-existing`
 
 ### Adding a new note
-To add a new, use `gitnotes add <path>`. This will launch an editor where you can put the initial content of the note. After you are done, a commit will be created.
+To add a new note, use `gitnotes add <path>`. This will launch an editor where you can put the initial content of the note. After you are done, a commit will be created.
 Remember, the content of a note is just markdown.
 
 You can also add tags to a note with `--tags x y` argument.

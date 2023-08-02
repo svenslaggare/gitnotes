@@ -7,7 +7,7 @@ CLI based notes & snippet application powered by Git.
 * Notes ordered by a virtual file system.
 * Possible to run snippets (currently: Python, C++ & Rust) and save output inside notes.
 * Ability to search through notes using either content "grep" or note properties.
-* Includes an optional web based Markdown editor called "web-editor'.
+* Includes an optional web based Markdown editor.
 
 ## Build
 * Currently only supported on Linux.

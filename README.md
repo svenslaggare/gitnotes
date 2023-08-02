@@ -32,8 +32,10 @@ It is also possible to use pipes as input, `echo Hello | gitnotes add <path>`.
 ### Editing an existing note
 To edit a note, use `gitnotes edit <path>`. This will launch an editor where you can change the content of the note. After saving the changes, a new commit will be created. 
 
+Other than changing the content, the edit command can be used for adding new tags using `--add-tags` argument or clearing all tags using `--clear-tags` argument.
+
 ### Viewing content of a note
-To view the content of a note, the `gitnotes show <path>` command can be used. The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--git` argument or only view code/output using `--code` & `--output` options.
+To view the content of a note, the `gitnotes show <path>` command can be used (view launches the editor, changes are not stored). The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--git` argument or only view code/output using `--code` & `--output` options.
 
 ### Running a snippet
 With the `gitnotes run <path>` command, you can run the code blocks that are embedded in the note. If you supply the `--save` arguments, the output is stored in the note.

@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use home::home_dir;
 
 use serde::{Serialize, Deserialize};
@@ -48,6 +49,12 @@ impl FileConfig {
             }
             "editor" => {
                 self.editor = Some(value.to_owned());
+            }
+            "use_real" => {
+                self.use_real = bool::from_str(value).map_err(|err| err.to_string())?;
+            }
+            "real_base_dir" => {
+                self.real_base_dir = Some(Path::new(value).to_owned());
             }
             _ => {
                 return Err(format!("Undefined key: {}", key));

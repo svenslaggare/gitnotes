@@ -64,7 +64,8 @@ It also supports better auto-completion that is aware of the notes inside the re
 Any editor can be used to edit notes. The editors that are most preferred are the ones that offer split code/markdown views such as vscode. To aid in this regard, a web based such editor is included with GitNotes.
 This is used by setting the `editor` config to `web-editor`. It is also possible to run in a standalone fashion using `gitnotes web-editor <path>`.
 
-
 ### Virtual file system
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
 
+### Using real working dir
+With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. An additional config file `real_base_dir` (defaults to $HOME) will be used to determine the relative path that is actually stored.

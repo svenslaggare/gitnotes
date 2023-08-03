@@ -271,7 +271,6 @@ impl Application {
                         }
                     }
                 } else if history.len() == 2 {
-
                     let matches = searcher.search_historic(
                         self.repository.borrow().deref(),
                         &query,

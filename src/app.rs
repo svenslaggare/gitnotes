@@ -403,7 +403,7 @@ impl MainInputConfig {
         }
     }
 
-    pub fn apply(&self, config: &mut Config) {
+    pub fn apply(&self, mut config: Config) -> Config {
         if self.use_real {
             config.use_real = true;
         }
@@ -411,6 +411,8 @@ impl MainInputConfig {
         if self.use_non_real {
             config.use_real = false;
         }
+
+        config
     }
 }
 

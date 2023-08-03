@@ -21,10 +21,7 @@ use crate::config::config_path;
 use crate::model::{NoteFileTree, NoteMetadata};
 
 pub fn run(main_config: MainInputConfig) -> Result<(), AppError> {
-    let mut config = crate::load_config(&config_path());
-    main_config.apply(&mut config);
-
-    let mut app = Application::new(config)?;
+    let mut app = Application::new(main_config.apply(crate::load_config(&config_path())))?;
 
     let notes_metadata = app.note_metadata_storage()?.notes().cloned().collect::<Vec<_>>();
     let note_file_tree = NoteFileTree::from_iter(notes_metadata.iter()).unwrap();

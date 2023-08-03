@@ -62,8 +62,7 @@ fn run(input_command: InputCommand, main_config: MainInputConfig) -> Result<(), 
             Ok(())
         }
         _ => {
-            let mut config = load_config(&config_path);
-            main_config.apply(&mut config);
+            let config = main_config.apply(load_config(&config_path));
             Application::new(config)?.run_until_completion(input_command)
         }
     }

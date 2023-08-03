@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::io::{stdout};
+use std::io::{stdin, stdout, Write};
 use std::path::Path;
 
 use chrono::{Datelike, DateTime, Local, Timelike};
@@ -7,10 +7,13 @@ use regex::Regex;
 use thiserror::Error;
 
 use atty::Stream;
+use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use crate::helpers::ToChronoDateTime;
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
@@ -103,9 +106,10 @@ impl<'a> Searcher<'a> {
         )
     }
 
-    pub fn search(&self, query: &Regex) -> QueryingResult<()> {
+    pub fn search(&self, query: &Regex) -> QueryingResult<Vec<&'a NoteMetadata>> {
         let is_terminal = atty::is(Stream::Stdout);
 
+        let mut matches = Vec::new();
         for note_metadata in self.note_metadata_storage.notes() {
             for line in self.note_metadata_storage.get_content_lines(&note_metadata.path)? {
                 let line = line?;
@@ -125,13 +129,14 @@ impl<'a> Searcher<'a> {
                             print!("{}: ", info_text);
                         }
 
+                        matches.push(note_metadata);
                         Ok(())
                     }
                 )?;
             }
         }
 
-        Ok(())
+        Ok(matches)
     }
 
     pub fn search_historic(&self,
@@ -219,11 +224,11 @@ impl<'a> Searcher<'a> {
         Ok(())
     }
 
-    fn find_matches<FnFirst: Fn(bool) -> QueryingResult<()>>(
+    fn find_matches<FnFirst: FnMut(bool) -> QueryingResult<()>>(
         &self,
         query: &Regex, line: &str,
         is_terminal: bool,
-        before_first: FnFirst,
+        mut before_first: FnFirst,
     ) -> QueryingResult<()> {
         let mut remaining_line_start = 0;
         let mut found_match = false;

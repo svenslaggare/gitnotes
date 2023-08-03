@@ -1,5 +1,10 @@
 use std::path::{Path};
 use std::collections::HashSet;
+use std::io::{stdin, stdout};
+use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
+use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
+use crossterm::ExecutableCommand;
+use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use structopt::{clap, StructOpt};
 
@@ -13,7 +18,7 @@ use substring::Substring;
 
 use crate::app::{AppError, Application, InputCommand};
 use crate::config::config_path;
-use crate::model::NoteFileTree;
+use crate::model::{NoteFileTree, NoteMetadata};
 
 pub fn run() -> Result<(), AppError> {
     let config = crate::load_config(&config_path());
@@ -45,6 +50,63 @@ pub fn run() -> Result<(), AppError> {
     }
 
     Ok(())
+}
+
+pub fn select(command_name: &str, matches: &Vec<&NoteMetadata>) -> Result<Option<InputCommand>, AppError> {
+    if matches.is_empty() {
+        return Ok(None);
+    }
+
+    let mut current_index: Option<usize> = None;
+    stdout().execute(SavePosition)?;
+    enable_raw_mode()?;
+
+    loop {
+        let event = read()?;
+        match event {
+            Event::Key(KeyEvent { code: KeyCode::Up, .. }) => {
+                match current_index.as_mut() {
+                    Some(current_index) if *current_index > 0 => {
+                        stdout().execute(MoveUp(1))?;
+                        *current_index -= 1;
+                    }
+                    None => {
+                        stdout().execute(MoveUp(1))?;
+                        current_index = Some(matches.len() - 1);
+                    }
+                    _ => {}
+                }
+            }
+            Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
+                match current_index.as_mut() {
+                    Some(current_index) if *current_index < matches.len() - 1 => {
+                        stdout().execute(MoveDown(1))?;
+                        *current_index += 1;
+                    }
+                    _ => {}
+                }
+            }
+            Event::Key(KeyEvent { code: KeyCode::Char('c'), modifiers: KeyModifiers::CONTROL, .. }) => {
+                current_index = None;
+                break;
+            }
+            Event::Key(KeyEvent { code: KeyCode::Enter, .. }) => {
+                break;
+            }
+            _ => {}
+        }
+    }
+    stdout().execute(RestorePosition)?;
+    disable_raw_mode()?;
+
+    if let Some(current_index) = current_index {
+        let path = matches[current_index].path.clone();
+        input_command_interactive(&format!("{} {}", command_name, path.to_str().unwrap()))
+            .map(|command| Some(command))
+            .map_err(|err| AppError::Input(err))
+    } else {
+        Ok(None)
+    }
 }
 
 fn input_command_interactive(line: &str) -> Result<InputCommand, String> {

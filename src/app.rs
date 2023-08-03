@@ -14,7 +14,7 @@ use comrak::nodes::NodeValue;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::{Config, config_path, FileConfig};
-use crate::{editor, markdown, querying};
+use crate::{editor, interactive, markdown, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteFileTreeCreateConfig, NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
@@ -44,7 +44,7 @@ impl Application {
         )
     }
 
-    pub fn run(&mut self, input_command: InputCommand) -> Result<(), AppError> {
+    pub fn run(&mut self, input_command: InputCommand) -> Result<Option<InputCommand>, AppError> {
         match input_command {
             InputCommand::Initialize { .. } => {
                 println!("Not supported in interactive mode.");
@@ -204,8 +204,8 @@ impl Application {
                 let list_tree = ListTree::new(self.note_metadata_storage()?, config)?;
                 list_tree.list(prefix.as_ref().map(|x| x.as_path()));
             }
-            InputCommand::Finder(finder) => {
-                let query = match finder {
+            InputCommand::Finder { interactive, command } => {
+                let query = match command {
                     InputCommandFinder::Tags { tags } => {
                         FindQuery::Tags(tags.into_iter().map(|tag| StringMatcher::new(&tag)).collect())
                     }
@@ -226,8 +226,14 @@ impl Application {
                 let finder = Finder::new(self.note_metadata_storage()?)?;
                 let results = finder.find(&query)?;
                 print_note_metadata_results(&results);
+
+                if let Some(command) = interactive {
+                    if let Some(result) = interactive::select(&command, &results)? {
+                        return Ok(Some(result));
+                    }
+                }
             }
-            InputCommand::Search { mut query, case_sensitive, history } => {
+            InputCommand::Search { mut query, case_sensitive, history, interactive } => {
                 if !case_sensitive {
                     query = format!("(?i)({})", query);
                 }
@@ -237,8 +243,17 @@ impl Application {
                 let searcher = Searcher::new(self.note_metadata_storage_ref()?)?;
 
                 if history.len() == 0 {
-                    searcher.search(&query)?;
+                    let matches = searcher.search(&query)?;
+                    if let Some(command) = interactive {
+                        if let Some(result) = interactive::select(&command, &matches)? {
+                            return Ok(Some(result));
+                        }
+                    }
                 } else if history.len() == 2 {
+                    if interactive.is_some() {
+                        return Err(AppError::Input("Interactive mode is not supported".to_owned()));
+                    }
+
                     searcher.search_historic(
                         self.repository.borrow().deref(),
                         &query,
@@ -273,6 +288,15 @@ impl Application {
             InputCommand::WebEditor { .. } => {
                 println!("Not supported in interactive mode.");
             }
+        }
+
+        Ok(None)
+    }
+
+    pub fn run_until_completion(&mut self, input_command: InputCommand) -> Result<(), AppError> {
+        let mut next_input_command = Some(input_command);
+        while let Some(input_command) = next_input_command {
+            next_input_command = self.run(input_command)?;
         }
 
         Ok(())
@@ -456,7 +480,13 @@ pub enum InputCommand {
     },
     /// Searches for note based on properties.
     #[structopt(name="find")]
-    Finder(InputCommandFinder),
+    Finder {
+        /// Creates an interactive prompt to choose which match to launch a new command with
+        #[structopt(long, short)]
+        interactive: Option<String>,
+        #[structopt(subcommand)]
+        command: InputCommandFinder
+    },
     /// Searches for note based on content.
     #[structopt(name="grep")]
     Search {
@@ -467,7 +497,10 @@ pub enum InputCommand {
         case_sensitive: bool,
         /// Search through git history (reverse) instead between the given references (inclusive)
         #[structopt(long)]
-        history: Vec<String>
+        history: Vec<String>,
+        /// Creates an interactive prompt to choose which match to launch a new command with
+        #[structopt(long, short)]
+        interactive: Option<String>
     },
     /// Lists git commits
     Log {

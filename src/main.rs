@@ -60,7 +60,7 @@ fn run(input_command: InputCommand) -> Result<(), AppError> {
             Ok(())
         }
         _ => {
-            Application::new(load_config(&config_path))?.run(input_command)
+            Application::new(load_config(&config_path))?.run_until_completion(input_command)
         }
     }
 }

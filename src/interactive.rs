@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::{Path};
 use std::collections::HashSet;
 
 use structopt::{clap, StructOpt};

@@ -21,10 +21,7 @@ use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
 
 fn main() {
-    if std::env::args().skip(1).next() == Some("generate-completions".to_owned()) {
-        let output_dir = "completions";
-        std::fs::create_dir_all(output_dir).unwrap();
-        MainInputCommand::clap().gen_completions("gitnotes", Shell::Bash, output_dir);
+    if generate_completions() {
         return;
     }
 
@@ -40,6 +37,17 @@ fn main() {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
+    }
+}
+
+fn generate_completions() -> bool {
+    if std::env::args().skip(1).next() == Some("generate-completions".to_owned()) {
+        let output_dir = "completions";
+        std::fs::create_dir_all(output_dir).unwrap();
+        MainInputCommand::clap().gen_completions("gitnotes", Shell::Bash, output_dir);
+        true
+    } else {
+        false
     }
 }
 

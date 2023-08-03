@@ -309,7 +309,7 @@ impl CommandInterpreter {
                         let head_commit = head_commit.as_ref().map(|h| vec![h]).unwrap_or_else(|| vec![]);
 
                         let signature = git2::Signature::now(&self.config.user_name_and_email.0, &self.config.user_name_and_email.1)?;
-                        let commit_message = self.commit_message_lines.iter().cloned().collect::<Vec<_>>().join("\n");
+                        let commit_message = std::mem::take(&mut self.commit_message_lines).into_iter().collect::<Vec<_>>().join("\n");
                         self.repository.borrow().commit(
                             Some("HEAD"),
                             &signature,
@@ -320,7 +320,6 @@ impl CommandInterpreter {
                         ).map_err(|err| FailedToCommit(err.to_string()))?;
                         println!("Created commit with message:\n{}", commit_message);
 
-                        self.commit_message_lines.clear();
                         self.index = None;
                         self.note_metadata_storage = None;
                     }

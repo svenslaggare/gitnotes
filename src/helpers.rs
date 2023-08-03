@@ -1,8 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{HashSet};
 use std::error;
-use std::hash::Hash;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
 
@@ -38,34 +37,38 @@ impl ToChronoDateTime for git2::Time {
 }
 
 pub struct OrderedSet<T> where T: Eq + Hash {
-    values: HashSet<Arc<T>>,
-    ordering: Vec<Arc<T>>
+    set: HashSet<PointerValueEquality<T>>,
+    values: Vec<Box<T>>
 }
 
 impl<T> OrderedSet<T> where T: Eq + Hash {
     pub fn new() -> OrderedSet<T> {
         OrderedSet {
-            values: HashSet::default(),
-            ordering: vec![],
+            set: HashSet::default(),
+            values: Vec::new()
         }
     }
 
     pub fn iter(&self) -> impl Iterator<Item=&T> {
-        self.ordering.iter().map(|x| x.as_ref())
+        self.values.iter().map(|x| x.as_ref())
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item=T> {
+        self.values.into_iter().map(|value| *value)
     }
 
     pub fn len(&self) -> usize {
-        self.values.len()
+        self.set.len()
     }
 
     pub fn contains(&self, value: &T) -> bool {
-        self.values.contains(value)
+        self.set.contains(&PointerValueEquality(value))
     }
 
     pub fn insert(&mut self, value: T) -> bool {
-        let value = Arc::new(value);
-        if self.values.insert(value.clone()) {
-            self.ordering.push(value);
+        if !self.contains(&value) {
+            self.values.push(Box::new(value));
+            self.set.insert(PointerValueEquality(self.values.last().unwrap().as_ref()));
             true
         } else {
             false
@@ -73,25 +76,78 @@ impl<T> OrderedSet<T> where T: Eq + Hash {
     }
 
     pub fn clear(&mut self) {
+        self.set.clear();
         self.values.clear();
-        self.ordering.clear();
+    }
+}
+
+impl<T: Eq + Hash> Default for OrderedSet<T> {
+    fn default() -> Self {
+        OrderedSet::new()
+    }
+}
+
+struct PointerValueEquality<T: Eq + Hash>(*const T);
+
+impl<T: Eq + Hash> PartialEq for PointerValueEquality<T> {
+    fn eq(&self, other: &Self) -> bool {
+        unsafe {
+            let self_ref = self.0.as_ref().unwrap();
+            let other_ref = other.0.as_ref().unwrap();
+            self_ref.eq(other_ref)
+        }
+    }
+}
+impl<T: Eq + Hash> Eq for PointerValueEquality<T> {}
+
+impl<T: Eq + Hash> Hash for PointerValueEquality<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        unsafe {
+            (*self.0).hash(state)
+        }
     }
 }
 
 #[test]
 fn test_ordered_set1() {
     let mut set = OrderedSet::new();
-    set.insert(1);
-    set.insert(2);
-    set.insert(3);
-    set.insert(2);
-    set.insert(4);
-    set.insert(1);
-    set.insert(5);
+    assert!(set.insert(1));
+    assert!(set.insert(2));
+    assert!(set.insert(3));
+    assert!(!set.insert(2));
+    assert!(set.insert(4));
+    assert!(!set.insert(1));
+    assert!(set.insert(5));
 
     assert_eq!(5, set.len());
     assert_eq!(vec![1, 2, 3, 4, 5], set.iter().cloned().collect::<Vec<_>>());
     assert_eq!(true, set.contains(&1));
     assert_eq!(true, set.contains(&2));
     assert_eq!(false, set.contains(&6));
+
+    assert_eq!(vec![1, 2, 3, 4, 5], set.into_iter().collect::<Vec<_>>());
+}
+
+#[test]
+fn test_ordered_set2() {
+    let mut set = OrderedSet::new();
+    for iteration in 0..5 {
+        for value in 0..200 {
+            if iteration == 0 {
+                assert!(set.insert(value));
+            } else {
+                assert!(!set.insert(value));
+            }
+        }
+    }
+
+    assert_eq!(200, set.len());
+    assert_eq!((0..200).collect::<Vec<_>>(), set.iter().cloned().collect::<Vec<_>>());
+    for value in 0..200 {
+        assert!(set.contains(&value));
+    }
+
+    for value in 200..250 {
+        assert!(!set.contains(&value));
+    }
 }

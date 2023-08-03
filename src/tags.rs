@@ -78,7 +78,7 @@ pub fn automatic(content: &str) -> Vec<String> {
         }
     }
 
-    tags.iter().cloned().collect()
+    tags.into_iter().collect()
 }
 
 lazy_static! {

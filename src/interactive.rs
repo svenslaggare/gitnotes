@@ -1,6 +1,6 @@
 use std::path::{Path};
 use std::collections::HashSet;
-use std::io::{stdin, stdout};
+use std::io::{stdout};
 use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
@@ -39,7 +39,7 @@ pub fn run() -> Result<(), AppError> {
 
         match input_command_interactive(&line) {
             Ok(input_command) => {
-                if let Err(err) = app.run(input_command) {
+                if let Err(err) = app.run_until_completion(input_command) {
                     println!("{}.", err);
                 }
             }

@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::io::{stdin, stdout, Write};
+use std::io::{stdout};
 use std::path::Path;
 
 use chrono::{Datelike, DateTime, Local, Timelike};
@@ -7,13 +7,10 @@ use regex::Regex;
 use thiserror::Error;
 
 use atty::Stream;
-use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 
-use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
-use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
 
 use crate::helpers::ToChronoDateTime;
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};

@@ -143,7 +143,7 @@ impl<'a> Completer for AutoCompletion<'a> {
         let mut current_completion = &current_word;
         let mut current_completion_length = current_word_length;
 
-        let iterator:  Box<dyn Iterator<Item=(&str, bool)>> = match self.current_command(line) {
+        let iterator: Box<dyn Iterator<Item=(&str, bool)>> = match self.current_command(line) {
             None => {
                 Box::new(self.subcommands.iter().map(|word| (word.as_str(), false)))
             }
@@ -151,25 +151,19 @@ impl<'a> Completer for AutoCompletion<'a> {
                 current_completion = &current_path_segment;
                 current_completion_length = current_path_segment_length;
 
-                let note_file_tree = if path_segment_done {
-                    let path = Path::new(&current_word);
-                    let path = if current_word.ends_with("/") {
-                        path
-                    } else {
-                        path.parent().unwrap_or(path)
-                    };
-
-                    self.note_file_tree.find(&path)
-                } else {
-                    Some(&self.note_file_tree)
-                };
-
-                note_file_tree.map(|note_file_tree| {
-                    note_file_tree.children().map(|children| {
-                        let iter:  Box<dyn Iterator<Item=(&str, bool)>> = Box::new(children.iter().map(|(name, tree)| (name.to_str().unwrap(), !tree.is_leaf())));
-                        iter
+                self.get_note_tree(&current_word, path_segment_done)
+                    .map(|note_file_tree| {
+                        note_file_tree.children().map(|children| {
+                            let iter: Box<dyn Iterator<Item=(&str, bool)>> = Box::new(
+                                children
+                                    .iter()
+                                    .map(|(name, tree)| (name.to_str().unwrap(), !tree.is_leaf()))
+                            );
+                            iter
+                        })
                     })
-                }).flatten().unwrap_or_else(|| Box::new(std::iter::empty()))
+                    .flatten()
+                    .unwrap_or_else(|| Box::new(std::iter::empty()))
             }
             _ => {
                 Box::new(std::iter::empty())
@@ -200,5 +194,20 @@ impl<'a> AutoCompletion<'a> {
         }
 
         None
+    }
+
+    fn get_note_tree(&self, current_word: &str, path_segment_done: bool) -> Option<&'a NoteFileTree> {
+        if path_segment_done {
+            let path = Path::new(&current_word);
+            let path = if current_word.ends_with("/") {
+                path
+            } else {
+                path.parent().unwrap_or(path)
+            };
+
+            self.note_file_tree.find(&path)
+        } else {
+            Some(&self.note_file_tree)
+        }
     }
 }

@@ -16,7 +16,7 @@ mod tags;
 mod interactive;
 mod app;
 
-use crate::app::{AppError, Application, InputCommand, MainInputCommand, MainInputConfig};
+use crate::app::{AppError, App, InputCommand, MainInputCommand, MainInputConfig};
 use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
 
@@ -63,7 +63,7 @@ fn run(input_command: InputCommand, main_config: MainInputConfig) -> Result<(), 
         }
         _ => {
             let config = main_config.apply(load_config(&config_path));
-            Application::new(config)?.run_until_completion(input_command)
+            App::new(config)?.run_until_completion(input_command)
         }
     }
 }

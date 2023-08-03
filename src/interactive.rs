@@ -16,12 +16,12 @@ use rustyline::validate::{ValidationContext, ValidationResult, Validator};
 
 use substring::Substring;
 
-use crate::app::{AppError, Application, InputCommand, MainInputConfig};
+use crate::app::{AppError, App, InputCommand, MainInputConfig};
 use crate::config::config_path;
 use crate::model::{NoteFileTree, NoteMetadata};
 
 pub fn run(main_config: MainInputConfig) -> Result<(), AppError> {
-    let mut app = Application::new(main_config.apply(crate::load_config(&config_path())))?;
+    let mut app = App::new(main_config.apply(crate::load_config(&config_path())))?;
 
     let notes_metadata = app.note_metadata_storage()?.notes().cloned().collect::<Vec<_>>();
     let note_file_tree = NoteFileTree::from_iter(notes_metadata.iter()).unwrap();

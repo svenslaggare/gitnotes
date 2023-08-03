@@ -21,7 +21,7 @@ use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_
 
 pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
 
-pub struct Application {
+pub struct App {
     config: Config,
     repository: RepositoryRef,
     command_interpreter: CommandInterpreter,
@@ -29,12 +29,12 @@ pub struct Application {
     auto_commit: bool
 }
 
-impl Application {
-    pub fn new(config: Config) -> Result<Application, AppError> {
+impl App {
+    pub fn new(config: Config) -> Result<App, AppError> {
         let repository = Rc::new(RefCell::new(open_repository(&config.repository)?));
 
         Ok(
-            Application {
+            App {
                 config: config.clone(),
                 repository: repository.clone(),
                 command_interpreter: CommandInterpreter::new(config, repository)?,
@@ -701,7 +701,7 @@ print([x * x for x in xs])
 ```
 "#.to_string();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -768,7 +768,7 @@ print([x * x for x in xs])
 ```
 "#.to_string();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -818,7 +818,7 @@ print(np.square(np.arange(0, 10)))
 ```
 "#.to_string();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -849,7 +849,7 @@ fn test_add_and_move_to_existing1() {
     let note_content = "Hello, World #1".to_owned();
     let note_content2 = "Hello, World #2".to_owned();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -892,7 +892,7 @@ fn test_add_and_move_to_existing2() {
     let note_content = "Hello, World #1".to_owned();
     let note_content2 = "Hello, World #2".to_owned();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -935,7 +935,7 @@ print(np.square(np.arange(0, 10)))
 ```
 "#.to_string();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {
@@ -970,7 +970,7 @@ print(np.square(np.arange(0, 10)))
 ```
 "#.to_string();
 
-    let mut app = Application::new(config).unwrap();
+    let mut app = App::new(config).unwrap();
 
     app.create_and_execute_commands(vec![
         Command::AddNoteWithContent {

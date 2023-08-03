@@ -223,7 +223,9 @@ impl NoteMetadataStorage {
                 base_dir.join(current_dir.join(path))
             };
 
-            path.strip_prefix(&base_dir).map_err(|err| err.to_string()).map(|path| path.to_owned())
+            path.strip_prefix(&base_dir)
+                .map_err(|err| err.to_string())
+                .map(|path| path.to_owned())
         } else {
             Ok(path)
         }

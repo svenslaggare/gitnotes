@@ -207,13 +207,13 @@ impl Application {
             InputCommand::Finder { interactive, command } => {
                 let query = match command {
                     InputCommandFinder::Tags { tags } => {
-                        FindQuery::Tags(tags.into_iter().map(|tag| StringMatcher::new(&tag)).collect())
+                        FindQuery::Tags(tags)
                     }
                     InputCommandFinder::Name { name } => {
-                        FindQuery::Path(RegexMatcher::new(&name))
+                        FindQuery::Path(name)
                     }
                     InputCommandFinder::Id { id } => {
-                        FindQuery::Id(RegexMatcher::new(&id))
+                        FindQuery::Id(id)
                     }
                     InputCommandFinder::Created { parts } => {
                         FindQuery::Created(parts)
@@ -531,17 +531,17 @@ pub enum InputCommandFinder {
     /// Searches based on tags.
     Tags {
         /// The tags that the note must contain (AND).
-        tags: Vec<String>
+        tags: Vec<StringMatcher>
     },
     /// Searches based on name.
     Name {
         /// Regex pattern.
-        name: String
+        name: RegexMatcher
     },
     /// Searches based on id.
     Id {
-        /// Regex pattern
-        id: String
+        /// Regex pattern.
+        id: RegexMatcher
     },
     /// Searches based on created date
     Created {

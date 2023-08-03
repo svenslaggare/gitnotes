@@ -157,16 +157,6 @@ impl NoteMetadata {
 
         Ok(())
     }
-
-    pub fn load_all_to_vec(dir: &Path) -> std::io::Result<Vec<NoteMetadata>> {
-        let mut values = Vec::new();
-
-        NoteMetadata::load_all(dir, |note_metadata| {
-            values.push(note_metadata);
-        })?;
-
-        Ok(values)
-    }
 }
 
 pub struct NoteMetadataStorage {

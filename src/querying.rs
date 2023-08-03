@@ -1,9 +1,10 @@
 use std::collections::BTreeMap;
 use std::io::{stdout};
 use std::path::Path;
+use std::str::FromStr;
 
 use chrono::{Datelike, DateTime, Local, Timelike};
-use regex::Regex;
+use regex::{Regex};
 use thiserror::Error;
 
 use atty::Stream;
@@ -536,6 +537,7 @@ impl<'a> GitContentFetcher<'a> {
     }
 }
 
+#[derive(Debug)]
 pub struct StringMatcher(String);
 impl StringMatcher {
     pub fn new(str: &str) -> StringMatcher {
@@ -549,6 +551,15 @@ impl Matcher for StringMatcher {
     }
 }
 
+impl FromStr for StringMatcher {
+    type Err = String;
+
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        Ok(StringMatcher::new(str))
+    }
+}
+
+#[derive(Debug)]
 pub struct RegexMatcher(Regex);
 impl RegexMatcher {
     pub fn new(str: &str) -> RegexMatcher {
@@ -559,6 +570,17 @@ impl RegexMatcher {
 impl Matcher for RegexMatcher {
     fn is_match(&self, text: &str) -> bool {
         self.0.is_match(text)
+    }
+}
+
+impl FromStr for RegexMatcher {
+    type Err = regex::Error;
+
+    fn from_str(str: &str) -> Result<Self, Self::Err> {
+        match Regex::new(str) {
+            Ok(regex) => Ok(RegexMatcher(regex)),
+            Err(err) => Err(err)
+        }
     }
 }
 

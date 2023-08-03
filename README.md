@@ -35,7 +35,7 @@ To edit a note, use `gitnotes edit <path>`. This will launch an editor where you
 Other than changing the content, the edit command can be used for adding new tags using `--add-tags` argument or clearing all tags using `--clear-tags` argument.
 
 ### Viewing content of a note
-To view the content of a note, the `gitnotes show <path>` command can be used (view launches the editor, changes are not stored). The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--git` argument or only view code/output using `--code` & `--output` options.
+To view the content of a note, the `gitnotes show <path>` command can be used (view launches the editor, changes are not stored). The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--history` argument or only view code/output using `--code` & `--output` options.
 
 ### Running a snippet
 With the `gitnotes run <path>` command, you can run the code blocks that are embedded in the note. If you supply the `--save` arguments, the output is stored in the note.
@@ -68,4 +68,4 @@ This is used by setting the `editor` config to `web-editor`. It is also possible
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
 
 ### Using real working dir
-With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. An additional config file `real_base_dir` (defaults to $HOME) will be used to determine the relative path that is actually stored.
+With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. An additional config file `real_base_dir` (defaults to `$HOME`) will be used to determine the relative path that is actually stored.

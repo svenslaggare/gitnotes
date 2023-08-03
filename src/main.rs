@@ -25,9 +25,7 @@ fn main() {
         return;
     }
 
-    let main_input_command = MainInputCommand::from_args();
-
-    if let Some(input_command) = main_input_command.command {
+    if let Some(input_command) = MainInputCommand::from_args().command {
         if let Err(err) = run(input_command) {
             println!("{}.", err.to_string());
             std::process::exit(1);

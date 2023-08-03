@@ -11,8 +11,8 @@ use atty::Stream;
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
-use crate::helpers::ToChronoDateTime;
 
+use crate::helpers::ToChronoDateTime;
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
 
 pub type QueryingResult<T> = Result<T, QueryingError>;

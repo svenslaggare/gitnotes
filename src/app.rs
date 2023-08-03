@@ -153,10 +153,10 @@ impl Application {
                 self.execute_commands(vec![Command::Commit])?;
                 self.auto_commit = true;
             }
-            InputCommand::PrintContent { path, git_reference, only_code, only_output } => {
+            InputCommand::PrintContent { path, history, only_code, only_output } => {
                 let path = self.get_path(path)?;
 
-                let content = self.get_note_content(&path, git_reference)?;
+                let content = self.get_note_content(&path, history)?;
 
                 if only_code || only_output {
                     let arena = markdown::storage();
@@ -178,10 +178,10 @@ impl Application {
                     print!("{}", content);
                 }
             }
-            InputCommand::Show { path, git_reference, only_code, only_output } => {
+            InputCommand::Show { path, history, only_code, only_output } => {
                 let path = self.get_path(path)?;
 
-                let content = self.get_note_content(&path, git_reference)?;
+                let content = self.get_note_content(&path, history)?;
 
                 if only_code || only_output {
                     let arena = markdown::storage();
@@ -249,12 +249,12 @@ impl Application {
                 print_note_metadata_results(&results);
 
                 if let Some(command) = interactive {
-                    if let Some(result) = interactive::select(&command, &results)? {
-                        return Ok(Some(result));
+                    if let Some(next_command) = interactive::select_with_note_metadata(&command, &results)? {
+                        return Ok(Some(next_command));
                     }
                 }
             }
-            InputCommand::Search { mut query, case_sensitive, history, interactive } => {
+            InputCommand::SearchContent { mut query, case_sensitive, history, interactive } => {
                 if !case_sensitive {
                     query = format!("(?i)({})", query);
                 }
@@ -266,21 +266,28 @@ impl Application {
                 if history.len() == 0 {
                     let matches = searcher.search(&query)?;
                     if let Some(command) = interactive {
-                        if let Some(result) = interactive::select(&command, &matches)? {
-                            return Ok(Some(result));
+                        if let Some(next_command) = interactive::select_with_note_metadata(&command, &matches)? {
+                            return Ok(Some(next_command));
                         }
                     }
                 } else if history.len() == 2 {
-                    if interactive.is_some() {
-                        return Err(AppError::Input("Interactive mode is not supported".to_owned()));
-                    }
 
-                    searcher.search_historic(
+                    let matches = searcher.search_historic(
                         self.repository.borrow().deref(),
                         &query,
                         &history[0],
                         &history[1]
                     )?;
+
+                    if let Some(command) = interactive {
+                        let next_command = interactive::select(&command, matches.len(), |command_name: &str, index: usize| {
+                            format!("{} --history {} {}", command_name, matches[index].0, matches[index].1.path.to_str().unwrap())
+                        })?;
+
+                        if let Some(next_command) = next_command{
+                            return Ok(Some(next_command));
+                        }
+                    }
                 } else {
                     return Err(AppError::Input("Expected two arguments".to_owned()));
                 }
@@ -499,9 +506,9 @@ pub enum InputCommand {
     PrintContent {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
-        /// Prints the content at the given git reference
-        #[structopt(long="ref")]
-        git_reference: Option<String>,
+        /// Prints the content at the given git commit
+        #[structopt(long="history")]
+        history: Option<String>,
         /// Print only code content.
         #[structopt(long="code")]
         only_code: bool,
@@ -513,9 +520,9 @@ pub enum InputCommand {
     Show {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
-        /// Prints the content at the given git reference
-        #[structopt(long="ref")]
-        git_reference: Option<String>,
+        /// Prints the content at the given git commit
+        #[structopt(long="history")]
+        history: Option<String>,
         /// Print only code content.
         #[structopt(long="code")]
         only_code: bool,
@@ -551,7 +558,7 @@ pub enum InputCommand {
     },
     /// Searches for note based on content.
     #[structopt(name="grep")]
-    Search {
+    SearchContent {
         /// The regex query.
         query: String,
         /// Indicates if the match is cans sensitive

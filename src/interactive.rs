@@ -51,8 +51,8 @@ pub fn run(main_config: MainInputConfig) -> Result<(), AppError> {
     Ok(())
 }
 
-pub fn select(command_name: &str, matches: &Vec<&NoteMetadata>) -> Result<Option<InputCommand>, AppError> {
-    if matches.is_empty() {
+pub fn select<F: Fn(&str, usize) -> String>(command_name: &str, num_matches: usize, create_input_line: F) -> Result<Option<InputCommand>, AppError> {
+    if num_matches == 0 {
         return Ok(None);
     }
 
@@ -71,14 +71,14 @@ pub fn select(command_name: &str, matches: &Vec<&NoteMetadata>) -> Result<Option
                     }
                     None => {
                         stdout().execute(MoveUp(1))?;
-                        current_index = Some(matches.len() - 1);
+                        current_index = Some(num_matches - 1);
                     }
                     _ => {}
                 }
             }
             Event::Key(KeyEvent { code: KeyCode::Down, .. }) => {
                 match current_index.as_mut() {
-                    Some(current_index) if *current_index < matches.len() - 1 => {
+                    Some(current_index) if *current_index < num_matches - 1 => {
                         stdout().execute(MoveDown(1))?;
                         *current_index += 1;
                     }
@@ -99,13 +99,22 @@ pub fn select(command_name: &str, matches: &Vec<&NoteMetadata>) -> Result<Option
     disable_raw_mode()?;
 
     if let Some(current_index) = current_index {
-        let path = matches[current_index].path.clone();
-        input_command_interactive(&format!("{} {}", command_name, path.to_str().unwrap()))
+        input_command_interactive(&create_input_line(command_name, current_index))
             .map(|command| Some(command))
             .map_err(|err| AppError::Input(err))
     } else {
         Ok(None)
     }
+}
+
+pub fn select_with_note_metadata(command_name: &str, notes_metadata: &Vec<&NoteMetadata>) -> Result<Option<InputCommand>, AppError> {
+    select(
+        command_name,
+        notes_metadata.len(),
+        |command_name, index: usize| {
+            format!("{} {}", command_name, notes_metadata[index].path.to_str().unwrap())
+        }
+    )
 }
 
 fn input_command_interactive(line: &str) -> Result<InputCommand, String> {

@@ -140,13 +140,14 @@ impl<'a> Searcher<'a> {
     pub fn search_historic(&self,
                            repository: &git2::Repository,
                            query: &Regex,
-                           git_start: &str, git_end: &str) -> QueryingResult<()> {
+                           git_start: &str, git_end: &str) -> QueryingResult<Vec<(git2::Oid, NoteMetadata)>> {
         let is_terminal = atty::is(Stream::Stdout);
 
         let mut rev_walk = repository.revwalk()?;
         rev_walk.push(repository.revparse_single(git_start)?.id())?;
         rev_walk.hide(repository.revparse_single(git_end)?.id())?;
 
+        let mut matches = Vec::new();
         for commit_id in rev_walk {
             let commit_id = commit_id?;
             let commit = repository.find_commit(commit_id)?;
@@ -192,6 +193,8 @@ impl<'a> Searcher<'a> {
                                 line,
                                 is_terminal,
                                 |is_terminal| {
+                                    matches.push((commit_id, note_metadata.clone()));
+
                                     let info_text = note_metadata.info_text();
                                     let short_commit_id = commit.as_object().short_id()?.as_str().unwrap().to_owned();
 
@@ -219,7 +222,7 @@ impl<'a> Searcher<'a> {
             }
         }
 
-        Ok(())
+        Ok(matches)
     }
 
     fn find_matches<FnFirst: FnMut(bool) -> QueryingResult<()>>(

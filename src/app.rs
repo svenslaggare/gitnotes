@@ -89,6 +89,8 @@ impl Application {
                 }
             }
             InputCommand::Add { path, tags } => {
+                let path = self.get_path(path)?;
+
                 if atty::is(Stream::Stdin) {
                     self.create_and_execute_commands(vec![
                         Command::AddNote { path, tags }
@@ -102,6 +104,8 @@ impl Application {
                 }
             }
             InputCommand::Edit { path, clear_tags, add_tags } => {
+                let path = self.get_path(path)?;
+
                 if atty::is(Stream::Stdin) {
                     self.create_and_execute_commands(vec![
                         Command::EditNoteContent { path, clear_tags, add_tags }
@@ -115,16 +119,23 @@ impl Application {
                 }
             }
             InputCommand::Move { source, destination, force } => {
+                let source = self.get_path(source)?;
+                let destination = self.get_path(destination)?;
+
                 self.create_and_execute_commands(vec![
                     Command::MoveNote { source, destination, force }
                 ])?;
             }
             InputCommand::Remove { path } => {
+                let path = self.get_path(path)?;
+
                 self.create_and_execute_commands(vec![
                     Command::RemoveNote { path }
                 ])?;
             }
             InputCommand::RunSnippet { path, save_output } => {
+                let path = self.get_path(path)?;
+
                 let mut commands = vec![
                     Command::RunSnippet { path, save_output }
                 ];
@@ -143,6 +154,8 @@ impl Application {
                 self.auto_commit = true;
             }
             InputCommand::PrintContent { path, git_reference, only_code, only_output } => {
+                let path = self.get_path(path)?;
+
                 let content = self.get_note_content(&path, git_reference)?;
 
                 if only_code || only_output {
@@ -166,6 +179,8 @@ impl Application {
                 }
             }
             InputCommand::Show { path, git_reference, only_code, only_output } => {
+                let path = self.get_path(path)?;
+
                 let content = self.get_note_content(&path, git_reference)?;
 
                 if only_code || only_output {
@@ -192,17 +207,23 @@ impl Application {
                 }
             }
             InputCommand::ListDirectory { query } => {
+                let query = query.unwrap_or_else(|| Path::new("").to_owned());
+                let query = self.get_path(query)?;
+
                 let list_directory = ListDirectory::new(self.note_metadata_storage()?)?;
-                let results = list_directory.list(query.as_ref().map(|x| x.as_str()))?;
+                let results = list_directory.list(&query)?;
                 print_list_directory_results(&results)?
             }
             InputCommand::Tree { prefix, using_date, using_tags, } => {
-                let mut config = NoteFileTreeCreateConfig::default();
-                config.using_date = using_date;
-                config.using_tags = using_tags;
+                let prefix = prefix.unwrap_or_else(|| Path::new("").to_owned());
+                let prefix = self.get_path(prefix)?;
 
-                let list_tree = ListTree::new(self.note_metadata_storage()?, config)?;
-                list_tree.list(prefix.as_ref().map(|x| x.as_path()));
+                let mut create_config = NoteFileTreeCreateConfig::default();
+                create_config.using_date = using_date;
+                create_config.using_tags = using_tags;
+
+                let list_tree = ListTree::new(self.note_metadata_storage()?, create_config)?;
+                list_tree.list(&prefix);
             }
             InputCommand::Finder { interactive, command } => {
                 let query = match command {
@@ -320,6 +341,17 @@ impl Application {
         self.execute_commands(self.create_commands(commands))
     }
 
+    pub fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
+        get_or_insert_with(
+            &mut self.note_metadata_storage,
+            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
+        ).map(|x| &*x)
+    }
+
+    pub fn note_metadata_storage_ref(&self) -> std::io::Result<&NoteMetadataStorage> {
+        self.note_metadata_storage.as_ref().ok_or_else(|| io_error("note_metadata_storage not created"))
+    }
+
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
         self.note_metadata_storage()?;
         let repository = self.repository.borrow();
@@ -335,23 +367,51 @@ impl Application {
         self.note_metadata_storage = None;
     }
 
-    pub fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
-        get_or_insert_with(
-            &mut self.note_metadata_storage,
-            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
-        ).map(|x| &*x)
-    }
-
-    pub fn note_metadata_storage_ref(&self) -> std::io::Result<&NoteMetadataStorage> {
-        self.note_metadata_storage.as_ref().ok_or_else(|| io_error("note_metadata_storage not created"))
+    fn get_path(&mut self, path: PathBuf) -> Result<PathBuf, AppError> {
+        self.note_metadata_storage()?;
+        self.note_metadata_storage_ref()?.resolve_path(
+            path,
+            self.config.use_real.clone(),
+            self.config.real_base_dir.as_ref().map(|p| p.as_path())
+        ).map_err(|err| AppError::InvalidPath(err))
     }
 }
 
 #[derive(StructOpt)]
 #[structopt(about="CLI based notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
+    /// Use real working directory
+    #[structopt(long="real")]
+    pub use_real: bool,
+    /// Don't use real working directory
+    #[structopt(long="no-real")]
+    pub use_non_real: bool,
     #[structopt(subcommand)]
     pub command: Option<InputCommand>
+}
+
+pub struct MainInputConfig {
+    pub use_real: bool,
+    pub use_non_real: bool,
+}
+
+impl MainInputConfig {
+    pub fn from_input(input: &MainInputCommand) -> MainInputConfig {
+        MainInputConfig {
+            use_real: input.use_real,
+            use_non_real: input.use_non_real,
+        }
+    }
+
+    pub fn apply(&self, config: &mut Config) {
+        if self.use_real {
+            config.use_real = true;
+        }
+
+        if self.use_non_real {
+            config.use_real = false;
+        }
+    }
 }
 
 #[derive(Debug, StructOpt)]
@@ -465,7 +525,7 @@ pub enum InputCommand {
     #[structopt(name="ls")]
     ListDirectory {
         /// The directory to list.
-        query: Option<String>
+        query: Option<PathBuf>
     },
     /// Lists note in a tree structure.
     Tree {
@@ -559,6 +619,9 @@ pub enum InputCommandFinder {
 pub enum AppError {
     #[error("Failed to open repository: {0}")]
     FailedToOpenRepository(git2::Error),
+
+    #[error("Invalid path: {0}")]
+    InvalidPath(String),
 
     #[error("{0}")]
     Command(CommandInterpreterError),

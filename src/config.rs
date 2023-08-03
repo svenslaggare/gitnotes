@@ -1,4 +1,5 @@
 use std::path::{Path, PathBuf};
+use home::home_dir;
 
 use serde::{Serialize, Deserialize};
 
@@ -14,7 +15,9 @@ pub fn config_path() -> PathBuf {
 pub struct FileConfig {
     pub repository: PathBuf,
     pub editor: Option<String>,
-    pub snippet: Option<SnippetFileConfig>
+    pub snippet: Option<SnippetFileConfig>,
+    pub use_real: bool,
+    pub real_base_dir: Option<PathBuf>
 }
 
 impl FileConfig {
@@ -23,6 +26,8 @@ impl FileConfig {
             repository: repository.to_owned(),
             editor: None,
             snippet: None,
+            use_real: false,
+            real_base_dir: None
         }
     }
 
@@ -66,7 +71,9 @@ pub struct Config {
     pub repository: PathBuf,
     pub user_name_and_email: (String, String),
     pub editor: String,
-    pub snippet: Option<SnippetFileConfig>
+    pub snippet: Option<SnippetFileConfig>,
+    pub use_real: bool,
+    pub real_base_dir: Option<PathBuf>
 }
 
 impl Config {
@@ -75,7 +82,9 @@ impl Config {
             repository: std::env::var("GITNOTES_REPOSITORY").map(|path| Path::new(&path).to_owned()).unwrap_or_else(|_| file_config.repository),
             user_name_and_email: get_user_name_and_email(),
             editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("web-editor".to_owned())),
-            snippet: file_config.snippet
+            snippet: file_config.snippet,
+            use_real: file_config.use_real,
+            real_base_dir: file_config.real_base_dir.or_else(|| home_dir())
         }
     }
 

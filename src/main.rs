@@ -16,7 +16,7 @@ mod tags;
 mod interactive;
 mod app;
 
-use crate::app::{AppError, Application, InputCommand, MainInputCommand};
+use crate::app::{AppError, Application, InputCommand, MainInputCommand, MainInputConfig};
 use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
 
@@ -25,13 +25,15 @@ fn main() {
         return;
     }
 
-    if let Some(input_command) = MainInputCommand::from_args().command {
-        if let Err(err) = run(input_command) {
+    let main_command = MainInputCommand::from_args();
+    let main_config = MainInputConfig::from_input(&main_command);
+    if let Some(input_command) = main_command.command {
+        if let Err(err) = run(input_command, main_config) {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
     } else  {
-        if let Err(err) = interactive::run() {
+        if let Err(err) = interactive::run(main_config) {
             println!("{}.", err.to_string());
             std::process::exit(1);
         }
@@ -49,7 +51,7 @@ fn generate_completions() -> bool {
     }
 }
 
-fn run(input_command: InputCommand) -> Result<(), AppError> {
+fn run(input_command: InputCommand, main_config: MainInputConfig) -> Result<(), AppError> {
     let config_path = config_path();
     match input_command {
         InputCommand::Initialize { .. } => {
@@ -60,7 +62,9 @@ fn run(input_command: InputCommand) -> Result<(), AppError> {
             Ok(())
         }
         _ => {
-            Application::new(load_config(&config_path))?.run_until_completion(input_command)
+            let mut config = load_config(&config_path);
+            main_config.apply(&mut config);
+            Application::new(config)?.run_until_completion(input_command)
         }
     }
 }

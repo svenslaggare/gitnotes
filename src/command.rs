@@ -351,7 +351,12 @@ impl CommandInterpreter {
         index.add_path(&relative_metadata_path)?;
         index.write()?;
 
-        self.commit_message_lines.insert(format!("Added note '{}' using tags: {}.", path.to_str().unwrap(), metadata.tags.join(", ")));
+        self.commit_message_lines.insert(format!(
+            "Added note '{}' (id: {}) using tags: {}.",
+            path.to_str().unwrap(),
+            id,
+            metadata.tags.join(", ")
+        ));
 
         Ok(())
     }

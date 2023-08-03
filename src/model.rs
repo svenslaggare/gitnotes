@@ -185,10 +185,8 @@ impl NoteMetadataStorage {
     }
 
     pub fn get_id(&self, path: &Path) -> Option<NoteId> {
-        if let Ok(id) = NoteId::from_str(path.to_str().unwrap()) {
-            if let Some(note) = self.id_to_notes.get(&id) {
-                return Some(note.id);
-            }
+        if let Some(id) = self.try_resolve_id(path) {
+            return Some(id);
         }
 
         self.path_to_id.get(path).cloned()
@@ -208,6 +206,37 @@ impl NoteMetadataStorage {
 
     pub fn get_by_id_mut(&mut self, id: &NoteId) -> Option<&mut NoteMetadata> {
         self.id_to_notes.get_mut(id)
+    }
+
+    pub fn resolve_path(&self, path: PathBuf, use_real: bool, real_base_dir: Option<&Path>) -> Result<PathBuf, String> {
+        if let Some(note_id) = self.try_resolve_id(&path) {
+            return Ok(Path::new(&note_id.to_string()).to_owned());
+        }
+
+        if use_real {
+            let base_dir = real_base_dir.as_ref().ok_or_else(|| "No real base dir".to_owned())?;
+
+            let path = if path.is_absolute() {
+                path
+            } else {
+                let current_dir = std::env::current_dir().map_err(|err| err.to_string())?;
+                base_dir.join(current_dir.join(path))
+            };
+
+            path.strip_prefix(&base_dir).map_err(|err| err.to_string()).map(|path| path.to_owned())
+        } else {
+            Ok(path)
+        }
+    }
+
+    fn try_resolve_id(&self, path: &Path) -> Option<NoteId> {
+        if let Ok(id) = NoteId::from_str(path.to_str().unwrap()) {
+            if let Some(note) = self.id_to_notes.get(&id) {
+                return Some(note.id);
+            }
+        }
+
+        None
     }
 
     pub fn contains_path(&self, path: &Path) -> bool {

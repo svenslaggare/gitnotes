@@ -286,13 +286,13 @@ impl<'a> ListDirectory<'a> {
         )
     }
 
-    pub fn list(&'a self, query: Option<&str>) -> QueryingResult<Vec<ListDirectoryEntry<'a>>> {
+    pub fn list(&'a self, query: &Path) -> QueryingResult<Vec<ListDirectoryEntry<'a>>> {
         let mut results = Vec::new();
 
-        let found_tree = if let Some(query) = query {
-            self.root.find(&Path::new(query))
-        } else {
+        let found_tree = if query == Path::new("") {
             Some(&self.root)
+        } else {
+            self.root.find(query)
         };
 
         if let Some(found_tree) = found_tree {
@@ -327,7 +327,7 @@ impl<'a> ListDirectory<'a> {
                 true
             });
         } else {
-            return Err(QueryingError::NoteNotFound(query.unwrap_or("").to_owned()));
+            return Err(QueryingError::NoteNotFound(query.to_str().unwrap_or("").to_owned()));
         }
 
         Ok(results)
@@ -387,15 +387,12 @@ impl<'a> ListTree<'a> {
         )
     }
 
-    pub fn list(&self, prefix: Option<&Path>) {
-        match prefix {
-            None => {
-                ListTree::print_tree(&self.root, ".");
-            }
-            Some(prefix) => {
-                if let Some(tree) = self.root.find(prefix) {
-                    ListTree::print_tree(&tree, prefix.to_str().unwrap());
-                }
+    pub fn list(&self, prefix: &Path) {
+        if prefix == Path::new("") {
+            ListTree::print_tree(&self.root, ".")
+        } else {
+            if let Some(tree) = self.root.find(prefix) {
+                ListTree::print_tree(&tree, prefix.to_str().unwrap());
             }
         }
     }

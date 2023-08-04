@@ -7,13 +7,14 @@ use crate::config::Config;
 use crate::helpers::io_error;
 use crate::model::NOTE_CONTENT_EXT;
 use crate::web_editor;
+use crate::web_editor::WebEditorConfig;
 
 pub fn launch(config: &Config, path: &Path) -> CommandInterpreterResult<()> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
         "web-editor" => {
-            web_editor::launch_sync(9000, path);
+            web_editor::launch_sync(WebEditorConfig::default(), path);
             return Ok(());
         }
         _ => {}

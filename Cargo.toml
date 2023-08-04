@@ -15,6 +15,9 @@ assets = [
     ["completions/gitnotes.bash", "etc/bash_completion.d/gitnotes", "644"]
 ]
 
+[features]
+webview = ["web-view"]
+
 [dependencies]
 thiserror = "1.0.40"
 chrono = { version = "0.4", features=["serde"] }
@@ -48,3 +51,5 @@ tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.4", features = ["fs"] }
 askama = "0.12"
 open = "5"
+
+web-view = { version = "0.7", optional = true }

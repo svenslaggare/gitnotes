@@ -205,6 +205,18 @@ var WebEditorMain = /** @class */ (function (_super) {
                 error: null,
                 isReadOnly: true
             });
+            try {
+                window.close();
+            }
+            catch (error) {
+                console.log("Failed to close window: " + error);
+            }
+            try {
+                sendMessageToServer("exit");
+            }
+            catch (error) {
+                console.log("Failed to close webview: " + error);
+            }
             // @ts-ignore
             var modal = new bootstrap.Modal(document.getElementById("exitedModal"));
             modal.show();
@@ -226,5 +238,14 @@ function getErrorMessage(error) {
     else {
         return "Failed to send request.";
     }
+}
+function sendMessageToServer(cmd) {
+    if (window.external !== undefined) {
+        return window.external.invoke(cmd);
+    }
+    else if (window.webkit.messageHandlers.external !== undefined) {
+        return window.webkit.messageHandlers.external.postMessage(cmd);
+    }
+    throw new Error('Failed to locate webkit external handler');
 }
 react_dom_1["default"].render(react_1["default"].createElement(WebEditorMain, { filePath: document.getElementById("file_path").value }), document.getElementById("root"));

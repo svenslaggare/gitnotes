@@ -4,10 +4,11 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
+use chrono::{Local};
 use thiserror::Error;
 
 use serde_json::json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use tokio::sync::Notify;
 
@@ -21,7 +22,32 @@ use tower_http::services::ServeDir;
 
 use askama::{Template};
 
-pub async fn launch(port: u16, path: &Path) {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct WebEditorConfig {
+    pub port: u16,
+    pub launch_web_view: bool
+}
+
+impl Default for WebEditorConfig {
+    fn default() -> Self {
+        WebEditorConfig {
+            port: 9000,
+            launch_web_view: default_launch_web_view()
+        }
+    }
+}
+
+#[cfg(feature="webview")]
+fn default_launch_web_view() -> bool {
+    true
+}
+
+#[cfg(not(feature="webview"))]
+fn default_launch_web_view() -> bool {
+    false
+}
+
+pub async fn launch(config: WebEditorConfig, path: &Path) {
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
@@ -37,11 +63,20 @@ pub async fn launch(port: u16, path: &Path) {
         .with_state(state.clone())
         ;
 
-    let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), port);
+    let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), config.port);
     let web_address = format!("http://{}", address);
     println!("Opening file '{}' with web editor available at {}.", path.to_str().unwrap(), web_address);
 
-    open::that(web_address).unwrap();
+    if config.launch_web_view {
+        #[cfg(feature="webview")]
+        launch_web_view(state.clone(), &config);
+
+        #[cfg(not(feature="webview"))]
+        panic!("Webview feature not compiled - compile with --features webview.");
+    } else {
+        open::that(web_address).unwrap();
+    }
+
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
             result.unwrap();
@@ -52,9 +87,33 @@ pub async fn launch(port: u16, path: &Path) {
     }
 }
 
-pub fn launch_sync(port: u16, path: &Path) {
+pub fn launch_sync(config: WebEditorConfig, path: &Path) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(launch(port, path));
+    runtime.block_on(launch(config, path));
+}
+
+#[cfg(feature="webview")]
+fn launch_web_view(state: Arc<WebServerState>, config: &WebEditorConfig) {
+    let port = config.port;
+    tokio::task::spawn_blocking(move || {
+        web_view::builder()
+            .title("WebEditor")
+            .content(web_view::Content::Url(format!("http://localhost:{}", port)))
+            .size(1440, 960)
+            .resizable(true)
+            .debug(true)
+            .user_data(())
+            .invoke_handler(|webview, arg| {
+                if arg == "exit" {
+                    webview.exit();
+                }
+
+                Ok(())
+            })
+            .run()
+            .unwrap();
+        state.notify.notify_one();
+    });
 }
 
 struct WebServerState {
@@ -105,11 +164,13 @@ impl IntoResponse for WebServerError {
 #[derive(Template)]
 #[template(path="webEditor.html")]
 struct AppTemplate {
+    time: i64,
     file_path: String
 }
 
 async fn index(State(state): State<Arc<WebServerState>>) -> Response {
     let template = AppTemplate {
+        time: Local::now().timestamp(),
         file_path: state.path.to_str().unwrap().to_owned(),
     };
 

@@ -19,6 +19,7 @@ mod app;
 use crate::app::{AppError, App, InputCommand, MainInputCommand};
 use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
+use crate::web_editor::WebEditorConfig;
 
 fn main() {
     if generate_completions() {
@@ -57,7 +58,9 @@ fn run(input_command: InputCommand, main_input_command: MainInputCommand) -> Res
             run_init(&config_path, input_command)
         }
         InputCommand::WebEditor { path, port } => {
-            web_editor::launch_sync(port, &path);
+            let mut config = WebEditorConfig::default();
+            config.port = port;
+            web_editor::launch_sync(config, &path);
             Ok(())
         }
         _ => {

@@ -63,16 +63,15 @@ impl SnippetRunnerManger {
     }
 
     pub fn apply_config(&mut self, file_config: &SnippetFileConfig) -> SnippetResult<()> {
-        if let Some(python_config) = file_config.python.as_ref() {
-            self.change_config("python", python_config)?;
-        }
+        self.change_config_opt("python", file_config.python.as_ref())?;
+        self.change_config_opt("cpp", file_config.python.as_ref())?;
+        self.change_config_opt("rust", file_config.rust.as_ref())?;
+        Ok(())
+    }
 
-        if let Some(cpp_config) = file_config.cpp.as_ref() {
-            self.change_config("cpp", cpp_config)?;
-        }
-
-        if let Some(rust_config) = file_config.rust.as_ref() {
-            self.change_config("rust", rust_config)?;
+    fn change_config_opt<T: 'static>(&mut self, name: &str, config: Option<&T>) -> SnippetResult<()> {
+        if let Some(config) = config {
+            self.change_config(name, config)?;
         }
 
         Ok(())

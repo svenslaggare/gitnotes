@@ -56,11 +56,12 @@ impl App {
                 self.config.repository = repository_path.clone();
                 *self.repository.borrow_mut() = open_repository(&self.config.repository)?;
                 self.command_interpreter = CommandInterpreter::new(self.config.clone(), self.repository.clone())?;
-                self.clear_cache();
 
                 let mut file_config = FileConfig::load(&config_path())?;
                 file_config.repository = repository_path;
                 file_config.save(&config_path())?;
+
+                self.clear_cache();
 
                 self.config.print();
             }
@@ -73,6 +74,8 @@ impl App {
                         file_config.save(&config_path())?;
 
                         self.config = Config::from_env(file_config);
+                        self.clear_cache();
+
                         self.config.print();
                     } else {
                         return Err(AppError::Input(format!("Format: key=value")));

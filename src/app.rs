@@ -396,19 +396,7 @@ pub struct MainInputCommand {
     pub command: Option<InputCommand>
 }
 
-pub struct MainInputConfig {
-    pub use_real: bool,
-    pub use_non_real: bool,
-}
-
-impl MainInputConfig {
-    pub fn from_input(input: &MainInputCommand) -> MainInputConfig {
-        MainInputConfig {
-            use_real: input.use_real,
-            use_non_real: input.use_non_real,
-        }
-    }
-
+impl MainInputCommand {
     pub fn apply(&self, mut config: Config) -> Config {
         if self.use_real {
             config.use_real = true;

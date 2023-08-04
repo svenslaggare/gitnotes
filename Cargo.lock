@@ -642,7 +642,6 @@ name = "gitnotes"
 version = "0.1.0"
 dependencies = [
  "askama",
- "atty",
  "axum",
  "chrono",
  "comrak",

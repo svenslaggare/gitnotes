@@ -1,5 +1,5 @@
 use std::collections::BTreeMap;
-use std::io::{stdout};
+use std::io::{IsTerminal, stdout};
 use std::path::Path;
 use std::str::FromStr;
 
@@ -7,7 +7,6 @@ use chrono::{Datelike, DateTime, Local, Timelike};
 use regex::{Regex};
 use thiserror::Error;
 
-use atty::Stream;
 use comrak::nodes::NodeValue;
 
 use crossterm::ExecutableCommand;
@@ -107,7 +106,7 @@ impl<'a> Searcher<'a> {
     }
 
     pub fn search(&self, query: &Regex) -> QueryingResult<Vec<&'a NoteMetadata>> {
-        let is_terminal = atty::is(Stream::Stdout);
+        let is_terminal = stdout().is_terminal();
 
         let mut matches = Vec::new();
         for note_metadata in self.note_metadata_storage.notes() {
@@ -143,7 +142,7 @@ impl<'a> Searcher<'a> {
                            repository: &git2::Repository,
                            query: &Regex,
                            git_start: &str, git_end: &str) -> QueryingResult<Vec<(git2::Oid, NoteMetadata)>> {
-        let is_terminal = atty::is(Stream::Stdout);
+        let is_terminal = stdout().is_terminal();
 
         let mut rev_walk = repository.revwalk()?;
         rev_walk.push(repository.revparse_single(git_start)?.id())?;
@@ -340,7 +339,7 @@ impl<'a> ListDirectory<'a> {
 }
 
 pub fn print_list_directory_results(results: &Vec<ListDirectoryEntry>) -> QueryingResult<()> {
-    let is_terminal = atty::is(Stream::Stdout);
+    let is_terminal = stdout().is_terminal();
 
     for entry in results {
         let last_updated = entry.last_updated.unwrap();
@@ -403,7 +402,7 @@ impl<'a> ListTree<'a> {
     }
 
     pub fn print_tree(tree: &NoteFileTree, dir: &str) {
-        let is_terminal = atty::is(Stream::Stdout);
+        let is_terminal = stdout().is_terminal();
 
         if !dir.is_empty() {
             if is_terminal {

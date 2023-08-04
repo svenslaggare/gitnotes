@@ -39,7 +39,6 @@ comrak = "0.18"
 tempfile = "3"
 libc = "0.2"
 crossterm = "0.26"
-atty = "0.2"
 home = "0.5"
 
 rake = "0.3"

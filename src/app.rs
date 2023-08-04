@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::io::{Read, stdin};
+use std::io::{IsTerminal, Read, stdin};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -8,7 +8,6 @@ use regex::Regex;
 use thiserror::Error;
 
 use structopt::StructOpt;
-use atty::Stream;
 
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::{Config, config_path, FileConfig};
@@ -89,7 +88,7 @@ impl App {
             InputCommand::Add { path, tags } => {
                 let path = self.get_path(path)?;
 
-                if atty::is(Stream::Stdin) {
+                if stdin().is_terminal() {
                     self.create_and_execute_commands(vec![
                         Command::AddNote { path, tags }
                     ])?;
@@ -104,7 +103,7 @@ impl App {
             InputCommand::Edit { path, clear_tags, add_tags } => {
                 let path = self.get_path(path)?;
 
-                if atty::is(Stream::Stdin) {
+                if stdin().is_terminal() {
                     self.create_and_execute_commands(vec![
                         Command::EditNoteContent { path, clear_tags, add_tags }
                     ])?;

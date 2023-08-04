@@ -68,11 +68,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     println!("Opening file '{}' with web editor available at {}.", path.to_str().unwrap(), web_address);
 
     if config.launch_web_view {
-        #[cfg(feature="webview")]
         launch_web_view(state.clone(), &config);
-
-        #[cfg(not(feature="webview"))]
-        panic!("Webview feature not compiled - compile with --features webview.");
     } else {
         open::that(web_address).unwrap();
     }
@@ -114,6 +110,11 @@ fn launch_web_view(state: Arc<WebServerState>, config: &WebEditorConfig) {
             .unwrap();
         state.notify.notify_one();
     });
+}
+
+#[cfg(not(feature="webview"))]
+fn launch_web_view(_state: Arc<WebServerState>, _config: &WebEditorConfig) {
+    panic!("Webview feature not compiled - compile with --features webview.");
 }
 
 struct WebServerState {

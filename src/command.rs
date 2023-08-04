@@ -330,6 +330,12 @@ impl CommandInterpreter {
         Ok(())
     }
 
+    pub fn new_commit(&mut self) -> CommandInterpreterResult<()> {
+        self.index = None;
+        self.commit_message_lines.clear();
+        Ok(())
+    }
+
     fn add_note(&mut self,
                 id: NoteId, relative_path: &Path,
                 path: PathBuf, mut tags: Vec<String>) -> CommandInterpreterResult<()> {

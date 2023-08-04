@@ -10,11 +10,9 @@ use thiserror::Error;
 use structopt::StructOpt;
 use atty::Stream;
 
-use comrak::nodes::NodeValue;
-
 use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
 use crate::config::{Config, config_path, FileConfig};
-use crate::{editor, interactive, markdown, querying};
+use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
 use crate::model::{NoteFileTreeCreateConfig, NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
@@ -148,6 +146,7 @@ impl App {
             }
             InputCommand::Begin { } => {
                 self.auto_commit = false;
+                self.command_interpreter.new_commit()?;
             }
             InputCommand::Commit { } => {
                 self.execute_commands(vec![Command::Commit])?;
@@ -157,54 +156,15 @@ impl App {
                 let path = self.get_path(path)?;
 
                 let content = self.get_note_content(&path, history)?;
-
-                if only_code || only_output {
-                    let arena = markdown::storage();
-                    let root = markdown::parse(&arena, &content);
-
-                    markdown::visit_code_blocks::<CommandInterpreterError, _>(
-                        &root,
-                        |current_node| {
-                            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                                print!("{}", block.literal);
-                            }
-
-                            Ok(())
-                        },
-                        only_code,
-                        only_output
-                    )?;
-                } else {
-                    print!("{}", content);
-                }
+                let content = querying::extract_content(content, only_code, only_output)?;
+                print!("{}", content);
             }
             InputCommand::Show { path, history, only_code, only_output } => {
                 let path = self.get_path(path)?;
 
                 let content = self.get_note_content(&path, history)?;
-
-                if only_code || only_output {
-                    let arena = markdown::storage();
-                    let root = markdown::parse(&arena, &content);
-
-                    let mut new_content = String::new();
-                    markdown::visit_code_blocks::<CommandInterpreterError, _>(
-                        &root,
-                        |current_node| {
-                            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                                new_content += &block.literal;
-                            }
-
-                            Ok(())
-                        },
-                        only_code,
-                        only_output
-                    )?;
-
-                    editor::launch_with_content(&self.config, &new_content)?;
-                } else {
-                    editor::launch_with_content(&self.config, &content)?;
-                }
+                let content = querying::extract_content(content, only_code, only_output)?;
+                editor::launch_with_content(&self.config, &content)?;
             }
             InputCommand::ListDirectory { query } => {
                 let query = query.unwrap_or_else(|| Path::new("").to_owned());

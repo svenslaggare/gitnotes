@@ -8,12 +8,14 @@ use regex::{Regex};
 use thiserror::Error;
 
 use atty::Stream;
+use comrak::nodes::NodeValue;
 
 use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
 
 use crate::helpers::ToChronoDateTime;
+use crate::markdown;
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
 
 pub type QueryingResult<T> = Result<T, QueryingError>;
@@ -534,6 +536,31 @@ impl<'a> GitContentFetcher<'a> {
         }
 
         Ok(None)
+    }
+}
+
+pub fn extract_content(content: String, only_code: bool, only_output: bool) -> QueryingResult<String> {
+    if only_code || only_output {
+        let arena = markdown::storage();
+        let root = markdown::parse(&arena, &content);
+
+        let mut new_content = String::new();
+        markdown::visit_code_blocks::<QueryingError, _>(
+            &root,
+            |current_node| {
+                if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
+                    new_content += &block.literal;
+                }
+
+                Ok(())
+            },
+            only_code,
+            only_output
+        )?;
+
+        Ok(new_content)
+    } else {
+        Ok(content)
     }
 }
 

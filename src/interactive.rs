@@ -51,7 +51,11 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
     Ok(())
 }
 
-pub fn select<F: Fn(&str, usize) -> String>(command_name: &str, num_matches: usize, create_input_line: F) -> Result<Option<InputCommand>, AppError> {
+pub fn select<F: Fn(&str, usize) -> String>(
+    command_name: &str,
+    num_matches: usize,
+    create_input_line: F
+) -> Result<Option<InputCommand>, AppError> {
     if num_matches == 0 {
         return Ok(None);
     }

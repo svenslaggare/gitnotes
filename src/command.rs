@@ -181,7 +181,7 @@ impl CommandInterpreter {
                         if force {
                             self.remove_note(&destination)?;
                         } else {
-                            return Err(NoteAtDestination(destination))?;
+                            return Err(NoteExistsAtDestination(destination))?;
                         }
                     }
 
@@ -521,8 +521,6 @@ pub enum CommandError {
     FailedToRemoveNote(String),
     #[error("Failed to commit: {0}")]
     FailedToCommit(String),
-    #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
-    NoteAtDestination(PathBuf),
 
     #[error("Failed to update metadata: {0}")]
     FailedToUpdateMetadata(String),
@@ -530,6 +528,8 @@ pub enum CommandError {
     NoteNotFound(String),
     #[error("Note '{0}' already exists")]
     NoteAlreadyExists(PathBuf),
+    #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
+    NoteExistsAtDestination(PathBuf),
 
     #[error("Failed to run snippet: {0}")]
     Snippet(SnippetError),
@@ -537,7 +537,7 @@ pub enum CommandError {
     #[error("Internal error: {0}")]
     InternalError(String),
 
-    #[error("Subprocess error: {0}")]
+    #[error("{0}")]
     SubProcess(std::io::Error),
     #[error("{0}")]
     Git(git2::Error),

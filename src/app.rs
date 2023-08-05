@@ -867,7 +867,7 @@ fn test_add_and_move_to_existing1() {
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
 
     let err = app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: false }).err().unwrap();
-    if let AppError::Command(CommandError::NoteAtDestination(err_path)) = err {
+    if let AppError::Command(CommandError::NoteExistsAtDestination(err_path)) = err {
         assert_eq!(note_path2, err_path);
         assert_eq!(note_id, app.note_metadata_storage().unwrap().get_id(note_path).unwrap());
         assert_eq!(note_id2, app.note_metadata_storage().unwrap().get_id(note_path2).unwrap());

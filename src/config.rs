@@ -106,6 +106,9 @@ impl Config {
         println!("Repository: {}", self.repository.to_str().unwrap());
         println!("User name: {}, email: {}", self.user_name_and_email.0, self.user_name_and_email.1);
         println!("Editor: {}", self.editor);
+        println!("Snippet: {}", self.snippet.is_some());
+        println!("Use real: {}", self.use_real);
+        println!("Real base dir: {}", self.real_base_dir.as_ref().map(|x| x.to_str().unwrap()).unwrap_or("N/A"));
     }
 }
 

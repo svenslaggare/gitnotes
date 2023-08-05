@@ -8,7 +8,7 @@ use comrak::nodes::NodeValue;
 
 use crate::config::Config;
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
-use crate::{editor, markdown};
+use crate::{editor, markdown, tags};
 use crate::app::RepositoryRef;
 use crate::helpers::{get_or_insert_with, OrderedSet};
 use crate::querying::{GitContentFetcher};
@@ -320,7 +320,6 @@ impl CommandInterpreter {
                 id: NoteId, relative_path: &Path,
                 path: PathBuf, mut tags: Vec<String>) -> CommandResult<()> {
         use CommandError::*;
-        use crate::tags;
 
         if tags.is_empty() {
             let (_, abs_content_path) = self.get_note_storage_path(&id);

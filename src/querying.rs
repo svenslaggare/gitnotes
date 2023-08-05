@@ -494,7 +494,7 @@ pub fn get_note_content(repository: &git2::Repository,
                         note_metadata_storage: &NoteMetadataStorage,
                         path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
     if let Some(git_reference) = git_reference {
-        let git_content_fetcher = GitContentFetcher::new(repository, note_metadata_storage)?;
+        let git_content_fetcher = GitContentFetcher::new(repository, note_metadata_storage);
 
         if let Some(commit_content) = git_content_fetcher.fetch(&path, &git_reference)? {
             Ok(commit_content)
@@ -512,13 +512,11 @@ pub struct GitContentFetcher<'a> {
 }
 
 impl<'a> GitContentFetcher<'a> {
-    pub fn new(repository: &'a git2::Repository, node_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<GitContentFetcher<'a>> {
-        Ok(
-            GitContentFetcher {
-                repository,
-                node_metadata_storage
-            }
-        )
+    pub fn new(repository: &'a git2::Repository, node_metadata_storage: &'a NoteMetadataStorage) -> GitContentFetcher<'a> {
+        GitContentFetcher {
+            repository,
+            node_metadata_storage
+        }
     }
 
     pub fn fetch(&self, path: &Path, spec: &str) -> QueryingResult<Option<String>> {
@@ -528,7 +526,7 @@ impl<'a> GitContentFetcher<'a> {
         let tree = self.repository.find_commit(git_id)?.tree()?;
 
         if let Some(entry) = tree.get_name(&(note_id.to_string() + "." + NOTE_CONTENT_EXT)) {
-            let entry_object = entry.to_object(&self.repository).map_err(|err| QueryingError::Git(err))?;
+            let entry_object = entry.to_object(&self.repository)?;
             if let Some(entry_blob) = entry_object.as_blob() {
                 return Ok(Some(String::from_utf8_lossy(entry_blob.content()).to_string()))
             }

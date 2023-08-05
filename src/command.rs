@@ -12,6 +12,7 @@ use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
 use crate::app::RepositoryRef;
 use crate::helpers::{get_or_insert_with, OrderedSet};
+use crate::querying::{GitContentFetcher};
 use crate::snippets::{SnippetError, SnippetRunnerManger};
 
 #[derive(Debug)]
@@ -27,6 +28,7 @@ pub enum Command {
     },
     EditNoteContent {
         path: PathBuf,
+        history: Option<String>,
         clear_tags: bool,
         add_tags: Vec<String>
     },
@@ -75,6 +77,9 @@ pub enum CommandInterpreterError {
 
     #[error("Failed to run snippet: {0}")]
     Snippet(SnippetError),
+
+    #[error("Internal error: {0}")]
+    InternalError(String),
 
     #[error("Subprocess error: {0}")]
     SubProcess(std::io::Error),
@@ -160,9 +165,23 @@ impl CommandInterpreter {
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
-                Command::EditNoteContent { path, clear_tags, add_tags } => {
+                Command::EditNoteContent { path, history, clear_tags, add_tags } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
+                    let real_path = self.get_note_path(&id)?.to_path_buf();
+
+                    if let Some(history) = history {
+                        self.note_metadata_storage()?;
+
+                        let content = GitContentFetcher::new(
+                            self.repository.borrow().deref(),
+                            self.note_metadata_storage_ref()?
+                        ).fetch(&real_path, &history);
+
+                        let content = content.map_err(|err| FailedToEditNote(err.to_string()))?;
+                        let content = content.ok_or_else(|| FailedToEditNote(format!("Note '{}' not found at commit '{}'", path.to_str().unwrap(), history)))?;
+                        std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    }
 
                     editor::launch(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
@@ -171,10 +190,11 @@ impl CommandInterpreter {
                     index.write()?;
 
                     self.change_note_tags(&id, clear_tags, add_tags)?;
-                    self.try_change_last_updated(&id)?;
+                    let changed = self.try_change_last_updated(&id)?;
 
-                    let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
-                    self.commit_message_lines.insert(format!("Updated note '{}'.", real_path));
+                    if changed {
+                        self.commit_message_lines.insert(format!("Updated note '{}'.", real_path.to_str().unwrap()));
+                    }
                 }
                 Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {
                     let id = self.get_note_id(&path)?;
@@ -389,7 +409,7 @@ impl CommandInterpreter {
         Ok(())
     }
 
-    fn try_change_last_updated(&mut self, id: &NoteId) -> CommandInterpreterResult<()> {
+    fn try_change_last_updated(&mut self, id: &NoteId) -> CommandInterpreterResult<bool> {
         if self.has_git_changes()? {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
             let note_metadata = self.get_note_metadata_mut(&id)?;
@@ -399,9 +419,10 @@ impl CommandInterpreter {
             let index = self.index()?;
             index.add_path(&relative_metadata_path)?;
             index.write()?;
+            Ok(true)
+        } else {
+            Ok(false)
         }
-
-        Ok(())
     }
 
     fn change_note_tags(&mut self, id: &NoteId, clear_tags: bool, mut add_tags: Vec<String>) -> CommandInterpreterResult<()> {
@@ -504,6 +525,12 @@ impl CommandInterpreter {
 
     fn note_metadata_storage(&mut self) -> CommandInterpreterResult<&NoteMetadataStorage> {
         self.note_metadata_storage_mut().map(|x| &*x)
+    }
+
+    fn note_metadata_storage_ref(&self) -> CommandInterpreterResult<&NoteMetadataStorage> {
+        self.note_metadata_storage
+            .as_ref()
+            .ok_or_else(|| CommandInterpreterError::InternalError("note_metadata_storage not created".to_owned()))
     }
 
     fn note_metadata_storage_mut(&mut self) -> CommandInterpreterResult<&mut NoteMetadataStorage> {

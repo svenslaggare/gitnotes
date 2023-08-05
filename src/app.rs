@@ -103,14 +103,18 @@ impl App {
                     ])?;
                 }
             }
-            InputCommand::Edit { path, clear_tags, add_tags } => {
+            InputCommand::Edit { path, history, clear_tags, add_tags } => {
                 let path = self.get_path(path)?;
 
                 if stdin().is_terminal() {
                     self.create_and_execute_commands(vec![
-                        Command::EditNoteContent { path, clear_tags, add_tags }
+                        Command::EditNoteContent { path, history, clear_tags, add_tags }
                     ])?;
                 } else {
+                    if history.is_some() {
+                        return Err(AppError::Input("History not supported when using stdin as input".to_owned()));
+                    }
+
                     let mut content = String::new();
                     stdin().read_to_string(&mut content)?;
                     self.create_and_execute_commands(vec![
@@ -409,6 +413,9 @@ pub enum InputCommand {
     Edit {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
+        /// Starts editing the note with content at the given git commit
+        #[structopt(long="history")]
+        history: Option<String>,
         /// Clears the tags.
         #[structopt(long)]
         clear_tags: bool,
@@ -469,7 +476,7 @@ pub enum InputCommand {
     Show {
         /// The absolute path of the note. Id also work.
         path: PathBuf,
-        /// Prints the content at the given git commit
+        /// Shows the content at the given git commit
         #[structopt(long="history")]
         history: Option<String>,
         /// Print only code content.

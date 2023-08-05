@@ -9,7 +9,7 @@ use thiserror::Error;
 
 use structopt::StructOpt;
 
-use crate::command::{Command, CommandInterpreter, CommandInterpreterError};
+use crate::command::{Command, CommandInterpreter, CommandError};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error};
@@ -589,7 +589,7 @@ pub enum AppError {
     InvalidPath(String),
 
     #[error("{0}")]
-    Command(CommandInterpreterError),
+    Command(CommandError),
 
     #[error("{0}")]
     Querying(QueryingError),
@@ -607,8 +607,8 @@ pub enum AppError {
     IO(std::io::Error)
 }
 
-impl From<CommandInterpreterError> for AppError {
-    fn from(err: CommandInterpreterError) -> Self {
+impl From<CommandError> for AppError {
+    fn from(err: CommandError) -> Self {
         AppError::Command(err)
     }
 }
@@ -827,7 +827,7 @@ fn test_add_and_move_to_existing1() {
     assert_eq!(1, repository.reflog("HEAD").unwrap().len());
 
     let err = app.run(InputCommand::Move { source: note_path.to_owned(), destination: note_path2.to_owned(), force: false }).err().unwrap();
-    if let AppError::Command(CommandInterpreterError::NoteAtDestination(err_path)) = err {
+    if let AppError::Command(CommandError::NoteAtDestination(err_path)) = err {
         assert_eq!(note_path2, err_path);
         assert_eq!(note_id, app.note_metadata_storage().unwrap().get_id(note_path).unwrap());
         assert_eq!(note_id2, app.note_metadata_storage().unwrap().get_id(note_path2).unwrap());

@@ -53,10 +53,10 @@ pub enum Command {
     Commit
 }
 
-pub type CommandInterpreterResult<T> = Result<T, CommandInterpreterError>;
+pub type CommandResult<T> = Result<T, CommandError>;
 
 #[derive(Error, Debug)]
-pub enum CommandInterpreterError {
+pub enum CommandError {
     #[error("Failed to add note: {0}")]
     FailedToAddNote(String),
     #[error("Failed to edit note: {0}")]
@@ -89,15 +89,15 @@ pub enum CommandInterpreterError {
     IO(std::io::Error)
 }
 
-impl From<git2::Error> for CommandInterpreterError {
+impl From<git2::Error> for CommandError {
     fn from(err: git2::Error) -> Self {
-        CommandInterpreterError::Git(err)
+        CommandError::Git(err)
     }
 }
 
-impl From<std::io::Error> for CommandInterpreterError {
+impl From<std::io::Error> for CommandError {
     fn from(err: std::io::Error) -> Self {
-        CommandInterpreterError::IO(err)
+        CommandError::IO(err)
     }
 }
 
@@ -114,11 +114,11 @@ pub struct CommandInterpreter {
 }
 
 impl CommandInterpreter {
-    pub fn new(config: Config, repository: RepositoryRef) -> CommandInterpreterResult<CommandInterpreter> {
+    pub fn new(config: Config, repository: RepositoryRef) -> CommandResult<CommandInterpreter> {
         let mut snippet_runner_manager = SnippetRunnerManger::default();
 
         if let Some(snippet_config) = config.snippet.as_ref() {
-            snippet_runner_manager.apply_config(snippet_config).map_err(|err| CommandInterpreterError::Snippet(err))?;
+            snippet_runner_manager.apply_config(snippet_config).map_err(|err| CommandError::Snippet(err))?;
         }
 
         Ok(
@@ -136,8 +136,8 @@ impl CommandInterpreter {
         )
     }
 
-    pub fn execute(&mut self, commands: Vec<Command>) -> CommandInterpreterResult<()> {
-        use CommandInterpreterError::*;
+    pub fn execute(&mut self, commands: Vec<Command>) -> CommandResult<()> {
+        use CommandError::*;
 
         for command in commands.into_iter() {
             match command {
@@ -246,7 +246,7 @@ impl CommandInterpreter {
                     let arena = markdown::storage();
                     let root = markdown::parse(&arena, &content);
 
-                    markdown::visit_code_blocks::<CommandInterpreterError, _>(
+                    markdown::visit_code_blocks::<CommandError, _>(
                         &root,
                         |current_node| {
                             if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
@@ -350,7 +350,7 @@ impl CommandInterpreter {
         Ok(())
     }
 
-    pub fn new_commit(&mut self) -> CommandInterpreterResult<()> {
+    pub fn new_commit(&mut self) -> CommandResult<()> {
         self.index = None;
         self.commit_message_lines.clear();
         Ok(())
@@ -358,8 +358,8 @@ impl CommandInterpreter {
 
     fn add_note(&mut self,
                 id: NoteId, relative_path: &Path,
-                path: PathBuf, mut tags: Vec<String>) -> CommandInterpreterResult<()> {
-        use CommandInterpreterError::*;
+                path: PathBuf, mut tags: Vec<String>) -> CommandResult<()> {
+        use CommandError::*;
         use crate::tags;
 
         if tags.is_empty() {
@@ -387,8 +387,8 @@ impl CommandInterpreter {
         Ok(())
     }
 
-    fn remove_note(&mut self, path: &Path) -> CommandInterpreterResult<()> {
-        use CommandInterpreterError::*;
+    fn remove_note(&mut self, path: &Path) -> CommandResult<()> {
+        use CommandError::*;
 
         let id = self.get_note_id(path)?;
         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
@@ -409,7 +409,7 @@ impl CommandInterpreter {
         Ok(())
     }
 
-    fn try_change_last_updated(&mut self, id: &NoteId) -> CommandInterpreterResult<bool> {
+    fn try_change_last_updated(&mut self, id: &NoteId) -> CommandResult<bool> {
         if self.has_git_changes()? {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
             let note_metadata = self.get_note_metadata_mut(&id)?;
@@ -425,7 +425,7 @@ impl CommandInterpreter {
         }
     }
 
-    fn change_note_tags(&mut self, id: &NoteId, clear_tags: bool, mut add_tags: Vec<String>) -> CommandInterpreterResult<()> {
+    fn change_note_tags(&mut self, id: &NoteId, clear_tags: bool, mut add_tags: Vec<String>) -> CommandResult<()> {
         self.change_note_metadata(id, move |note_metadata| {
             let mut changed_tags = false;
             if clear_tags {
@@ -444,8 +444,8 @@ impl CommandInterpreter {
         Ok(())
     }
 
-    fn change_note_metadata<F: FnMut(&mut NoteMetadata) -> bool>(&mut self, id: &NoteId, mut apply: F) -> CommandInterpreterResult<()> {
-        let mut internal = || -> CommandInterpreterResult<()> {
+    fn change_note_metadata<F: FnMut(&mut NoteMetadata) -> bool>(&mut self, id: &NoteId, mut apply: F) -> CommandResult<()> {
+        let mut internal = || -> CommandResult<()> {
             let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
             let note_metadata = self.get_note_metadata_mut(&id)?;
 
@@ -460,10 +460,10 @@ impl CommandInterpreter {
             Ok(())
         };
 
-        internal().map_err(|err| CommandInterpreterError::FailedToUpdateMetadata(err.to_string()))
+        internal().map_err(|err| CommandError::FailedToUpdateMetadata(err.to_string()))
     }
 
-    fn has_git_changes(&mut self) -> CommandInterpreterResult<bool> {
+    fn has_git_changes(&mut self) -> CommandResult<bool> {
         let new_tree = self.index()?.write_tree()?;
         let repository = self.repository.borrow();
         let new_tree = repository.find_tree(new_tree)?;
@@ -472,7 +472,7 @@ impl CommandInterpreter {
         CommandInterpreter::has_git_diff(repository.deref(), &head_tree, &new_tree)
     }
 
-    fn get_git_head(repository: &git2::Repository) -> CommandInterpreterResult<(git2::Commit, git2::Tree)> {
+    fn get_git_head(repository: &git2::Repository) -> CommandResult<(git2::Commit, git2::Tree)> {
         let head = repository.head()?;
         let head_commit = head.peel(git2::ObjectType::Commit)?;
         let head_commit = head_commit.as_commit().unwrap().clone();
@@ -483,7 +483,7 @@ impl CommandInterpreter {
         Ok((head_commit, head_tree))
     }
 
-    fn has_git_diff(repository: &git2::Repository, head_tree: &git2::Tree, new_tree: &git2::Tree) -> CommandInterpreterResult<bool> {
+    fn has_git_diff(repository: &git2::Repository, head_tree: &git2::Tree, new_tree: &git2::Tree) -> CommandResult<bool> {
         let diff = repository.diff_tree_to_tree(Some(&new_tree), Some(&head_tree), None)?;
         Ok(diff.stats()?.files_changed() > 0)
     }
@@ -496,56 +496,56 @@ impl CommandInterpreter {
         NoteMetadataStorage::get_note_metadata_path(&self.config.repository, id)
     }
 
-    fn get_note_id(&mut self, path: &Path) -> CommandInterpreterResult<NoteId> {
+    fn get_note_id(&mut self, path: &Path) -> CommandResult<NoteId> {
         self.note_metadata_storage()?
             .get_id(path)
-            .ok_or_else(|| CommandInterpreterError::NoteNotFound(path.to_str().unwrap().to_owned()))
+            .ok_or_else(|| CommandError::NoteNotFound(path.to_str().unwrap().to_owned()))
     }
 
-    fn get_note_path(&mut self, id: &NoteId) -> CommandInterpreterResult<&Path> {
+    fn get_note_path(&mut self, id: &NoteId) -> CommandResult<&Path> {
         self.note_metadata_storage()?
             .get_by_id(id)
             .map(|note| note.path.as_path())
-            .ok_or_else(|| CommandInterpreterError::NoteNotFound(id.to_string()))
+            .ok_or_else(|| CommandError::NoteNotFound(id.to_string()))
     }
 
-    fn get_note_metadata_mut(&mut self, id: &NoteId) -> CommandInterpreterResult<&mut NoteMetadata> {
+    fn get_note_metadata_mut(&mut self, id: &NoteId) -> CommandResult<&mut NoteMetadata> {
         self.note_metadata_storage_mut()?
             .get_by_id_mut(id)
-            .ok_or_else(|| CommandInterpreterError::NoteNotFound(id.to_string()))
+            .ok_or_else(|| CommandError::NoteNotFound(id.to_string()))
     }
 
-    fn check_if_note_exists(&mut self, path: &Path) -> CommandInterpreterResult<()> {
+    fn check_if_note_exists(&mut self, path: &Path) -> CommandResult<()> {
         if self.note_metadata_storage()?.contains_path(path) {
-            Err(CommandInterpreterError::NoteAlreadyExists(path.to_owned()))
+            Err(CommandError::NoteAlreadyExists(path.to_owned()))
         } else {
             Ok(())
         }
     }
 
-    fn note_metadata_storage(&mut self) -> CommandInterpreterResult<&NoteMetadataStorage> {
+    fn note_metadata_storage(&mut self) -> CommandResult<&NoteMetadataStorage> {
         self.note_metadata_storage_mut().map(|x| &*x)
     }
 
-    fn note_metadata_storage_ref(&self) -> CommandInterpreterResult<&NoteMetadataStorage> {
+    fn note_metadata_storage_ref(&self) -> CommandResult<&NoteMetadataStorage> {
         self.note_metadata_storage
             .as_ref()
-            .ok_or_else(|| CommandInterpreterError::InternalError("note_metadata_storage not created".to_owned()))
+            .ok_or_else(|| CommandError::InternalError("note_metadata_storage not created".to_owned()))
     }
 
-    fn note_metadata_storage_mut(&mut self) -> CommandInterpreterResult<&mut NoteMetadataStorage> {
+    fn note_metadata_storage_mut(&mut self) -> CommandResult<&mut NoteMetadataStorage> {
         get_or_insert_with(
             &mut self.note_metadata_storage,
             || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
         )
     }
 
-    fn index(&mut self) -> CommandInterpreterResult<&mut git2::Index> {
+    fn index(&mut self) -> CommandResult<&mut git2::Index> {
         CommandInterpreter::get_index(self.repository.borrow().deref(), &mut self.index)
     }
 
     fn get_index<'a>(repository: &git2::Repository,
-                     index: &'a mut Option<git2::Index>) -> CommandInterpreterResult<&'a mut git2::Index> {
+                     index: &'a mut Option<git2::Index>) -> CommandResult<&'a mut git2::Index> {
         get_or_insert_with(index, || Ok(repository.index()?))
     }
 }

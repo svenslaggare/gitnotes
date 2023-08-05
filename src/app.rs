@@ -28,17 +28,17 @@ pub struct App {
 
 impl App {
     pub fn new(config: Config) -> AppResult<App> {
-        App::with_create_command_interpreter(config, |config, repository| CommandInterpreter::new(config, repository))
+        App::with_custom(config, |config, repository| CommandInterpreter::new(config, repository))
     }
 
-    pub fn with_create_command_interpreter<F: FnOnce(Config, RepositoryRef) -> CommandResult<CommandInterpreter>>(config: Config, create: F) -> AppResult<App> {
+    pub fn with_custom<F: FnOnce(Config, RepositoryRef) -> CommandResult<CommandInterpreter>>(config: Config, create_ci: F) -> AppResult<App> {
         let repository = Rc::new(RefCell::new(open_repository(&config.repository)?));
 
         Ok(
             App {
                 config: config.clone(),
                 repository: repository.clone(),
-                command_interpreter: create(config, repository)?,
+                command_interpreter: create_ci(config, repository)?,
                 note_metadata_storage: None,
                 auto_commit: true
             }
@@ -693,12 +693,14 @@ print([x * x for x in xs])
 "#.to_string();
 
     let note_content_clone = note_content.clone();
-    let mut app = App::with_create_command_interpreter(config, move |config, repository| {
-        let mut command_interpreter = CommandInterpreter::new(config, repository)?;
-        command_interpreter.set_launch_editor(Box::new(move |_, path| {
-            std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))
-        }));
-        Ok(command_interpreter)
+    let mut app = App::with_custom(config, move |config, repository| {
+        CommandInterpreter::with_launch_editor(
+            config,
+            repository,
+            Box::new(move |_, path| {
+                std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))
+            })
+        )
     }).unwrap();
 
     app.run(InputCommand::Add {
@@ -1065,12 +1067,14 @@ print([x * x for x in xs])
 "#.to_string();
 
     let note_content2_clone = note_content2.clone();
-    let mut app = App::with_create_command_interpreter(config, move |config, repository| {
-        let mut command_interpreter = CommandInterpreter::new(config, repository)?;
-        command_interpreter.set_launch_editor(Box::new(move |_, path| {
-            std::fs::write(path, &note_content2_clone).map_err(|err| CommandError::IO(err))
-        }));
-        Ok(command_interpreter)
+    let mut app = App::with_custom(config, move |config, repository| {
+        CommandInterpreter::with_launch_editor(
+            config,
+            repository,
+            Box::new(move |_, path| {
+                std::fs::write(path, &note_content2_clone).map_err(|err| CommandError::IO(err))
+            })
+        )
     }).unwrap();
 
     app.create_and_execute_commands(vec![
@@ -1119,12 +1123,14 @@ print([x * x for x in xs])
 ```
 "#.to_string();
 
-    let mut app = App::with_create_command_interpreter(config, move |config, repository| {
-        let mut command_interpreter = CommandInterpreter::new(config, repository)?;
-        command_interpreter.set_launch_editor(Box::new(move |_, _| {
-            Ok(())
-        }));
-        Ok(command_interpreter)
+    let mut app = App::with_custom(config, move |config, repository| {
+        CommandInterpreter::with_launch_editor(
+            config,
+            repository,
+            Box::new(move |_, _| {
+                Ok(())
+            })
+        )
     }).unwrap();
 
     app.create_and_execute_commands(vec![

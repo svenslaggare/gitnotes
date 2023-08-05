@@ -69,6 +69,10 @@ pub struct CommandInterpreter {
 
 impl CommandInterpreter {
     pub fn new(config: Config, repository: RepositoryRef) -> CommandResult<CommandInterpreter> {
+        CommandInterpreter::with_launch_editor(config, repository, Box::new(|config, path| editor::launch(config, path)))
+    }
+
+    pub fn with_launch_editor(config: Config, repository: RepositoryRef, launch_editor: LaunchEditorFn) -> CommandResult<CommandInterpreter> {
         let mut snippet_runner_manager = SnippetRunnerManger::default();
 
         if let Some(snippet_config) = config.snippet.as_ref() {
@@ -79,7 +83,7 @@ impl CommandInterpreter {
             CommandInterpreter {
                 config,
 
-                launch_editor: Box::new(|config, path| editor::launch(config, path)),
+                launch_editor,
 
                 repository,
 
@@ -90,10 +94,6 @@ impl CommandInterpreter {
                 commit_message_lines: OrderedSet::new()
             }
         )
-    }
-
-    pub fn set_launch_editor(&mut self, launch_editor: LaunchEditorFn) {
-        self.launch_editor = launch_editor;
     }
 
     pub fn execute(&mut self, commands: Vec<Command>) -> CommandResult<()> {

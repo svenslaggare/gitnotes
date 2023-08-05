@@ -80,7 +80,8 @@ pub struct Config {
     pub editor: String,
     pub snippet: Option<SnippetFileConfig>,
     pub use_real: bool,
-    pub real_base_dir: Option<PathBuf>
+    pub real_base_dir: Option<PathBuf>,
+    pub allow_stdin: bool
 }
 
 impl Config {
@@ -91,7 +92,8 @@ impl Config {
             editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("web-editor".to_owned())),
             snippet: file_config.snippet,
             use_real: file_config.use_real,
-            real_base_dir: file_config.real_base_dir.or_else(|| home_dir())
+            real_base_dir: file_config.real_base_dir.or_else(|| home_dir()),
+            allow_stdin: true
         }
     }
 

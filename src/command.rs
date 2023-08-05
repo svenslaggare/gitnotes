@@ -100,8 +100,11 @@ impl From<std::io::Error> for CommandError {
     }
 }
 
+pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<()>>;
 pub struct CommandInterpreter {
     config: Config,
+
+    launch_editor: LaunchEditorFn,
 
     repository: RepositoryRef,
 
@@ -124,6 +127,8 @@ impl CommandInterpreter {
             CommandInterpreter {
                 config,
 
+                launch_editor: Box::new(|config, path| editor::launch(config, path)),
+
                 repository,
 
                 note_metadata_storage: None,
@@ -133,6 +138,10 @@ impl CommandInterpreter {
                 commit_message_lines: OrderedSet::new()
             }
         )
+    }
+
+    pub fn set_launch_editor(&mut self, launch_editor: LaunchEditorFn) {
+        self.launch_editor = launch_editor;
     }
 
     pub fn execute(&mut self, commands: Vec<Command>) -> CommandResult<()> {
@@ -150,7 +159,7 @@ impl CommandInterpreter {
                         std::fs::write(&abs_note_path, "").map_err(|err| FailedToAddNote(err.to_string()))?;
                     }
 
-                    editor::launch(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    (self.launch_editor)(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
                 }
@@ -182,7 +191,7 @@ impl CommandInterpreter {
                         std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
                     }
 
-                    editor::launch(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    (self.launch_editor)(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     let index = self.index()?;
                     index.add_path(&relative_content_path)?;

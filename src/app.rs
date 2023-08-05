@@ -236,12 +236,12 @@ impl App {
                             return Ok(Some(next_command));
                         }
                     }
-                } else if history.len() == 2 {
+                } else {
                     let matches = searcher.search_historic(
                         self.repository.borrow().deref(),
                         &query,
                         &history[0],
-                        &history[1]
+                        history.get(1).map(|x| x.as_str())
                     )?;
 
                     if let Some(command) = interactive {
@@ -253,8 +253,6 @@ impl App {
                             return Ok(Some(next_command));
                         }
                     }
-                } else {
-                    return Err(AppError::Input("Expected two arguments".to_owned()));
                 }
             }
             InputCommand::Log { count } => {

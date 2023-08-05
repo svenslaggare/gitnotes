@@ -2,12 +2,11 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use chrono::Local;
-
 use thiserror::Error;
 
 use comrak::nodes::NodeValue;
-use crate::config::Config;
 
+use crate::config::Config;
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown};
 use crate::app::RepositoryRef;

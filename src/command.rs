@@ -52,54 +52,6 @@ pub enum Command {
     Commit
 }
 
-pub type CommandResult<T> = Result<T, CommandError>;
-
-#[derive(Error, Debug)]
-pub enum CommandError {
-    #[error("Failed to add note: {0}")]
-    FailedToAddNote(String),
-    #[error("Failed to edit note: {0}")]
-    FailedToEditNote(String),
-    #[error("Failed to remove note: {0}")]
-    FailedToRemoveNote(String),
-    #[error("Failed to commit: {0}")]
-    FailedToCommit(String),
-    #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
-    NoteAtDestination(PathBuf),
-
-    #[error("Failed to update metadata: {0}")]
-    FailedToUpdateMetadata(String),
-    #[error("Note '{0}' not found")]
-    NoteNotFound(String),
-    #[error("Note '{0}' already exists")]
-    NoteAlreadyExists(PathBuf),
-
-    #[error("Failed to run snippet: {0}")]
-    Snippet(SnippetError),
-
-    #[error("Internal error: {0}")]
-    InternalError(String),
-
-    #[error("Subprocess error: {0}")]
-    SubProcess(std::io::Error),
-    #[error("{0}")]
-    Git(git2::Error),
-    #[error(" {0}")]
-    IO(std::io::Error)
-}
-
-impl From<git2::Error> for CommandError {
-    fn from(err: git2::Error) -> Self {
-        CommandError::Git(err)
-    }
-}
-
-impl From<std::io::Error> for CommandError {
-    fn from(err: std::io::Error) -> Self {
-        CommandError::IO(err)
-    }
-}
-
 pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<()>>;
 pub struct CommandInterpreter {
     config: Config,
@@ -555,5 +507,53 @@ impl CommandInterpreter {
     fn get_index<'a>(repository: &git2::Repository,
                      index: &'a mut Option<git2::Index>) -> CommandResult<&'a mut git2::Index> {
         get_or_insert_with(index, || Ok(repository.index()?))
+    }
+}
+
+pub type CommandResult<T> = Result<T, CommandError>;
+
+#[derive(Error, Debug)]
+pub enum CommandError {
+    #[error("Failed to add note: {0}")]
+    FailedToAddNote(String),
+    #[error("Failed to edit note: {0}")]
+    FailedToEditNote(String),
+    #[error("Failed to remove note: {0}")]
+    FailedToRemoveNote(String),
+    #[error("Failed to commit: {0}")]
+    FailedToCommit(String),
+    #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
+    NoteAtDestination(PathBuf),
+
+    #[error("Failed to update metadata: {0}")]
+    FailedToUpdateMetadata(String),
+    #[error("Note '{0}' not found")]
+    NoteNotFound(String),
+    #[error("Note '{0}' already exists")]
+    NoteAlreadyExists(PathBuf),
+
+    #[error("Failed to run snippet: {0}")]
+    Snippet(SnippetError),
+
+    #[error("Internal error: {0}")]
+    InternalError(String),
+
+    #[error("Subprocess error: {0}")]
+    SubProcess(std::io::Error),
+    #[error("{0}")]
+    Git(git2::Error),
+    #[error(" {0}")]
+    IO(std::io::Error)
+}
+
+impl From<git2::Error> for CommandError {
+    fn from(err: git2::Error) -> Self {
+        CommandError::Git(err)
+    }
+}
+
+impl From<std::io::Error> for CommandError {
+    fn from(err: std::io::Error) -> Self {
+        CommandError::IO(err)
     }
 }

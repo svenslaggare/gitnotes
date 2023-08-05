@@ -27,11 +27,11 @@ pub struct App {
 }
 
 impl App {
-    pub fn new(config: Config) -> Result<App, AppError> {
+    pub fn new(config: Config) -> AppResult<App> {
         App::with_create_command_interpreter(config, |config, repository| CommandInterpreter::new(config, repository))
     }
 
-    pub fn with_create_command_interpreter<F: FnOnce(Config, RepositoryRef) -> CommandResult<CommandInterpreter>>(config: Config, create: F) -> Result<App, AppError> {
+    pub fn with_create_command_interpreter<F: FnOnce(Config, RepositoryRef) -> CommandResult<CommandInterpreter>>(config: Config, create: F) -> AppResult<App> {
         let repository = Rc::new(RefCell::new(open_repository(&config.repository)?));
 
         Ok(
@@ -45,7 +45,7 @@ impl App {
         )
     }
 
-    pub fn run(&mut self, input_command: InputCommand) -> Result<Option<InputCommand>, AppError> {
+    pub fn run(&mut self, input_command: InputCommand) -> AppResult<Option<InputCommand>> {
         match input_command {
             InputCommand::Initialize { .. } => {
                 println!("Not supported in interactive mode.");
@@ -286,7 +286,7 @@ impl App {
         Ok(None)
     }
 
-    pub fn run_until_completion(&mut self, input_command: InputCommand) -> Result<(), AppError> {
+    pub fn run_until_completion(&mut self, input_command: InputCommand) -> AppResult<()> {
         let mut next_input_command = Some(input_command);
         while let Some(input_command) = next_input_command {
             next_input_command = self.run(input_command)?;
@@ -295,7 +295,7 @@ impl App {
         Ok(())
     }
 
-    pub fn execute_commands(&mut self, commands: Vec<Command>) -> Result<(), AppError> {
+    pub fn execute_commands(&mut self, commands: Vec<Command>) -> AppResult<()> {
         self.command_interpreter.execute(commands)?;
         self.clear_cache();
         Ok(())
@@ -309,7 +309,7 @@ impl App {
         commands
     }
 
-    pub fn create_and_execute_commands(&mut self, commands: Vec<Command>) -> Result<(), AppError> {
+    pub fn create_and_execute_commands(&mut self, commands: Vec<Command>) -> AppResult<()> {
         self.execute_commands(self.create_commands(commands))
     }
 
@@ -339,7 +339,7 @@ impl App {
         self.note_metadata_storage = None;
     }
 
-    fn get_path(&mut self, path: PathBuf) -> Result<PathBuf, AppError> {
+    fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {
         self.note_metadata_storage()?;
         self.note_metadata_storage_ref()?.resolve_path(
             path,
@@ -580,6 +580,8 @@ pub enum InputCommandFinder {
     }
 }
 
+pub type AppResult<T> = Result<T, AppError>;
+
 #[derive(Error, Debug)]
 pub enum AppError {
     #[error("Failed to open repository: {0}")]
@@ -637,7 +639,7 @@ impl From<std::io::Error> for AppError {
     }
 }
 
-fn open_repository(path: &Path) -> Result<git2::Repository, AppError> {
+fn open_repository(path: &Path) -> AppResult<git2::Repository> {
     git2::Repository::open(path).map_err(|err| AppError::FailedToOpenRepository(err))
 }
 

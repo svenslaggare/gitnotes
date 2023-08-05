@@ -1,6 +1,7 @@
 use std::collections::{HashSet};
 use std::error;
 use std::hash::{Hash, Hasher};
+use std::io::{Read, Stdin};
 use std::path::PathBuf;
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
@@ -33,6 +34,18 @@ impl ToChronoDateTime for git2::Time {
     fn to_date_time(&self) -> Option<DateTime<FixedOffset>> {
         let time = NaiveDateTime::from_timestamp_opt(self.seconds(), 0)?;
         Some(FixedOffset::east_opt(self.offset_minutes() * 60).unwrap().from_utc_datetime(&time))
+    }
+}
+
+pub trait StdinExt {
+    fn read_into_string(&mut self) -> std::io::Result<String>;
+}
+
+impl StdinExt for Stdin {
+    fn read_into_string(&mut self) -> std::io::Result<String> {
+        let mut content = String::new();
+        self.read_to_string(&mut content)?;
+        Ok(content)
     }
 }
 

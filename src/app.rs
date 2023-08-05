@@ -1,5 +1,5 @@
 use std::cell::RefCell;
-use std::io::{IsTerminal, Read, stdin};
+use std::io::{IsTerminal, stdin};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
@@ -12,7 +12,7 @@ use structopt::StructOpt;
 use crate::command::{Command, CommandInterpreter, CommandError};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
-use crate::helpers::{base_dir, get_or_insert_with, io_error};
+use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTreeCreateConfig, NoteMetadataStorage};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
@@ -96,8 +96,7 @@ impl App {
                         Command::AddNote { path, tags }
                     ])?;
                 } else {
-                    let mut content = String::new();
-                    stdin().read_to_string(&mut content)?;
+                    let content = stdin().read_into_string()?;
                     self.create_and_execute_commands(vec![
                         Command::AddNoteWithContent { path, tags, content }
                     ])?;
@@ -115,8 +114,7 @@ impl App {
                         return Err(AppError::Input("History not supported when using stdin as input".to_owned()));
                     }
 
-                    let mut content = String::new();
-                    stdin().read_to_string(&mut content)?;
+                    let content = stdin().read_into_string()?;
                     self.create_and_execute_commands(vec![
                         Command::EditNoteSetContent { path, clear_tags, add_tags, content }
                     ])?;

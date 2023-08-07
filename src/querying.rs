@@ -319,7 +319,7 @@ impl<'a> ListDirectory<'a> {
                 return Err(QueryingError::TreeNotDirectory);
             }
 
-            found_tree.walk(|level, name, tree, _| {
+            found_tree.walk(|level, _, name, tree, _| {
                 if level != 0 {
                     return false;
                 }
@@ -432,7 +432,7 @@ impl<'a> ListTree<'a> {
         }
 
         tree.walk(
-            |_, name, tree, (_, is_last, is_last_stack)| {
+            |_, _, name, tree, (_, is_last, is_last_stack)| {
                 for current in is_last_stack {
                     if !current {
                         print!("│   ");

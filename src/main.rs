@@ -16,6 +16,9 @@ mod tags;
 mod interactive;
 mod app;
 
+#[cfg(test)]
+mod app_tests;
+
 use crate::app::{AppError, App, InputCommand, MainInputCommand};
 use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;

@@ -391,8 +391,12 @@ impl<'a> NoteFileTree<'a> {
         }
     }
 
-    pub fn walk<F: FnMut(usize, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(&'a self, mut apply: F) {
-        fn do_walk<'a, F: FnMut(usize, &OsString, &'a NoteFileTree,( bool, bool, &Vec<bool>)) -> bool>(apply: &mut F, level: usize, is_last_stack: &mut Vec<bool>, tree: &'a NoteFileTree) {
+    pub fn walk<F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(&'a self, mut apply: F) {
+        fn do_walk<'a, F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(apply: &mut F,
+                                                                                                              level: usize,
+                                                                                                              parent: &Path,
+                                                                                                              is_last_stack: &mut Vec<bool>,
+                                                                                                              tree: &'a NoteFileTree) {
             if let Some(children) = tree.children() {
                 let num_children = children.len();
                 for (child_index, (name, child)) in children.iter().enumerate() {
@@ -400,17 +404,17 @@ impl<'a> NoteFileTree<'a> {
                     let is_last = child_index == (num_children - 1);
                     match child {
                         NoteFileTree::Note(_) => {
-                            if !apply(level, name, child, (is_first, is_last, is_last_stack)) {
+                            if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
                                 return;
                             }
                         }
                         NoteFileTree::Tree { .. } => {
-                            if !apply(level, name, child, (is_first, is_last, is_last_stack)) {
+                            if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
                                 return;
                             }
 
                             is_last_stack.push(is_last);
-                            do_walk(apply, level + 1, is_last_stack, child);
+                            do_walk(apply, level + 1, &parent.join(name), is_last_stack, child);
                             is_last_stack.pop();
                         }
                     }
@@ -418,7 +422,7 @@ impl<'a> NoteFileTree<'a> {
             }
         }
 
-        do_walk(&mut apply, 0, &mut Vec::new(), self);
+        do_walk(&mut apply, 0, Path::new(""), &mut Vec::new(), self);
     }
 
     pub fn children(&self) -> Option<&BTreeMap<OsString, NoteFileTree>> {
@@ -435,13 +439,21 @@ impl<'a> NoteFileTree<'a> {
             NoteFileTree::Tree { .. } => false
         }
     }
+
+    pub fn is_tree(&self) -> bool {
+        match self {
+            NoteFileTree::Note(_) => false,
+            NoteFileTree::Tree { .. } => true
+        }
+    }
 }
 
+#[cfg(test)]
 macro_rules! assert_tree_eq {
     ($left:expr, $right:expr) => {
         {
            let mut results = Vec::new();
-           $right.walk(|_, name, _, _| {
+           $right.walk(|_, _, name, _, _| {
                results.push(name.to_str().unwrap().to_owned());
                true
            });

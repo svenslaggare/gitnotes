@@ -5,6 +5,9 @@ import AceEditor from "react-ace";
 import "ace-builds/src-noconflict/mode-markdown";
 import "ace-builds/src-noconflict/theme-textmate";
 
+import "brace";
+import "brace/ext/searchbox";
+
 import ReactMarkdown from "react-markdown";
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 
@@ -283,9 +286,13 @@ function getErrorMessage(error) {
 
 function sendMessageToServer(cmd) {
     if (window.external !== undefined) {
+        // @ts-ignore
         return window.external.invoke(cmd);
-    } else if (window.webkit.messageHandlers.external !== undefined) {
-        return window.webkit.messageHandlers.external.postMessage(cmd);
+    } else { // @ts-ignore
+        if (window.webkit.messageHandlers.external !== undefined) {
+            // @ts-ignore
+            return window.webkit.messageHandlers.external.postMessage(cmd);
+        }
     }
     throw new Error('Failed to locate webkit external handler')
 }

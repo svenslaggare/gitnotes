@@ -45,6 +45,8 @@ var react_dom_1 = __importDefault(require("react-dom"));
 var react_ace_1 = __importDefault(require("react-ace"));
 require("ace-builds/src-noconflict/mode-markdown");
 require("ace-builds/src-noconflict/theme-textmate");
+require("brace");
+require("brace/ext/searchbox");
 var react_markdown_1 = __importDefault(require("react-markdown"));
 var react_syntax_highlighter_1 = require("react-syntax-highlighter");
 var axios_1 = __importDefault(require("axios"));
@@ -241,10 +243,14 @@ function getErrorMessage(error) {
 }
 function sendMessageToServer(cmd) {
     if (window.external !== undefined) {
+        // @ts-ignore
         return window.external.invoke(cmd);
     }
-    else if (window.webkit.messageHandlers.external !== undefined) {
-        return window.webkit.messageHandlers.external.postMessage(cmd);
+    else { // @ts-ignore
+        if (window.webkit.messageHandlers.external !== undefined) {
+            // @ts-ignore
+            return window.webkit.messageHandlers.external.postMessage(cmd);
+        }
     }
     throw new Error('Failed to locate webkit external handler');
 }

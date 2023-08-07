@@ -195,7 +195,7 @@ impl App {
             }
             InputCommand::Finder { interactive, command } => {
                 let query = match command {
-                    InputCommandFinder::Tags { tags } => {
+                    InputCommandFinder::Tag { tags } => {
                         FindQuery::Tags(tags)
                     }
                     InputCommandFinder::Name { name } => {
@@ -554,7 +554,7 @@ pub enum InputCommand {
 #[derive(Debug, StructOpt)]
 pub enum InputCommandFinder {
     /// Searches based on tags.
-    Tags {
+    Tag {
         /// The tags that the note must contain (AND).
         tags: Vec<StringMatcher>
     },

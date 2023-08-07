@@ -13,9 +13,11 @@ use crossterm::ExecutableCommand;
 use crossterm::style::{Color, Print, ResetColor, SetAttribute, SetForegroundColor};
 use crossterm::style::Attribute::Bold;
 
-use crate::helpers::ToChronoDateTime;
+use crate::helpers::{TablePrinter, ToChronoDateTime};
 use crate::markdown;
 use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
+
+pub const DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
 pub type QueryingResult<T> = Result<T, QueryingError>;
 
@@ -75,21 +77,31 @@ impl<'a> Finder<'a> {
             }
         }
 
+        results.sort_by_key(|note_metadata| &note_metadata.path);
         Ok(results)
     }
 }
 
 pub fn print_note_metadata_results(results: &Vec<&NoteMetadata>) {
+    let mut table_printer = TablePrinter::new(vec![
+        "path".to_owned(),
+        "id".to_owned(),
+        "tags".to_owned(),
+        "created".to_owned(),
+        "last updated".to_owned(),
+    ]);
+
     for note_metadata in results {
-        println!(
-            "{} - id: {}, tags: [{}], created: {}, last updated: {}",
-            note_metadata.path.to_str().unwrap(),
-            note_metadata.id,
-            note_metadata.tags.join(", "),
-            note_metadata.created,
-            note_metadata.last_updated
-        );
+        table_printer.add_row(vec![
+            note_metadata.path.to_str().unwrap().to_owned(),
+            note_metadata.id.to_string(),
+            note_metadata.tags.join(" "),
+            note_metadata.created.format(DATETIME_FORMAT).to_string(),
+            note_metadata.last_updated.format(DATETIME_FORMAT).to_string()
+        ]);
     }
+
+    table_printer.print();
 }
 
 pub struct Searcher<'a> {
@@ -484,7 +496,7 @@ impl<'a> GitLog<'a> {
             println!(
                 "{} ({}): {}",
                 short_commit_hash,
-                commit_time,
+                commit_time.format(DATETIME_FORMAT),
                 commit.message().unwrap_or("").trim().replace("\n", " ")
             );
         }

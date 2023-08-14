@@ -4,7 +4,6 @@ use crate::app::{App, AppError, InputCommand};
 use crate::command::{Command, CommandError, CommandInterpreter};
 use crate::config::{Config, FileConfig};
 
-
 #[test]
 fn test_add() {
     use tempfile::TempDir;
@@ -383,6 +382,69 @@ print(np.square(np.arange(0, 15)))
     assert_eq!(note1_content, app.note_metadata_storage().unwrap().get_content(note1_path2).unwrap());
     assert_eq!(note2_content, app.note_metadata_storage().unwrap().get_content(note2_path2).unwrap());
     assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_add_and_move_dir_to_existing1() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note1_path = Path::new("2023/07/test1");
+    let note1_content = "Test1".to_owned();
+
+    let note2_path = Path::new("2023/07/test2");
+    let note2_content = "Test2".to_owned();
+
+    let note3_path = Path::new("2024/07/test2");
+    let note3_content = "Test3".to_owned();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note1_path.to_path_buf(),
+            tags: vec![],
+            content: note1_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note2_path.to_path_buf(),
+            tags: vec![],
+            content: note2_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note3_path.to_path_buf(),
+            tags: vec![],
+            content: note3_content.clone()
+        }
+    ]).unwrap();
+    assert_eq!(note1_content, app.note_metadata_storage().unwrap().get_content(note1_path).unwrap());
+    assert_eq!(note2_content, app.note_metadata_storage().unwrap().get_content(note2_path).unwrap());
+    assert_eq!(note3_content, app.note_metadata_storage().unwrap().get_content(note3_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    let note_id1 = app.note_metadata_storage().unwrap().get_id(note1_path).unwrap();
+    let note_id2 = app.note_metadata_storage().unwrap().get_id(note2_path).unwrap();
+    let note_id3 = app.note_metadata_storage().unwrap().get_id(note3_path).unwrap();
+
+    let err = app.run(InputCommand::Move { source: Path::new("2023").to_owned(), destination: Path::new("2024").to_owned(), force: false }).err().unwrap();
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+    if let AppError::Command(CommandError::NoteExistsAtDestination(err_path)) = err {
+        app.clear_cache();
+
+        assert_eq!(note3_path, err_path);
+        assert_eq!(note_id1, app.note_metadata_storage().unwrap().get_id(note1_path).unwrap());
+        assert_eq!(note_id2, app.note_metadata_storage().unwrap().get_id(note2_path).unwrap());
+        assert_eq!(note_id3, app.note_metadata_storage().unwrap().get_id(note3_path).unwrap());
+
+        assert_eq!(note1_content, app.note_metadata_storage().unwrap().get_content(note1_path).unwrap());
+        assert_eq!(note2_content, app.note_metadata_storage().unwrap().get_content(note2_path).unwrap());
+        assert_eq!(note3_content, app.note_metadata_storage().unwrap().get_content(note3_path).unwrap());
+    } else {
+        assert!(false, "Expected 'NoteAtDestination' error");
+    }
 }
 
 #[test]

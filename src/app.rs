@@ -129,11 +129,17 @@ impl App {
                 let destination = self.get_path(destination)?;
 
                 self.note_metadata_storage()?;
-                self.create_and_execute_commands(self.create_move_commands(
+
+                let result = self.create_and_execute_commands(self.create_move_commands(
                     source,
                     destination,
                     force
-                )?)?;
+                )?);
+
+                if let Err(err) = result {
+                    self.command_interpreter.reset()?;
+                    return Err(err);
+                }
             }
             InputCommand::Remove { path } => {
                 let path = self.get_path(path)?;
@@ -371,7 +377,7 @@ impl App {
         )
     }
 
-    fn clear_cache(&mut self) {
+    pub fn clear_cache(&mut self) {
         self.note_metadata_storage = None;
     }
 

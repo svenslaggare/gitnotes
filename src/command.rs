@@ -64,7 +64,8 @@ pub struct CommandInterpreter {
     snippet_runner_manager: SnippetRunnerManger,
 
     index: Option<git2::Index>,
-    commit_message_lines: OrderedSet<String>
+    commit_message_lines: OrderedSet<String>,
+    changed_files: Vec<PathBuf>
 }
 
 impl CommandInterpreter {
@@ -91,7 +92,8 @@ impl CommandInterpreter {
                 snippet_runner_manager,
 
                 index: None,
-                commit_message_lines: OrderedSet::new()
+                commit_message_lines: OrderedSet::new(),
+                changed_files: Vec::new()
             }
         )
     }
@@ -145,9 +147,7 @@ impl CommandInterpreter {
 
                     (self.launch_editor)(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
-                    let index = self.index()?;
-                    index.add_path(&relative_content_path)?;
-                    index.write()?;
+                    self.edited_file(relative_content_path)?;
 
                     self.change_note_tags(&id, clear_tags, add_tags)?;
                     let changed = self.try_change_last_updated(&id)?;
@@ -162,9 +162,7 @@ impl CommandInterpreter {
 
                     std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
 
-                    let index = self.index()?;
-                    index.add_path(&relative_content_path)?;
-                    index.write()?;
+                    self.edited_file(relative_content_path)?;
 
                     self.change_note_tags(&id, clear_tags, add_tags)?;
                     self.try_change_last_updated(&id)?;
@@ -302,6 +300,7 @@ impl CommandInterpreter {
 
                         self.index = None;
                         self.note_metadata_storage = None;
+                        self.changed_files.clear();
                     }
                 }
             }
@@ -313,6 +312,28 @@ impl CommandInterpreter {
     pub fn new_commit(&mut self) -> CommandResult<()> {
         self.index = None;
         self.commit_message_lines.clear();
+        Ok(())
+    }
+
+    pub fn reset(&mut self) -> CommandResult<()> {
+        let repository = self.repository.borrow_mut();
+        let head = repository.head()?;
+        let head_commit = head.peel(git2::ObjectType::Commit)?;
+
+        let mut checkout_builder = git2::build::CheckoutBuilder::new();
+        for path in &self.changed_files {
+            checkout_builder.path(path.to_str().unwrap());
+        }
+
+        repository.reset(
+            &head_commit,
+            git2::ResetType::Hard,
+            Some(&mut checkout_builder)
+        )?;
+
+        self.changed_files.clear();
+        self.commit_message_lines.clear();
+
         Ok(())
     }
 
@@ -364,7 +385,16 @@ impl CommandInterpreter {
         index.write()?;
 
         self.commit_message_lines.insert(format!("Deleted note '{}'.", real_path));
+        self.changed_files.push(relative_metadata_path);
 
+        Ok(())
+    }
+
+    fn edited_file(&mut self, path: PathBuf) -> CommandResult<()> {
+        let index = self.index()?;
+        index.add_path(&path)?;
+        index.write()?;
+        self.changed_files.push(path);
         Ok(())
     }
 
@@ -378,6 +408,8 @@ impl CommandInterpreter {
             let index = self.index()?;
             index.add_path(&relative_metadata_path)?;
             index.write()?;
+
+            self.changed_files.push(relative_metadata_path);
             Ok(true)
         } else {
             Ok(false)
@@ -414,6 +446,8 @@ impl CommandInterpreter {
                 let index = self.index()?;
                 index.add_path(&relative_metadata_path)?;
                 index.write()?;
+
+                self.changed_files.push(relative_metadata_path);
             }
 
             Ok(())

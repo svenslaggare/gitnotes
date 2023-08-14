@@ -12,7 +12,7 @@ fn test_add() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -44,7 +44,7 @@ fn test_add_with_editor() {
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -81,7 +81,7 @@ fn test_add_and_run_snippet() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -166,8 +166,8 @@ fn test_add_and_move() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
-    let note_path2 = Path::new("2023/07/01/sample.py");
+    let note_path = Path::new("2023/07/sample");
+    let note_path2 = Path::new("2023/07/01/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -202,8 +202,8 @@ fn test_add_and_move_to_existing1() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
-    let note_path2 = Path::new("2023/07/01/sample.py");
+    let note_path = Path::new("2023/07/sample");
+    let note_path2 = Path::new("2023/07/01/sample");
     let note_content = "Hello, World #1".to_owned();
     let note_content2 = "Hello, World #2".to_owned();
 
@@ -245,8 +245,8 @@ fn test_add_and_move_to_existing2() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
-    let note_path2 = Path::new("2023/07/01/sample.py");
+    let note_path = Path::new("2023/07/sample");
+    let note_path2 = Path::new("2023/07/01/sample");
     let note_content = "Hello, World #1".to_owned();
     let note_content2 = "Hello, World #2".to_owned();
 
@@ -284,8 +284,8 @@ fn test_add_and_move_dir1() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note1_path = Path::new("2023/07/sample.py");
-    let note1_path2 = Path::new("2024/07/sample.py");
+    let note1_path = Path::new("2023/07/sample");
+    let note1_path2 = Path::new("2024/07/sample");
     let note1_content = r#"Hello, World!
 
 ``` python
@@ -294,8 +294,8 @@ print(np.square(np.arange(0, 10)))
 ```
 "#.to_string();
 
-    let note2_path = Path::new("2023/07/sample2.py");
-    let note2_path2 = Path::new("2024/07/sample2.py");
+    let note2_path = Path::new("2023/07/sample2");
+    let note2_path2 = Path::new("2024/07/sample2");
     let note2_content = r#"Hello, My World!
 
 ``` python
@@ -338,8 +338,8 @@ fn test_add_and_move_dir2() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note1_path = Path::new("2023/07/sample.py");
-    let note1_path2 = Path::new("2023/07/07/sample.py");
+    let note1_path = Path::new("2023/07/sample");
+    let note1_path2 = Path::new("2023/07/07/sample");
     let note1_content = r#"Hello, World!
 
 ``` python
@@ -348,8 +348,8 @@ print(np.square(np.arange(0, 10)))
 ```
 "#.to_string();
 
-    let note2_path = Path::new("2023/07/sample2.py");
-    let note2_path2 = Path::new("2023/07/07/sample2.py");
+    let note2_path = Path::new("2023/07/sample2");
+    let note2_path2 = Path::new("2023/07/07/sample2");
     let note2_content = r#"Hello, My World!
 
 ``` python
@@ -448,6 +448,47 @@ fn test_add_and_move_dir_to_existing1() {
 }
 
 #[test]
+fn test_add_and_move_file_to_dir() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample");
+    let note_path2 = Path::new("2023/07/01/sample");
+    let note_content = r#"Hello, World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 10)))
+```
+"#.to_string();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: Path::new("2023/07/01/sample2").to_owned(),
+            tags: vec!["python".to_owned()],
+            content: note_content.clone()
+        }
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.run(InputCommand::Move { source: note_path.to_owned(), destination: Path::new("2023/07/01").to_owned(), force: false }).unwrap();
+    assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note_path).is_ok());
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path2).unwrap());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
 fn test_add_and_remove() {
     use tempfile::TempDir;
 
@@ -455,7 +496,7 @@ fn test_add_and_remove() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -490,7 +531,7 @@ fn test_add_and_change_tags() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -532,7 +573,7 @@ fn test_edit() {
     let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -582,7 +623,7 @@ fn test_edit_with_editor() {
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python
@@ -639,7 +680,7 @@ fn test_edit_with_editor_and_history() {
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
-    let note_path = Path::new("2023/07/sample.py");
+    let note_path = Path::new("2023/07/sample");
     let note_content = r#"Hello, World!
 
 ``` python

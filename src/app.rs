@@ -337,9 +337,9 @@ impl App {
                             source: PathBuf, destination: PathBuf,
                             force: bool) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
-        let note_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&source)).flatten();
 
-        if let Some(note_file_tree) = note_file_tree {
+        let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&source)).flatten();
+        if let Some(note_file_tree) = source_file_tree {
             if note_file_tree.is_tree() {
                 let mut moves = Vec::new();
                 note_file_tree.walk(|_, parent, name, tree, _| {
@@ -356,6 +356,21 @@ impl App {
                 });
 
                 return Ok(moves);
+            }
+        }
+
+        let destination_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&destination)).flatten();
+        if let (Some(destination_tree), Some(filename)) = (destination_file_tree, source.file_name()) {
+            if destination_tree.is_tree() {
+                return Ok(
+                    vec![
+                        Command::MoveNote {
+                            source: source.clone(),
+                            destination: destination.join(filename),
+                            force
+                        }
+                    ]
+                );
             }
         }
 

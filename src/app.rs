@@ -141,12 +141,18 @@ impl App {
                     return Err(err);
                 }
             }
-            InputCommand::Remove { path } => {
+            InputCommand::Remove { path, recursive } => {
                 let path = self.get_path(path)?;
 
-                self.create_and_execute_commands(vec![
-                    Command::RemoveNote { path }
-                ])?;
+                let result = self.create_and_execute_commands(self.create_remove_commands(
+                    path,
+                    recursive
+                )?);
+
+                if let Err(err) = result {
+                    self.command_interpreter.reset()?;
+                    return Err(err);
+                }
             }
             InputCommand::RunSnippet { path, save_output } => {
                 let path = self.get_path(path)?;
@@ -334,7 +340,8 @@ impl App {
     }
 
     fn create_move_commands(&self,
-                            source: PathBuf, destination: PathBuf,
+                            source: PathBuf,
+                            destination: PathBuf,
                             force: bool) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
 
@@ -377,6 +384,34 @@ impl App {
         Ok(
             vec![
                 Command::MoveNote { source, destination, force }
+            ]
+        )
+    }
+
+    fn create_remove_commands(&self,
+                              path: PathBuf,
+                              recursive: bool) -> QueryingResult<Vec<Command>> {
+        let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
+
+        let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&path)).flatten();
+        if let Some(note_file_tree) = source_file_tree {
+            if note_file_tree.is_tree() && recursive {
+                let mut removes = Vec::new();
+                note_file_tree.walk(|_, parent, name, tree, _| {
+                    if tree.is_leaf() {
+                        removes.push(Command::RemoveNote { path: path.join(parent.join(name)) });
+                    }
+
+                    true
+                });
+
+                return Ok(removes);
+            }
+        }
+
+        Ok(
+            vec![
+                Command::RemoveNote { path }
             ]
         )
     }
@@ -495,7 +530,10 @@ pub enum InputCommand {
     #[structopt(name="rm")]
     Remove {
         /// The absolute path of the note. Id also work.
-        path: PathBuf
+        path: PathBuf,
+        /// Recursively removes all notes in path.
+        #[structopt(long, short)]
+        recursive: bool
     },
     /// Runs the code snippet contained in a note.
     #[structopt(name="run")]

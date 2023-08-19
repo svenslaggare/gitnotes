@@ -160,7 +160,10 @@ impl<'a> AutoCompletion<'a> {
                 "run".to_owned(),
                 "show".to_owned(),
                 "switch".to_owned(),
-                "tree".to_owned()
+                "tree".to_owned(),
+                "undo".to_owned(),
+                "cd".to_owned(),
+                "pwd".to_owned(),
             ],
             path_subcommands: HashSet::from_iter(vec![
                "add".to_owned(),
@@ -172,6 +175,7 @@ impl<'a> AutoCompletion<'a> {
                "ls".to_owned(),
                "tree".to_owned(),
                "info".to_owned(),
+               "cd".to_owned(),
             ]),
             note_file_tree
         }

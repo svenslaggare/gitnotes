@@ -23,7 +23,8 @@ pub struct App {
     repository: RepositoryRef,
     command_interpreter: CommandInterpreter,
     note_metadata_storage: Option<NoteMetadataStorage>,
-    auto_commit: bool
+    auto_commit: bool,
+    virtual_working_dir: Option<PathBuf>
 }
 
 impl App {
@@ -40,7 +41,8 @@ impl App {
                 repository: repository.clone(),
                 command_interpreter: create_ci(config, repository)?,
                 note_metadata_storage: None,
-                auto_commit: true
+                auto_commit: true,
+                virtual_working_dir: None
             }
         )
     }
@@ -298,6 +300,39 @@ impl App {
                     println!("{}", file_system_path);
                 }
             }
+            InputCommand::ChangeWorkingDirectory { path } => {
+                if !self.config.use_real {
+                    let new_working_dir = change_working_dir(
+                        self.virtual_working_dir.as_ref().map(|p| p.as_path()),
+                        path
+                    );
+
+                    let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
+                    if let Some(working_dir_tree) = note_file_tree.find(&new_working_dir) {
+                        if working_dir_tree.is_tree() {
+                            self.virtual_working_dir = Some(new_working_dir);
+                        } else {
+                            return Err(AppError::ChangeDirectory("The path is not a directory".to_owned()));
+                        }
+                    } else {
+                        return Err(AppError::ChangeDirectory("The path doesn't exist".to_owned()));
+                    }
+                } else {
+                    std::env::set_current_dir(path).map_err(|err| AppError::ChangeDirectory(err.to_string()))?;
+                }
+            }
+            InputCommand::PrintWorkingDirectory {} => {
+                if !self.config.use_real {
+                    if let Some(virtual_working_dir) = self.virtual_working_dir.as_ref() {
+                        println!("{}", virtual_working_dir.to_str().unwrap());
+                    } else {
+                        println!("(root)");
+                    }
+                } else {
+                    let working_dir = std::env::current_dir().map_err(|err| AppError::Input(err.to_string()))?;
+                    println!("{}", working_dir.to_str().unwrap());
+                }
+            }
             InputCommand::WebEditor { .. } => {
                 println!("Not supported in interactive mode.");
             }
@@ -437,6 +472,8 @@ impl App {
     }
 
     fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {
+        let path = self.virtual_working_dir.as_ref().map(|dir| dir.join(path.clone())).unwrap_or_else(|| path);
+
         self.note_metadata_storage()?;
         self.note_metadata_storage_ref()?.resolve_path(
             path,
@@ -646,6 +683,17 @@ pub enum InputCommand {
         #[structopt(long="file-system")]
         only_file_system_path: bool,
     },
+    /// Changes the working directory of the (virtual) file system (interactive mode only)
+    #[structopt(name="cd")]
+    ChangeWorkingDirectory {
+        /// The new working directory
+        path: PathBuf
+    },
+    /// Prints the current working directory of the (virtual) file system (interactive mode only)
+    #[structopt(name="pwd")]
+    PrintWorkingDirectory {
+
+    },
     /// Runs web editor in stand alone mode (use web-editor in editor config to use it)
     WebEditor {
         /// The (file system) path to edit
@@ -704,6 +752,9 @@ pub enum AppError {
     #[error("Input error: {0}")]
     Input(String),
 
+    #[error("Failed to change directory: {0}")]
+    ChangeDirectory(String),
+
     #[error("{0}")]
     Regex(regex::Error),
 
@@ -746,4 +797,77 @@ impl From<std::io::Error> for AppError {
 
 fn open_repository(path: &Path) -> AppResult<git2::Repository> {
     git2::Repository::open(path).map_err(|err| AppError::FailedToOpenRepository(err))
+}
+
+fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> PathBuf {
+    let mut current_working_dir = current_working_dir.unwrap_or_else(|| Path::new("")).to_owned();
+    for part in path.iter() {
+        if part == ".." {
+            if let Some(parent) = current_working_dir.parent() {
+                current_working_dir = parent.to_owned();
+            } else {
+                current_working_dir = Path::new("").to_owned();
+            }
+        } else {
+            current_working_dir = current_working_dir.join(part);
+        }
+    }
+
+    current_working_dir
+}
+
+#[test]
+fn test_change_working_dir1() {
+    assert_eq!(
+        Path::new("Code"),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("..").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir2() {
+    assert_eq!(
+        Path::new(""),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("../..").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir3() {
+    assert_eq!(
+        Path::new("Code/test"),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("../test").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir4() {
+    assert_eq!(
+        Path::new("Code/gitnotes-cli/test"),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("test").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir5() {
+    assert_eq!(
+        Path::new("Code/gitnotes-cli/test1/test2"),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("test1/test2").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir6() {
+    assert_eq!(
+        Path::new("Code"),
+        change_working_dir(Some(Path::new("")), Path::new("Code").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir7() {
+    assert_eq!(
+        Path::new("Code/gitnotes-cli"),
+        change_working_dir(Some(Path::new("")), Path::new("Code/gitnotes-cli").to_owned())
+    );
 }

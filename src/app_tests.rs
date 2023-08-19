@@ -74,7 +74,7 @@ print([x * x for x in xs])
 }
 
 #[test]
-fn test_add_and_run_snippet() {
+fn test_run_snippet() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -159,7 +159,7 @@ print([x * x for x in xs])
 }
 
 #[test]
-fn test_add_and_move() {
+fn test_move() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -195,7 +195,7 @@ print(np.square(np.arange(0, 10)))
 }
 
 #[test]
-fn test_add_and_move_to_existing1() {
+fn test_move_to_existing1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -238,7 +238,7 @@ fn test_add_and_move_to_existing1() {
 }
 
 #[test]
-fn test_add_and_move_to_existing2() {
+fn test_move_to_existing2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -277,7 +277,7 @@ fn test_add_and_move_to_existing2() {
 }
 
 #[test]
-fn test_add_and_move_dir1() {
+fn test_move_dir1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -331,7 +331,7 @@ print(np.square(np.arange(0, 15)))
 }
 
 #[test]
-fn test_add_and_move_dir2() {
+fn test_move_dir2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -385,7 +385,7 @@ print(np.square(np.arange(0, 15)))
 }
 
 #[test]
-fn test_add_and_move_dir_to_existing1() {
+fn test_move_dir_to_existing1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -448,7 +448,7 @@ fn test_add_and_move_dir_to_existing1() {
 }
 
 #[test]
-fn test_add_and_move_file_to_dir() {
+fn test_move_file_to_dir() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -489,7 +489,7 @@ print(np.square(np.arange(0, 10)))
 }
 
 #[test]
-fn test_add_and_remove() {
+fn test_remove() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -524,7 +524,7 @@ print(np.square(np.arange(0, 10)))
 }
 
 #[test]
-fn test_add_and_remove_recursive() {
+fn test_remove_recursive() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -564,7 +564,7 @@ fn test_add_and_remove_recursive() {
 }
 
 #[test]
-fn test_add_and_change_tags() {
+fn test_change_tags() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
@@ -776,4 +776,46 @@ print([x * x for x in xs])
     }).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(3, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_undo() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample");
+    let note_content1 = "Test1".to_owned();
+    let note_content2 = "Test2".to_owned();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec![],
+            content: note_content1.clone()
+        },
+    ]).unwrap();
+    assert_eq!(note_content1, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.create_and_execute_commands(vec![
+        Command::EditNoteSetContent {
+            path: note_path.to_path_buf(),
+            clear_tags: false,
+            add_tags: vec![],
+            content: note_content2.clone()
+        },
+    ]).unwrap();
+    assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+    let commit_id = repository.reflog("HEAD").unwrap().get(0).unwrap().id_new();
+
+    app.run(InputCommand::Undo { commit: commit_id.to_string() }).unwrap();
+    assert_eq!(note_content1, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(3, repository.reflog("HEAD").unwrap().len());
+
 }

@@ -45,6 +45,9 @@ pub enum Command {
     RemoveNote {
         path: PathBuf
     },
+    UndoCommit {
+        commit: String
+    },
     RunSnippet {
         path: PathBuf,
         save_output: bool
@@ -195,6 +198,21 @@ impl CommandInterpreter {
                 Command::RemoveNote { path } => {
                     self.remove_note(&path)?;
                 }
+                Command::UndoCommit { commit } => {
+                    let git_commit_id = {
+                        let repository = self.repository.borrow_mut();
+                        let git_commit = repository.revparse_single(&commit)?;
+                        let git_commit = git_commit.as_commit().ok_or_else(|| CommitNotFound(commit.clone()))?;
+                        let git_commit_id = git_commit.as_object().short_id().unwrap().as_str().unwrap().to_owned();
+
+                        repository.revert(&git_commit, None).map_err(|err| FailedToUndo(err.to_string()))?;
+                        repository.cleanup_state()?;
+
+                        git_commit_id
+                    };
+
+                    self.commit_message_lines.insert(format!("Undo commit '{}'.", git_commit_id));
+                },
                 Command::RunSnippet { path, save_output } => {
                     let id = self.get_note_id(&path)?;
                     let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
@@ -357,11 +375,17 @@ impl CommandInterpreter {
         index.add_path(&relative_metadata_path)?;
         index.write()?;
 
+        let tags_str = if !metadata.tags.is_empty() {
+            format!(" using tags: {}", metadata.tags.join(", "))
+        } else {
+            String::new()
+        };
+
         self.commit_message_lines.insert(format!(
-            "Added note '{}' (id: {}) using tags: {}.",
+            "Added note '{}' (id: {}) {}.",
             path.to_str().unwrap(),
             id,
-            metadata.tags.join(", ")
+            tags_str
         ));
 
         Ok(())
@@ -555,6 +579,8 @@ pub enum CommandError {
     FailedToRemoveNote(String),
     #[error("Failed to commit: {0}")]
     FailedToCommit(String),
+    #[error("Failed to undo commit: {0}")]
+    FailedToUndo(String),
 
     #[error("Failed to update metadata: {0}")]
     FailedToUpdateMetadata(String),
@@ -564,6 +590,9 @@ pub enum CommandError {
     NoteAlreadyExists(PathBuf),
     #[error("Existing note at destination '{0}', use -f to delete that note before moving")]
     NoteExistsAtDestination(PathBuf),
+
+    #[error("Commit {0} not found")]
+    CommitNotFound(String),
 
     #[error("Failed to run snippet: {0}")]
     Snippet(SnippetError),

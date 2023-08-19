@@ -154,6 +154,11 @@ impl App {
                     return Err(err);
                 }
             }
+            InputCommand::Undo { commit } => {
+                self.create_and_execute_commands(vec![
+                    Command::UndoCommit { commit }
+                ])?;
+            }
             InputCommand::RunSnippet { path, save_output } => {
                 let path = self.get_path(path)?;
 
@@ -534,6 +539,11 @@ pub enum InputCommand {
         /// Recursively removes all notes in path.
         #[structopt(long, short)]
         recursive: bool
+    },
+    /// Undo the given commit
+    Undo {
+        /// The git commit to undo
+        commit: String
     },
     /// Runs the code snippet contained in a note.
     #[structopt(name="run")]

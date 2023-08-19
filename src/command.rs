@@ -314,7 +314,10 @@ impl CommandInterpreter {
                             &new_tree,
                             &head_commit
                         ).map_err(|err| FailedToCommit(err.to_string()))?;
-                        println!("Created commit with message:\n{}", commit_message);
+                        println!("Created commit with message:");
+                        for line in commit_message.lines() {
+                            println!("\t{}", line);
+                        }
 
                         self.index = None;
                         self.note_metadata_storage = None;

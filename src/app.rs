@@ -308,14 +308,16 @@ impl App {
                     );
 
                     let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
-                    if let Some(working_dir_tree) = note_file_tree.find(&new_working_dir) {
-                        if working_dir_tree.is_tree() {
+                    match note_file_tree.find(&new_working_dir)  {
+                        Some(working_dir_tree) if working_dir_tree.is_tree() => {
                             self.virtual_working_dir = Some(new_working_dir);
-                        } else {
+                        }
+                        Some(_) => {
                             return Err(AppError::ChangeDirectory("The path is not a directory".to_owned()));
                         }
-                    } else {
-                        return Err(AppError::ChangeDirectory("The path doesn't exist".to_owned()));
+                        None => {
+                            return Err(AppError::ChangeDirectory("The path doesn't exist".to_owned()));
+                        }
                     }
                 } else {
                     std::env::set_current_dir(path).map_err(|err| AppError::ChangeDirectory(err.to_string()))?;

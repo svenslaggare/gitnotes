@@ -395,8 +395,8 @@ impl<'a> NoteFileTree<'a> {
         }
     }
 
-    pub fn walk<F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(&'a self, mut apply: F) {
-        fn do_walk<'a, F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, (bool, bool, &Vec<bool>)) -> bool>(apply: &mut F,
+    pub fn walk<F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, NoteFileTreeWalkStack) -> bool>(&'a self, mut apply: F) {
+        fn do_walk<'a, F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, NoteFileTreeWalkStack) -> bool>(apply: &mut F,
                                                                                                               level: usize,
                                                                                                               parent: &Path,
                                                                                                               is_last_stack: &mut Vec<bool>,
@@ -408,12 +408,12 @@ impl<'a> NoteFileTree<'a> {
                     let is_last = child_index == (num_children - 1);
                     match child {
                         NoteFileTree::Note(_) => {
-                            if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
+                            if !apply(level, parent, name, child, NoteFileTreeWalkStack { is_first, is_last, is_last_stack }) {
                                 continue;
                             }
                         }
                         NoteFileTree::Tree { .. } => {
-                            if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
+                            if !apply(level, parent, name, child, NoteFileTreeWalkStack { is_first, is_last, is_last_stack }) {
                                 continue;
                             }
 
@@ -450,6 +450,12 @@ impl<'a> NoteFileTree<'a> {
             NoteFileTree::Tree { .. } => true
         }
     }
+}
+
+pub struct NoteFileTreeWalkStack<'a> {
+    pub is_first: bool,
+    pub is_last: bool,
+    pub is_last_stack: &'a mut Vec<bool>
 }
 
 #[cfg(test)]

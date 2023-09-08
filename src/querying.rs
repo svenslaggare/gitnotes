@@ -432,8 +432,8 @@ impl<'a> ListTree<'a> {
         }
 
         tree.walk(
-            |_, _, name, tree, (_, is_last, is_last_stack)| {
-                for current in is_last_stack {
+            |_, _, name, tree, stack| {
+                for current in stack.is_last_stack.iter() {
                     if !current {
                         print!("│   ");
                     } else {
@@ -441,7 +441,7 @@ impl<'a> ListTree<'a> {
                     }
                 }
 
-                print!("{}── ", if is_last {"└"} else {"├"});
+                print!("{}── ", if stack.is_last {"└"} else {"├"});
                 let (content, color) = match tree {
                     NoteFileTree::Note(note_metadata) => {
                         (format!("{} (id: {})", name.to_str().unwrap(), note_metadata.id), Color::Green)

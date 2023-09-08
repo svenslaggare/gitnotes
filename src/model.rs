@@ -405,12 +405,12 @@ impl<'a> NoteFileTree<'a> {
                     match child {
                         NoteFileTree::Note(_) => {
                             if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
-                                return;
+                                continue;
                             }
                         }
                         NoteFileTree::Tree { .. } => {
                             if !apply(level, parent, name, child, (is_first, is_last, is_last_stack)) {
-                                return;
+                                continue;
                             }
 
                             is_last_stack.push(is_last);

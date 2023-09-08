@@ -19,7 +19,7 @@ assets = [
 webview = ["web-view"]
 
 [dependencies]
-thiserror = "1.0.40"
+thiserror = "1"
 chrono = { version = "0.4", features=["serde"] }
 rand = "0.8"
 fnv = "1"
@@ -27,6 +27,7 @@ regex = "1"
 lazy_static = "1"
 float-ord = "0.3"
 substring = "1"
+globset = "0.4"
 
 structopt = "0.3"
 rustyline = "12.0"

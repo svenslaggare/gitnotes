@@ -3,6 +3,7 @@ use std::io::{IsTerminal, stdin};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
+use globset::Glob;
 
 use regex::Regex;
 use thiserror::Error;
@@ -387,47 +388,78 @@ impl App {
                             force: bool) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
 
-        let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&source)).flatten();
-        if let Some(note_file_tree) = source_file_tree {
-            if note_file_tree.is_tree() {
-                let mut moves = Vec::new();
-                note_file_tree.walk(|_, parent, name, tree, _| {
-                    let path = parent.join(name);
-                    if tree.is_leaf() {
-                        moves.push(Command::MoveNote {
-                            source: source.join(&path),
-                            destination: destination.join(&path),
-                            force
-                        });
+        let inner = |source: PathBuf, destination: PathBuf| {
+            let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&source)).flatten();
+            if let Some(note_file_tree) = source_file_tree {
+                if note_file_tree.is_tree() {
+                    let mut moves = Vec::new();
+                    note_file_tree.walk(|_, parent, name, tree, _| {
+                        let path = parent.join(name);
+                        if tree.is_leaf() {
+                            moves.push(Command::MoveNote {
+                                source: source.join(&path),
+                                destination: destination.join(&path),
+                                force
+                            });
+                        }
+
+                        true
+                    });
+
+                    return Ok(moves);
+                }
+            }
+
+            let destination_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&destination)).flatten();
+            if let (Some(destination_tree), Some(filename)) = (destination_file_tree, source.file_name()) {
+                if destination_tree.is_tree() {
+                    return Ok(
+                        vec![
+                            Command::MoveNote {
+                                source: source.clone(),
+                                destination: destination.join(filename),
+                                force
+                            }
+                        ]
+                    );
+                }
+            }
+
+            Ok(
+                vec![
+                    Command::MoveNote { source, destination, force }
+                ]
+            )
+        };
+
+        let source_str = source.to_str().unwrap();
+        if source_str.contains("*") {
+            if let Ok(glob) = Glob::new(source_str) {
+                let glob = glob.compile_matcher();
+
+                if let Some(note_file_tree) = note_file_tree.as_ref() {
+                    let mut sources = Vec::new();
+                    note_file_tree.walk(|_, parent, name, _, _| {
+                        let path = parent.join(name);
+                        if glob.is_match(&path) {
+                            sources.push(path);
+                            false
+                        } else {
+                            true
+                        }
+                    });
+
+                    let mut commands = Vec::new();
+                    for source in sources {
+                        commands.append(&mut inner(source, destination.clone())?);
                     }
 
-                    true
-                });
-
-                return Ok(moves);
+                    return Ok(commands);
+                }
             }
         }
 
-        let destination_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&destination)).flatten();
-        if let (Some(destination_tree), Some(filename)) = (destination_file_tree, source.file_name()) {
-            if destination_tree.is_tree() {
-                return Ok(
-                    vec![
-                        Command::MoveNote {
-                            source: source.clone(),
-                            destination: destination.join(filename),
-                            force
-                        }
-                    ]
-                );
-            }
-        }
-
-        Ok(
-            vec![
-                Command::MoveNote { source, destination, force }
-            ]
-        )
+        inner(source, destination)
     }
 
     fn create_remove_commands(&self,

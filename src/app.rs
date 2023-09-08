@@ -194,7 +194,7 @@ impl App {
 
                 let content = self.get_note_content(&path, history)?;
                 let content = querying::extract_content(content, only_code, only_output)?;
-                editor::launch_with_content(&self.config, &content)?;
+                editor::launch_with_content(&self.config, &content, true)?;
             }
             InputCommand::ListDirectory { query } => {
                 let query = query.unwrap_or_else(|| Path::new("").to_owned());
@@ -702,7 +702,10 @@ pub enum InputCommand {
         path: PathBuf,
         /// The part to run the web server at (default: 9000)
         #[structopt(long, default_value="9000")]
-        port: u16
+        port: u16,
+        /// Launches editor in read only mode
+        #[structopt(long="read-only")]
+        is_read_only: bool
     }
 }
 

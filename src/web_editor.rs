@@ -47,13 +47,13 @@ fn default_launch_web_view() -> bool {
     false
 }
 
-pub async fn launch(config: WebEditorConfig, path: &Path) {
+pub async fn launch(config: WebEditorConfig, path: &Path, is_read_only: bool) {
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
     }
 
-    let state = Arc::new(WebServerState::new(path.to_owned()));
+    let state = Arc::new(WebServerState::new(path.to_owned(), is_read_only));
     let app = Router::new()
         .nest_service("/content", ServeDir::new(content_dir))
         .route("/", get(index))
@@ -83,9 +83,9 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     }
 }
 
-pub fn launch_sync(config: WebEditorConfig, path: &Path) {
+pub fn launch_sync(config: WebEditorConfig, path: &Path, is_read_only: bool) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(launch(config, path));
+    runtime.block_on(launch(config, path, is_read_only));
 }
 
 #[cfg(feature="webview")]
@@ -119,14 +119,16 @@ fn launch_web_view(_state: Arc<WebServerState>, _config: &WebEditorConfig) {
 
 struct WebServerState {
     path: PathBuf,
-    notify: Notify
+    notify: Notify,
+    is_read_only: bool
 }
 
 impl WebServerState {
-    pub fn new(path: PathBuf) -> WebServerState {
+    pub fn new(path: PathBuf, is_read_only: bool) -> WebServerState {
         WebServerState {
             path,
-            notify: Notify::new()
+            notify: Notify::new(),
+            is_read_only
         }
     }
 }
@@ -166,13 +168,15 @@ impl IntoResponse for WebServerError {
 #[template(path="webEditor.html")]
 struct AppTemplate {
     time: i64,
-    file_path: String
+    file_path: String,
+    is_read_only: bool
 }
 
 async fn index(State(state): State<Arc<WebServerState>>) -> Response {
     let template = AppTemplate {
         time: Local::now().timestamp(),
         file_path: state.path.to_str().unwrap().to_owned(),
+        is_read_only: state.is_read_only
     };
 
     Html(template.render().unwrap()).into_response()

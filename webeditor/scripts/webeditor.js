@@ -39,7 +39,7 @@ var __rest = (this && this.__rest) || function (s, e) {
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
-exports.__esModule = true;
+Object.defineProperty(exports, "__esModule", { value: true });
 var react_1 = __importDefault(require("react"));
 var react_dom_1 = __importDefault(require("react-dom"));
 var react_ace_1 = __importDefault(require("react-ace"));
@@ -61,31 +61,31 @@ var WebEditorMain = /** @class */ (function (_super) {
         var _this = _super.call(this, props) || this;
         _this.state = {
             content: "",
-            isReadOnly: false,
+            isReadOnly: _this.props.isReadOnly,
             showCode: true,
             showMarkdown: true,
             success: null,
             error: null
         };
-        _this.editArea = react_1["default"].createRef();
+        _this.editArea = react_1.default.createRef();
         _this.fetchContent();
         return _this;
     }
     WebEditorMain.prototype.render = function () {
         var _this = this;
-        return (react_1["default"].createElement("div", null,
+        return (react_1.default.createElement("div", null,
             this.renderExited(),
-            react_1["default"].createElement("div", { className: "row", style: { "padding": "7px" } },
-                react_1["default"].createElement("div", { className: "col-9" },
-                    react_1["default"].createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save"),
-                    react_1["default"].createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit"),
-                    react_1["default"].createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
-                react_1["default"].createElement("div", { className: "col-3" },
-                    react_1["default"].createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyCode(); } }, "Code only"),
-                    react_1["default"].createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyMarkdown(); } }, "Markdown only"))),
+            react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
+                react_1.default.createElement("div", { className: "col-9" },
+                    !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
+                    !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
+                react_1.default.createElement("div", { className: "col-3" },
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyCode(); } }, "Code only"),
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyMarkdown(); } }, "Markdown only"))),
             this.renderSuccess(),
             this.renderError(),
-            react_1["default"].createElement("div", { className: "row" },
+            react_1.default.createElement("div", { className: "row" },
                 this.renderCode(),
                 this.renderMarkdown())));
     };
@@ -94,32 +94,32 @@ var WebEditorMain = /** @class */ (function (_super) {
         if (this.state.success == null) {
             return;
         }
-        return (react_1["default"].createElement("div", { className: "row" },
-            react_1["default"].createElement("div", { className: "col-4" }),
-            react_1["default"].createElement("div", { className: "alert alert-success col-4 alert-dismissible fade show", role: "alert", style: { margin: "10px" } },
-                react_1["default"].createElement("h4", { className: "alert-heading" }, "Success"),
+        return (react_1.default.createElement("div", { className: "row" },
+            react_1.default.createElement("div", { className: "col-4" }),
+            react_1.default.createElement("div", { className: "alert alert-success col-4 alert-dismissible fade show", role: "alert", style: { margin: "10px" } },
+                react_1.default.createElement("h4", { className: "alert-heading" }, "Success"),
                 this.state.success,
-                react_1["default"].createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "alert", onClick: function () { _this.setState({ success: null }); } })),
-            react_1["default"].createElement("div", { className: "col-4" })));
+                react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "alert", onClick: function () { _this.setState({ success: null }); } })),
+            react_1.default.createElement("div", { className: "col-4" })));
     };
     WebEditorMain.prototype.renderError = function () {
         if (this.state.error == null) {
             return;
         }
-        return (react_1["default"].createElement("div", { className: "row" },
-            react_1["default"].createElement("div", { className: "col-4" }),
-            react_1["default"].createElement("div", { className: "alert alert-danger col-4", role: "alert", style: { margin: "10px" } },
-                react_1["default"].createElement("h4", { className: "alert-heading" }, "Error"),
+        return (react_1.default.createElement("div", { className: "row" },
+            react_1.default.createElement("div", { className: "col-4" }),
+            react_1.default.createElement("div", { className: "alert alert-danger col-4", role: "alert", style: { margin: "10px" } },
+                react_1.default.createElement("h4", { className: "alert-heading" }, "Error"),
                 this.state.error),
-            react_1["default"].createElement("div", { className: "col-4" })));
+            react_1.default.createElement("div", { className: "col-4" })));
     };
     WebEditorMain.prototype.renderCode = function () {
         var _this = this;
         if (!this.state.showCode) {
             return null;
         }
-        return (react_1["default"].createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
-            react_1["default"].createElement(react_ace_1["default"], { ref: this.editArea, mode: "markdown", theme: "textmate", name: "editor", editorProps: { $blockScrolling: true }, value: this.state.content, readOnly: this.state.isReadOnly, onChange: function (newValue) {
+        return (react_1.default.createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
+            react_1.default.createElement(react_ace_1.default, { ref: this.editArea, mode: "markdown", theme: "textmate", name: "editor", editorProps: { $blockScrolling: true }, value: this.state.content, readOnly: this.state.isReadOnly, onChange: function (newValue) {
                     _this.setState({
                         content: newValue
                     });
@@ -129,23 +129,23 @@ var WebEditorMain = /** @class */ (function (_super) {
         if (!this.state.showMarkdown) {
             return null;
         }
-        return (react_1["default"].createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
-            react_1["default"].createElement(react_markdown_1["default"], { className: "markdown", children: this.state.content, components: {
+        return (react_1.default.createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
+            react_1.default.createElement(react_markdown_1.default, { className: "markdown", children: this.state.content, components: {
                     code: function (_a) {
                         var node = _a.node, inline = _a.inline, className = _a.className, children = _a.children, props = __rest(_a, ["node", "inline", "className", "children"]);
                         var match = /language-(\w+)/.exec(className || '');
-                        return !inline && match ? (react_1["default"].createElement(react_syntax_highlighter_1.Prism, __assign({}, props, { children: String(children).replace(/\n$/, ''), language: match[1], PreTag: "div" }))) : (react_1["default"].createElement("code", __assign({}, props, { className: className }), children));
+                        return !inline && match ? (react_1.default.createElement(react_syntax_highlighter_1.Prism, __assign({}, props, { children: String(children).replace(/\n$/, ''), language: match[1], PreTag: "div" }))) : (react_1.default.createElement("code", __assign({}, props, { className: className }), children));
                     }
                 } })));
     };
     WebEditorMain.prototype.renderExited = function () {
-        return (react_1["default"].createElement("div", { className: "modal fade", id: "exitedModal", tabIndex: -1, "aria-labelledby": "exitedModalLabel", "aria-hidden": "true" },
-            react_1["default"].createElement("div", { className: "modal-dialog" },
-                react_1["default"].createElement("div", { className: "modal-content" },
-                    react_1["default"].createElement("div", { className: "modal-header" },
-                        react_1["default"].createElement("h1", { className: "modal-title fs-5", id: "exitedModalLabel" }, "WebEditor"),
-                        react_1["default"].createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
-                    react_1["default"].createElement("div", { className: "modal-body" }, "Web editor has been closed. Please close this browser tab.")))));
+        return (react_1.default.createElement("div", { className: "modal fade", id: "exitedModal", tabIndex: -1, "aria-labelledby": "exitedModalLabel", "aria-hidden": "true" },
+            react_1.default.createElement("div", { className: "modal-dialog" },
+                react_1.default.createElement("div", { className: "modal-content" },
+                    react_1.default.createElement("div", { className: "modal-header" },
+                        react_1.default.createElement("h1", { className: "modal-title fs-5", id: "exitedModalLabel" }, "WebEditor"),
+                        react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
+                    react_1.default.createElement("div", { className: "modal-body" }, "Web editor has been closed. Please close this browser tab.")))));
     };
     WebEditorMain.prototype.showOnlyCode = function () {
         this.setState({
@@ -161,13 +161,13 @@ var WebEditorMain = /** @class */ (function (_super) {
     };
     WebEditorMain.prototype.fetchContent = function () {
         var _this = this;
-        axios_1["default"].get("/api/content?path=".concat(this.props.filePath))
+        axios_1.default.get("/api/content?path=".concat(this.props.filePath))
             .then(function (response) {
             _this.setState({
                 content: response.data.content,
                 error: null
             });
-        })["catch"](function (error) {
+        }).catch(function (error) {
             _this.setState({
                 error: getErrorMessage(error)
             });
@@ -178,7 +178,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         this.setState({
             success: null
         });
-        axios_1["default"].put("/api/content", { "path": this.props.filePath, "content": this.state.content })
+        axios_1.default.put("/api/content", { "path": this.props.filePath, "content": this.state.content })
             .then(function (_) {
             _this.setState({
                 error: null,
@@ -187,7 +187,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             if (onSuccess) {
                 onSuccess();
             }
-        })["catch"](function (error) {
+        }).catch(function (error) {
             _this.setState({
                 error: getErrorMessage(error)
             });
@@ -201,7 +201,7 @@ var WebEditorMain = /** @class */ (function (_super) {
     };
     WebEditorMain.prototype.exit = function () {
         var _this = this;
-        axios_1["default"].post("/api/stop")
+        axios_1.default.post("/api/stop")
             .then(function (_) {
             _this.setState({
                 error: null,
@@ -222,7 +222,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             // @ts-ignore
             var modal = new bootstrap.Modal(document.getElementById("exitedModal"));
             modal.show();
-        })["catch"](function (error) {
+        }).catch(function (error) {
             _this.setState({
                 error: getErrorMessage(error)
             });
@@ -232,7 +232,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         return (this.state.showCode ? 1 : 0) + (this.state.showMarkdown ? 1 : 0);
     };
     return WebEditorMain;
-}(react_1["default"].Component));
+}(react_1.default.Component));
 function getErrorMessage(error) {
     if (error.response !== undefined) {
         return error.response.data.message;
@@ -254,4 +254,4 @@ function sendMessageToServer(cmd) {
     }
     throw new Error('Failed to locate webkit external handler');
 }
-react_dom_1["default"].render(react_1["default"].createElement(WebEditorMain, { filePath: document.getElementById("file_path").value }), document.getElementById("root"));
+react_dom_1.default.render(react_1.default.createElement(WebEditorMain, { filePath: document.getElementById("file_path").value, isReadOnly: document.getElementById("is_read_only").value == "true" }), document.getElementById("root"));

@@ -73,7 +73,7 @@ pub struct CommandInterpreter {
 
 impl CommandInterpreter {
     pub fn new(config: Config, repository: RepositoryRef) -> CommandResult<CommandInterpreter> {
-        CommandInterpreter::with_launch_editor(config, repository, Box::new(|config, path| editor::launch(config, path)))
+        CommandInterpreter::with_launch_editor(config, repository, Box::new(|config, path| editor::launch(config, path, false)))
     }
 
     pub fn with_launch_editor(config: Config, repository: RepositoryRef, launch_editor: LaunchEditorFn) -> CommandResult<CommandInterpreter> {

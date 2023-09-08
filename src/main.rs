@@ -60,10 +60,10 @@ fn run(input_command: InputCommand, main_input_command: MainInputCommand) -> Res
         InputCommand::Initialize { .. } => {
             run_init(&config_path, input_command)
         }
-        InputCommand::WebEditor { path, port } => {
+        InputCommand::WebEditor { path, port, is_read_only } => {
             let mut config = WebEditorConfig::default();
             config.port = port;
-            web_editor::launch_sync(config, &path);
+            web_editor::launch_sync(config, &path, is_read_only);
             Ok(())
         }
         _ => {

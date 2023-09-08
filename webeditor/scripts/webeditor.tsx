@@ -15,6 +15,7 @@ import axios from "axios";
 
 class WebEditorMainProps {
     filePath: string;
+    isReadOnly: boolean;
 }
 
 interface WebEditorMainState {
@@ -35,7 +36,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
         this.state = {
             content: "",
-            isReadOnly: false,
+            isReadOnly: this.props.isReadOnly,
             showCode: true,
             showMarkdown: true,
             success: null,
@@ -53,8 +54,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
-                        <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button>
-                        <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button>
+                        { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
+                        { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
                         <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
                     </div>
                     <div className="col-3">
@@ -298,6 +299,9 @@ function sendMessageToServer(cmd) {
 }
 
 ReactDOM.render(
-    <WebEditorMain filePath={(document.getElementById("file_path") as HTMLInputElement).value} />,
+    <WebEditorMain
+        filePath={(document.getElementById("file_path") as HTMLInputElement).value}
+        isReadOnly={(document.getElementById("is_read_only") as HTMLInputElement).value == "true"}
+    />,
     document.getElementById("root")
 );

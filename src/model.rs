@@ -368,6 +368,10 @@ impl<'a> NoteFileTree<'a> {
     }
 
     pub fn find(&self, path: &Path) -> Option<&NoteFileTree> {
+        if path == Path::new("") {
+            return Some(self);
+        }
+
         let mut found = false;
 
         let mut current = self;

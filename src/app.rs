@@ -128,12 +128,14 @@ impl App {
                 }
             }
             InputCommand::Move { source, destination, force } => {
+                let working_dir = self.get_path(Path::new("").to_owned())?;
                 let source = self.get_path(source)?;
                 let destination = self.get_path(destination)?;
 
                 self.note_metadata_storage()?;
 
                 let result = self.create_and_execute_commands(self.create_move_commands(
+                    working_dir,
                     source,
                     destination,
                     force
@@ -383,6 +385,7 @@ impl App {
     }
 
     fn create_move_commands(&self,
+                            working_dir: PathBuf,
                             source: PathBuf,
                             destination: PathBuf,
                             force: bool) -> QueryingResult<Vec<Command>> {
@@ -434,28 +437,13 @@ impl App {
 
         let source_str = source.to_str().unwrap();
         if source_str.contains("*") {
-            if let Ok(glob) = Glob::new(source_str) {
-                let glob = glob.compile_matcher();
-
-                if let Some(note_file_tree) = note_file_tree.as_ref() {
-                    let mut sources = Vec::new();
-                    note_file_tree.walk(|_, parent, name, _, _| {
-                        let path = parent.join(name);
-                        if glob.is_match(&path) {
-                            sources.push(path);
-                            false
-                        } else {
-                            true
-                        }
-                    });
-
-                    let mut commands = Vec::new();
-                    for source in sources {
-                        commands.append(&mut inner(source, destination.clone())?);
-                    }
-
-                    return Ok(commands);
+            if let Some(glob_paths) = self.create_glob_paths(&working_dir, note_file_tree.as_ref(), source_str)? {
+                let mut commands = Vec::new();
+                for source in glob_paths {
+                    commands.append(&mut inner(source, destination.clone())?);
                 }
+
+                return Ok(commands);
             }
         }
 
@@ -488,6 +476,32 @@ impl App {
                 Command::RemoveNote { path }
             ]
         )
+    }
+
+    fn create_glob_paths(&self,
+                         working_dir: &Path,
+                         note_file_tree: Option<&NoteFileTree>,
+                         pattern: &str) -> QueryingResult<Option<Vec<PathBuf>>> {
+        if let Ok(glob) = Glob::new(pattern) {
+            let glob = glob.compile_matcher();
+
+            if let Some(note_file_tree) = note_file_tree.as_ref().map(|tree| tree.find(&working_dir)).flatten() {
+                let mut files = Vec::new();
+                note_file_tree.walk(|_, parent, name, _, _| {
+                    let path = working_dir.join(parent).join(name);
+                    if glob.is_match(&path) {
+                        files.push(path);
+                        false
+                    } else {
+                        true
+                    }
+                });
+
+                return Ok(Some(files));
+            }
+        }
+
+        Ok(None)
     }
 
     fn get_note_content(&mut self, path: &Path, git_reference: Option<String>) -> QueryingResult<String> {

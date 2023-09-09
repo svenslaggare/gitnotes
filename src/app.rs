@@ -128,7 +128,7 @@ impl App {
                 }
             }
             InputCommand::Move { source, destination, force } => {
-                let working_dir = self.get_path(Path::new("").to_owned())?;
+                let working_dir = self.working_dir()?;
                 let source = self.get_path(source)?;
                 let destination = self.get_path(destination)?;
 
@@ -147,9 +147,11 @@ impl App {
                 }
             }
             InputCommand::Remove { path, recursive } => {
+                let working_dir = self.working_dir()?;
                 let path = self.get_path(path)?;
 
                 let result = self.create_and_execute_commands(self.create_remove_commands(
+                    working_dir,
                     path,
                     recursive
                 )?);
@@ -451,31 +453,48 @@ impl App {
     }
 
     fn create_remove_commands(&self,
+                              working_dir: PathBuf,
                               path: PathBuf,
                               recursive: bool) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
 
-        let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&path)).flatten();
-        if let Some(note_file_tree) = source_file_tree {
-            if note_file_tree.is_tree() && recursive {
-                let mut removes = Vec::new();
-                note_file_tree.walk(|_, parent, name, tree, _| {
-                    if tree.is_leaf() {
-                        removes.push(Command::RemoveNote { path: path.join(parent.join(name)) });
-                    }
+        let inner = |path: PathBuf| {
+            let source_file_tree = note_file_tree.as_ref().map(|note_file_tree| note_file_tree.find(&path)).flatten();
+            if let Some(note_file_tree) = source_file_tree {
+                if note_file_tree.is_tree() && recursive {
+                    let mut removes = Vec::new();
+                    note_file_tree.walk(|_, parent, name, tree, _| {
+                        if tree.is_leaf() {
+                            removes.push(Command::RemoveNote { path: path.join(parent.join(name)) });
+                        }
 
-                    true
-                });
+                        true
+                    });
 
-                return Ok(removes);
+                    return Ok(removes);
+                }
+            }
+
+            Ok(
+                vec![
+                    Command::RemoveNote { path }
+                ]
+            )
+        };
+
+        let path_str = path.to_str().unwrap();
+        if path_str.contains("*") {
+            if let Some(glob_paths) = self.create_glob_paths(&working_dir, note_file_tree.as_ref(), path_str)? {
+                let mut commands = Vec::new();
+                for current in glob_paths {
+                    commands.append(&mut inner(current)?);
+                }
+
+                return Ok(commands);
             }
         }
 
-        Ok(
-            vec![
-                Command::RemoveNote { path }
-            ]
-        )
+        inner(path)
     }
 
     fn create_glob_paths(&self,
@@ -517,6 +536,10 @@ impl App {
 
     pub fn clear_cache(&mut self) {
         self.note_metadata_storage = None;
+    }
+
+    fn working_dir(&mut self) -> AppResult<PathBuf> {
+        self.get_path(Path::new("").to_owned())
     }
 
     fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {

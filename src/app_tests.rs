@@ -673,6 +673,107 @@ fn test_remove_recursive() {
 }
 
 #[test]
+fn test_remove_glob1() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note1_path = Path::new("2023/07/sample1");
+    let note1_content = r#"Hello, World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 10)))
+```
+"#.to_string();
+
+    let note2_path = Path::new("2024/07/sample2");
+    let note2_content = r#"Hello, My World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 15)))
+```
+"#.to_string();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note1_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note1_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note2_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note2_content.clone()
+        }
+    ]).unwrap();
+    assert_eq!(note1_content, app.note_metadata_storage().unwrap().get_content(note1_path).unwrap());
+    assert_eq!(note2_content, app.note_metadata_storage().unwrap().get_content(note2_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.run(InputCommand::Remove { path: Path::new("202*").to_path_buf(), recursive: true }).unwrap();
+    assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note1_path).is_ok());
+    assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note2_path).is_ok());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_remove_glob2() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note1_path = Path::new("2023/07/sample1");
+    let note1_content = r#"Hello, World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 10)))
+```
+"#.to_string();
+
+    let note2_path = Path::new("2024/07/sample2");
+    let note2_content = r#"Hello, My World!
+
+``` python
+import numpy as np
+print(np.square(np.arange(0, 15)))
+```
+"#.to_string();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note1_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note1_content.clone()
+        },
+        Command::AddNoteWithContent {
+            path: note2_path.to_path_buf(),
+            tags: vec!["python".to_owned()],
+            content: note2_content.clone()
+        }
+    ]).unwrap();
+    assert_eq!(note1_content, app.note_metadata_storage().unwrap().get_content(note1_path).unwrap());
+    assert_eq!(note2_content, app.note_metadata_storage().unwrap().get_content(note2_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+
+    app.run(InputCommand::ChangeWorkingDirectory { path: Path::new("2023").to_owned() }).unwrap();
+    app.run(InputCommand::Remove { path: Path::new("*").to_path_buf(), recursive: true }).unwrap();
+    assert_eq!(false, app.note_metadata_storage().unwrap().get_content(note1_path).is_ok());
+    assert_eq!(true, app.note_metadata_storage().unwrap().get_content(note2_path).is_ok());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
 fn test_change_tags() {
     use tempfile::TempDir;
 

@@ -53,6 +53,15 @@ impl SnippetRunnerManger {
         }
     }
 
+    pub fn from_config(config: Option<&SnippetFileConfig>) -> SnippetResult<SnippetRunnerManger> {
+        let mut snippet_runner_manager = SnippetRunnerManger::default();
+        if let Some(config) = config {
+            snippet_runner_manager.apply_config(config)?;
+        }
+
+        Ok(snippet_runner_manager)
+    }
+
     pub fn add_runner(&mut self, name: &str, runner: Box<dyn SnippetRunner + Send + Sync>) {
         self.runners.insert(name.to_owned(), runner);
     }

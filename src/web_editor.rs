@@ -58,11 +58,6 @@ fn default_launch_web_view() -> bool {
 }
 
 pub async fn launch(config: WebEditorConfig, path: &Path) {
-    let mut snippet_runner_manager = SnippetRunnerManger::default();
-    if let Some(snippet_config) = config.snippet_config.as_ref() {
-        snippet_runner_manager.apply_config(snippet_config).unwrap();
-    }
-
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
@@ -71,7 +66,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     let state = Arc::new(WebServerState::new(
         path.to_owned(),
         config.is_read_only,
-        snippet_runner_manager
+        SnippetRunnerManger::from_config(config.snippet_config.as_ref()).unwrap()
     ));
 
     let app = Router::new()

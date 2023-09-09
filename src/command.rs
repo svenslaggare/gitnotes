@@ -77,11 +77,9 @@ impl CommandInterpreter {
     }
 
     pub fn with_launch_editor(config: Config, repository: RepositoryRef, launch_editor: LaunchEditorFn) -> CommandResult<CommandInterpreter> {
-        let mut snippet_runner_manager = SnippetRunnerManger::default();
-
-        if let Some(snippet_config) = config.snippet.as_ref() {
-            snippet_runner_manager.apply_config(snippet_config).map_err(|err| CommandError::Snippet(err))?;
-        }
+        let snippet_runner_manager = SnippetRunnerManger::from_config(
+            config.snippet.as_ref()
+        ).map_err(|err| CommandError::Snippet(err))?;
 
         Ok(
             CommandInterpreter {

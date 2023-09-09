@@ -14,7 +14,7 @@ use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
-use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage};
+use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, PassthroughVirtualPathResolver, RealBaseDirPathResolver};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 
 pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
@@ -523,11 +523,17 @@ impl App {
         let path = self.virtual_working_dir.as_ref().map(|dir| dir.join(path.clone())).unwrap_or_else(|| path);
 
         self.note_metadata_storage()?;
-        self.note_metadata_storage_ref()?.resolve_path(
-            path,
-            self.config.use_real.clone(),
-            self.config.real_base_dir.as_ref().map(|p| p.as_path())
-        ).map_err(|err| AppError::InvalidPath(err))
+        if self.config.use_real {
+            self.note_metadata_storage_ref()?.resolve_path(
+                &RealBaseDirPathResolver::new(self.config.real_base_dir.as_ref().map(|p| p.as_path())),
+                path,
+            ).map_err(|err| AppError::InvalidPath(err))
+        } else {
+            self.note_metadata_storage_ref()?.resolve_path(
+                &PassthroughVirtualPathResolver::new(),
+                path,
+            ).map_err(|err| AppError::InvalidPath(err))
+        }
     }
 }
 

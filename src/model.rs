@@ -208,27 +208,12 @@ impl NoteMetadataStorage {
         self.id_to_notes.get_mut(id)
     }
 
-    pub fn resolve_path(&self, path: PathBuf, use_real: bool, real_base_dir: Option<&Path>) -> Result<PathBuf, String> {
+    pub fn resolve_path(&self, resolver: &dyn ResolveVirtualPath, path: PathBuf) -> Result<PathBuf, String> {
         if let Some(note_id) = self.try_resolve_id(&path) {
             return Ok(Path::new(&note_id.to_string()).to_owned());
         }
 
-        if use_real {
-            let base_dir = real_base_dir.as_ref().ok_or_else(|| "No real base dir".to_owned())?;
-
-            let path = if path.is_absolute() {
-                path
-            } else {
-                let current_dir = std::env::current_dir().map_err(|err| err.to_string())?;
-                base_dir.join(current_dir.join(path))
-            };
-
-            path.strip_prefix(&base_dir)
-                .map_err(|err| err.to_string())
-                .map(|path| path.to_owned())
-        } else {
-            Ok(path)
-        }
+        resolver.resolve(path)
     }
 
     fn try_resolve_id(&self, path: &Path) -> Option<NoteId> {
@@ -271,6 +256,57 @@ impl NoteMetadataStorage {
         let relative_path = Path::new(&(id.to_string() + "." + NOTE_METADATA_EXT)).to_path_buf();
         let abs_path = root_dir.join(&relative_path);
         (relative_path, abs_path)
+    }
+}
+
+pub trait ResolveVirtualPath {
+    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String>;
+}
+
+pub struct PassthroughVirtualPathResolver {
+
+}
+
+impl PassthroughVirtualPathResolver {
+    pub fn new() -> PassthroughVirtualPathResolver {
+        PassthroughVirtualPathResolver {
+
+        }
+    }
+}
+
+impl ResolveVirtualPath for PassthroughVirtualPathResolver {
+    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String> {
+        Ok(path)
+    }
+}
+
+pub struct RealBaseDirPathResolver<'a> {
+    base_dir: Option<&'a Path>
+}
+
+impl<'a> RealBaseDirPathResolver<'a> {
+    pub fn new(base_dir: Option<&'a Path>) -> RealBaseDirPathResolver<'a> {
+        RealBaseDirPathResolver {
+            base_dir
+        }
+    }
+}
+
+impl<'a> ResolveVirtualPath for RealBaseDirPathResolver<'a> {
+    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String> {
+        let base_dir = self.base_dir.as_ref().ok_or_else(|| "No real base dir".to_owned())?;
+
+        let path = if path.is_absolute() {
+            path
+        } else {
+            let current_dir = std::env::current_dir().map_err(|err| err.to_string())?;
+            base_dir.join(current_dir.join(path))
+        };
+
+        path.strip_prefix(&base_dir)
+            .map_err(|err| err.to_string())
+            .map(|path| path.to_owned())
     }
 }
 

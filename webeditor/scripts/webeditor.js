@@ -65,7 +65,8 @@ var WebEditorMain = /** @class */ (function (_super) {
             showCode: true,
             showMarkdown: true,
             success: null,
-            error: null
+            error: null,
+            snippetOutput: null
         };
         _this.editArea = react_1.default.createRef();
         _this.fetchContent();
@@ -78,6 +79,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
                 react_1.default.createElement("div", { className: "col-9" },
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
                     react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
                 react_1.default.createElement("div", { className: "col-3" },
@@ -85,6 +87,7 @@ var WebEditorMain = /** @class */ (function (_super) {
                     react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyMarkdown(); } }, "Markdown only"))),
             this.renderSuccess(),
             this.renderError(),
+            this.renderSnippetOutput(),
             react_1.default.createElement("div", { className: "row" },
                 this.renderCode(),
                 this.renderMarkdown())));
@@ -138,6 +141,19 @@ var WebEditorMain = /** @class */ (function (_super) {
                     }
                 } })));
     };
+    WebEditorMain.prototype.renderSnippetOutput = function () {
+        if (this.state.snippetOutput != null) {
+            return (react_1.default.createElement("div", { className: "row" },
+                react_1.default.createElement("div", { className: "col-4" }),
+                react_1.default.createElement("div", { className: "col-4" },
+                    react_1.default.createElement("b", null, "Snippet output"),
+                    react_1.default.createElement("p", { className: "text-monospace snippetOutput" }, this.state.snippetOutput)),
+                react_1.default.createElement("div", { className: "col-4" })));
+        }
+        else {
+            return null;
+        }
+    };
     WebEditorMain.prototype.renderExited = function () {
         return (react_1.default.createElement("div", { className: "modal fade", id: "exitedModal", tabIndex: -1, "aria-labelledby": "exitedModalLabel", "aria-hidden": "true" },
             react_1.default.createElement("div", { className: "modal-dialog" },
@@ -187,6 +203,23 @@ var WebEditorMain = /** @class */ (function (_super) {
             if (onSuccess) {
                 onSuccess();
             }
+        }).catch(function (error) {
+            _this.setState({
+                error: getErrorMessage(error)
+            });
+        });
+    };
+    WebEditorMain.prototype.runSnippet = function () {
+        var _this = this;
+        this.setState({
+            success: null
+        });
+        axios_1.default.post("/api/run-snippet", { "content": this.state.content })
+            .then(function (response) {
+            _this.setState({
+                error: null,
+                snippetOutput: response.data["output"]
+            });
         }).catch(function (error) {
             _this.setState({
                 error: getErrorMessage(error)

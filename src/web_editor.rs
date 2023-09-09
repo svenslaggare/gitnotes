@@ -21,18 +21,28 @@ use axum::extract::{Query, State};
 use tower_http::services::ServeDir;
 
 use askama::{Template};
+use comrak::nodes::NodeValue;
+
+use crate::command::CommandError;
+use crate::config::SnippetFileConfig;
+use crate::markdown;
+use crate::snippets::{SnippetError, SnippetRunnerManger};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WebEditorConfig {
     pub port: u16,
-    pub launch_web_view: bool
+    pub launch_web_view: bool,
+    pub is_read_only: bool,
+    pub snippet_config: Option<SnippetFileConfig>
 }
 
 impl Default for WebEditorConfig {
     fn default() -> Self {
         WebEditorConfig {
             port: 9000,
-            launch_web_view: default_launch_web_view()
+            launch_web_view: default_launch_web_view(),
+            is_read_only: false,
+            snippet_config: None
         }
     }
 }
@@ -47,19 +57,30 @@ fn default_launch_web_view() -> bool {
     false
 }
 
-pub async fn launch(config: WebEditorConfig, path: &Path, is_read_only: bool) {
+pub async fn launch(config: WebEditorConfig, path: &Path) {
+    let mut snippet_runner_manager = SnippetRunnerManger::default();
+    if let Some(snippet_config) = config.snippet_config.as_ref() {
+        snippet_runner_manager.apply_config(snippet_config).unwrap();
+    }
+
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
     }
 
-    let state = Arc::new(WebServerState::new(path.to_owned(), is_read_only));
+    let state = Arc::new(WebServerState::new(
+        path.to_owned(),
+        config.is_read_only,
+        snippet_runner_manager
+    ));
+
     let app = Router::new()
         .nest_service("/content", ServeDir::new(content_dir))
         .route("/", get(index))
         .route("/api/stop", post(stop))
         .route("/api/content", get(get_content))
         .route("/api/content", put(save_content))
+        .route("/api/run-snippet", post(run_snippet))
         .with_state(state.clone())
         ;
 
@@ -83,9 +104,9 @@ pub async fn launch(config: WebEditorConfig, path: &Path, is_read_only: bool) {
     }
 }
 
-pub fn launch_sync(config: WebEditorConfig, path: &Path, is_read_only: bool) {
+pub fn launch_sync(config: WebEditorConfig, path: &Path) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(launch(config, path, is_read_only));
+    runtime.block_on(launch(config, path));
 }
 
 #[cfg(feature="webview")]
@@ -120,15 +141,19 @@ fn launch_web_view(_state: Arc<WebServerState>, _config: &WebEditorConfig) {
 struct WebServerState {
     path: PathBuf,
     notify: Notify,
-    is_read_only: bool
+    is_read_only: bool,
+    snippet_runner_manager: SnippetRunnerManger
 }
 
 impl WebServerState {
-    pub fn new(path: PathBuf, is_read_only: bool) -> WebServerState {
+    pub fn new(path: PathBuf,
+               is_read_only: bool,
+               snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
         WebServerState {
             path,
             notify: Notify::new(),
-            is_read_only
+            is_read_only,
+            snippet_runner_manager
         }
     }
 }
@@ -209,6 +234,48 @@ async fn save_content(Json(input): Json<SaveContent>) -> WebServerResult<Respons
     std::fs::write(&input.path, input.content)?;
     println!("Saved content for '{}'.",  input.path.to_str().unwrap());
     Ok(Json(json!({})).into_response())
+}
+
+#[derive(Deserialize)]
+struct RunSnippet {
+    content: String
+}
+
+async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json<RunSnippet>) -> WebServerResult<Response> {
+    let arena = markdown::storage();
+    let root = markdown::parse(&arena, &input.content);
+
+    let mut snippet_output = String::new();
+    markdown::visit_code_blocks::<CommandError, _>(
+        &root,
+        |current_node| {
+            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
+                let snippet_result = state.snippet_runner_manager.run(
+                    &block.info,
+                    &block.literal
+                );
+
+                match snippet_result {
+                    Ok(output_stdout) => {
+                        snippet_output += &output_stdout;
+                    }
+                    Err(SnippetError::Execution { output, .. }) => {
+                        snippet_output += &output;
+                    }
+                    Err(err) => {
+                        snippet_output += &err.to_string();
+                        snippet_output.push('\n');
+                    }
+                };
+            }
+
+            Ok(())
+        },
+        true,
+        false
+    ).unwrap();
+
+    Ok(Json(json!({ "output": snippet_output })).into_response())
 }
 
 fn with_response_code(mut response: Response, code: StatusCode) -> Response {

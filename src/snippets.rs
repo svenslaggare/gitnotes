@@ -43,7 +43,7 @@ impl From<std::io::Error> for SnippetError {
 }
 
 pub struct SnippetRunnerManger {
-    runners: FnvHashMap<String, Box<dyn SnippetRunner>>
+    runners: FnvHashMap<String, Box<dyn SnippetRunner + Send + Sync>>
 }
 
 impl SnippetRunnerManger {
@@ -53,7 +53,7 @@ impl SnippetRunnerManger {
         }
     }
 
-    pub fn add_runner(&mut self, name: &str, runner: Box<dyn SnippetRunner>) {
+    pub fn add_runner(&mut self, name: &str, runner: Box<dyn SnippetRunner + Send + Sync>) {
         self.runners.insert(name.to_owned(), runner);
     }
 

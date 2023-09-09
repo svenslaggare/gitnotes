@@ -26,6 +26,7 @@ interface WebEditorMainState {
 
     success: string;
     error: string;
+    snippetOutput: string;
 }
 
 class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainState> {
@@ -40,7 +41,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             showCode: true,
             showMarkdown: true,
             success: null,
-            error: null
+            error: null,
+            snippetOutput: null
         };
 
         this.editArea = React.createRef();
@@ -55,6 +57,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
+                        <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
                         <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
                     </div>
@@ -65,6 +68,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 </div>
                 {this.renderSuccess()}
                 {this.renderError()}
+                {this.renderSnippetOutput()}
                 <div className="row">
                     {this.renderCode()}
                     {this.renderMarkdown()}
@@ -168,6 +172,25 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         );
     }
 
+    renderSnippetOutput() {
+        if (this.state.snippetOutput != null) {
+            return (
+                <div className="row">
+                    <div className="col-4" />
+                    <div className="col-4">
+                        <b>Snippet output</b>
+                        <p className="text-monospace snippetOutput">
+                            {this.state.snippetOutput}
+                        </p>
+                    </div>
+                    <div className="col-4" />
+                </div>
+            );
+        } else {
+            return null;
+        }
+    }
+
     renderExited() {
         return (
             <div className="modal fade" id="exitedModal" tabIndex={-1} aria-labelledby="exitedModalLabel" aria-hidden="true">
@@ -234,6 +257,24 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     error: getErrorMessage(error)
                 });
             });
+    }
+
+    runSnippet() {
+        this.setState({
+            success: null
+        });
+
+        axios.post(`/api/run-snippet`, { "content": this.state.content })
+            .then(response => {
+                this.setState({
+                    error: null,
+                    snippetOutput: response.data["output"]
+                });
+            }).catch(error => {
+            this.setState({
+                error: getErrorMessage(error)
+            });
+        });
     }
 
     saveContentAndExit() {

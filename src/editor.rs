@@ -14,7 +14,11 @@ pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
         "web-editor" => {
-            web_editor::launch_sync(WebEditorConfig::default(), path, is_read_only);
+            let mut web_config = WebEditorConfig::default();
+            web_config.is_read_only = is_read_only;
+            web_config.snippet_config = config.snippet.clone();
+
+            web_editor::launch_sync(web_config, path);
             return Ok(());
         }
         _ => {}

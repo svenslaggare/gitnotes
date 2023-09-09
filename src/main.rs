@@ -63,7 +63,8 @@ fn run(input_command: InputCommand, main_input_command: MainInputCommand) -> Res
         InputCommand::WebEditor { path, port, is_read_only } => {
             let mut config = WebEditorConfig::default();
             config.port = port;
-            web_editor::launch_sync(config, &path, is_read_only);
+            config.is_read_only = is_read_only;
+            web_editor::launch_sync(config, &path);
             Ok(())
         }
         _ => {

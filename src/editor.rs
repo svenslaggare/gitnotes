@@ -16,6 +16,7 @@ pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult
         "web-editor" => {
             let mut web_config = WebEditorConfig::default();
             web_config.is_read_only = is_read_only;
+            web_config.repository_path = Some(config.repository.clone());
             web_config.snippet_config = config.snippet.clone();
 
             web_editor::launch_sync(web_config, path);

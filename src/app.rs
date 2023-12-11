@@ -179,6 +179,11 @@ impl App {
 
                 self.execute_commands(commands)?;
             }
+            InputCommand::AddResource { path, destination } => {
+                self.create_and_execute_commands(vec![
+                    Command::AddResource { path, destination }
+                ])?;
+            }
             InputCommand::Begin { } => {
                 self.auto_commit = false;
                 self.command_interpreter.new_commit()?;
@@ -667,6 +672,13 @@ pub enum InputCommand {
         /// Saves the output of the snippet inside the note.
         #[structopt(long="save")]
         save_output: bool
+    },
+    /// Adds a resource to the repository
+    AddResource {
+        /// The path of the resource on the local filesystem
+        path: PathBuf,
+        /// The path of the resource within the repository
+        destination: PathBuf
     },
     /// Begins a commit. All subsequent operations are done within this commit (interactive mode only).
     Begin {

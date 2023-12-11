@@ -34,6 +34,7 @@ pub struct WebEditorConfig {
     pub port: u16,
     pub launch_web_view: bool,
     pub is_read_only: bool,
+    pub repository_path: Option<PathBuf>,
     pub snippet_config: Option<SnippetFileConfig>
 }
 
@@ -43,6 +44,7 @@ impl Default for WebEditorConfig {
             port: 9000,
             launch_web_view: default_launch_web_view(),
             is_read_only: false,
+            repository_path: None,
             snippet_config: None
         }
     }
@@ -67,6 +69,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     let state = Arc::new(WebServerState::new(
         path.to_owned(),
         config.is_read_only,
+        config.repository_path.clone(),
         SnippetRunnerManger::from_config(config.snippet_config.as_ref()).unwrap()
     ));
 
@@ -78,6 +81,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
         .route("/api/content", put(save_content))
         .route("/api/run-snippet", post(run_snippet))
         .route("/local/*path", get(get_local_file))
+        .route("/resource/*path", get(get_resource_file))
         .with_state(state.clone())
         ;
 
@@ -139,17 +143,20 @@ struct WebServerState {
     path: PathBuf,
     notify: Notify,
     is_read_only: bool,
+    repository_path: Option<PathBuf>,
     snippet_runner_manager: SnippetRunnerManger
 }
 
 impl WebServerState {
     pub fn new(path: PathBuf,
                is_read_only: bool,
+               repository_path: Option<PathBuf>,
                snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
         WebServerState {
             path,
             notify: Notify::new(),
             is_read_only,
+            repository_path,
             snippet_runner_manager
         }
     }
@@ -276,6 +283,23 @@ async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json
 }
 
 async fn get_local_file(headers: HeaderMap, AxumPath(path): AxumPath<String>) -> Response {
+    serve_file(headers, Path::new(&path)).await
+}
+
+async fn get_resource_file(State(state): State<Arc<WebServerState>>,
+                           headers: HeaderMap,
+                           AxumPath(path): AxumPath<String>) -> Response {
+    if let Some(repository_path) = state.repository_path.as_ref() {
+        serve_file(headers, &repository_path.join("resources").join(&path)).await
+    } else {
+        with_response_code(
+            "Repository path not set.".into_response(),
+            StatusCode::BAD_REQUEST
+        )
+    }
+}
+
+async fn serve_file(headers: HeaderMap, path: &Path) -> Response {
     let mut request = Request::new(Body::empty());
     *request.headers_mut() = headers;
 

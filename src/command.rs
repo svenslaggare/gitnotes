@@ -52,6 +52,10 @@ pub enum Command {
         path: PathBuf,
         save_output: bool
     },
+    AddResource {
+        path: PathBuf,
+        destination: PathBuf
+    },
     Commit
 }
 
@@ -278,6 +282,29 @@ impl CommandInterpreter {
 
                         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
                         self.commit_message_lines.insert(format!("Saved run output for note '{}'.", real_path));
+                    }
+                }
+                Command::AddResource { path, destination } => {
+                    if path.exists() {
+                        let destination_resource_path = Path::new("resources").join(&destination);
+                        let destination_path = destination_resource_path.join(&destination);
+                        if let Some(destination_parent) = destination_path.parent() {
+                            std::fs::create_dir_all(destination_parent)?;
+                        }
+
+                        std::fs::copy(&path, &destination_path)?;
+
+                        let index = self.index()?;
+                        index.add_path(&destination_resource_path)?;
+                        index.write()?;
+
+                        self.commit_message_lines.insert(format!(
+                            "Added resource '{}' (from {}).",
+                            destination.to_str().unwrap_or("N/A"),
+                            path.to_str().unwrap_or("N/A")
+                        ));
+                    } else {
+                        return Err(ResourceNotFound(path.to_str().unwrap_or("N/A").to_owned()));
                     }
                 }
                 Command::Commit => {
@@ -598,6 +625,9 @@ pub enum CommandError {
     #[error("Failed to run snippet: {0}")]
     Snippet(SnippetError),
 
+    #[error("Resource not found: {0}")]
+    ResourceNotFound(String),
+
     #[error("Internal error: {0}")]
     InternalError(String),
 
@@ -605,7 +635,7 @@ pub enum CommandError {
     SubProcess(std::io::Error),
     #[error("{0}")]
     Git(git2::Error),
-    #[error(" {0}")]
+    #[error("{0}")]
     IO(std::io::Error)
 }
 

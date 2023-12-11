@@ -14,13 +14,14 @@ use tokio::sync::Notify;
 
 use axum::response::{Html, IntoResponse, Response};
 use axum::{Json, Router};
-use axum::http::StatusCode;
+use axum::http::{HeaderMap, Request, StatusCode};
 use axum::routing::{get, post, put};
-use axum::extract::{Query, State};
+use axum::extract::{Path as AxumPath, Query, State};
 
-use tower_http::services::ServeDir;
+use tower_http::services::{ServeDir, ServeFile};
 
 use askama::{Template};
+use axum::body::Body;
 use comrak::nodes::NodeValue;
 
 use crate::command::CommandError;
@@ -76,6 +77,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
         .route("/api/content", get(get_content))
         .route("/api/content", put(save_content))
         .route("/api/run-snippet", post(run_snippet))
+        .route("/local/*path", get(get_local_file))
         .with_state(state.clone())
         ;
 
@@ -271,6 +273,20 @@ async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json
     ).unwrap();
 
     Ok(Json(json!({ "output": snippet_output })).into_response())
+}
+
+async fn get_local_file(headers: HeaderMap, AxumPath(path): AxumPath<String>) -> Response {
+    let mut request = Request::new(Body::empty());
+    *request.headers_mut() = headers;
+
+    if let Ok(result) = ServeFile::new(Path::new(&path)).try_call(request).await {
+        result.into_response()
+    } else {
+        with_response_code(
+            "File not found.".into_response(),
+            StatusCode::NOT_FOUND
+        )
+    }
 }
 
 fn with_response_code(mut response: Response, code: StatusCode) -> Response {

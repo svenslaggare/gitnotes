@@ -62,8 +62,8 @@ var WebEditorMain = /** @class */ (function (_super) {
         _this.state = {
             content: "",
             isReadOnly: _this.props.isReadOnly,
-            showCode: true,
-            showMarkdown: true,
+            showCode: !_this.props.isReadOnly,
+            showRendered: true,
             success: null,
             error: null,
             snippetOutput: null
@@ -83,8 +83,12 @@ var WebEditorMain = /** @class */ (function (_super) {
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
                     react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
                 react_1.default.createElement("div", { className: "col-3" },
-                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyCode(); } }, "Code only"),
-                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showOnlyMarkdown(); } }, "Markdown only"))),
+                    react_1.default.createElement("div", { className: "form-check form-check-inline" },
+                        react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showCode, id: "showCodeCheckbox", onChange: function (event) { _this.changeCode(event); } }),
+                        react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showCodeCheckbox" }, "Code")),
+                    react_1.default.createElement("div", { className: "form-check form-check-inline" },
+                        react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showRendered, id: "showRenderedheckbox", onChange: function (event) { _this.changeRendered(event); } }),
+                        react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showRenderedheckbox" }, "Rendered")))),
             this.renderSuccess(),
             this.renderError(),
             this.renderSnippetOutput(),
@@ -129,7 +133,7 @@ var WebEditorMain = /** @class */ (function (_super) {
                 }, width: "100%", height: "100%", className: "editor" })));
     };
     WebEditorMain.prototype.renderMarkdown = function () {
-        if (!this.state.showMarkdown) {
+        if (!this.state.showRendered) {
             return null;
         }
         return (react_1.default.createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
@@ -163,16 +167,14 @@ var WebEditorMain = /** @class */ (function (_super) {
                         react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
                     react_1.default.createElement("div", { className: "modal-body" }, "Web editor has been closed. Please close this browser tab.")))));
     };
-    WebEditorMain.prototype.showOnlyCode = function () {
+    WebEditorMain.prototype.changeCode = function (event) {
         this.setState({
-            showCode: true,
-            showMarkdown: !this.state.showMarkdown
+            showCode: event.target.checked,
         });
     };
-    WebEditorMain.prototype.showOnlyMarkdown = function () {
+    WebEditorMain.prototype.changeRendered = function (event) {
         this.setState({
-            showCode: !this.state.showCode,
-            showMarkdown: true
+            showRendered: event.target.checked,
         });
     };
     WebEditorMain.prototype.fetchContent = function () {
@@ -262,7 +264,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         });
     };
     WebEditorMain.prototype.numViewsVisible = function () {
-        return (this.state.showCode ? 1 : 0) + (this.state.showMarkdown ? 1 : 0);
+        return (this.state.showCode ? 1 : 0) + (this.state.showRendered ? 1 : 0);
     };
     return WebEditorMain;
 }(react_1.default.Component));

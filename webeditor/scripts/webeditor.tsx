@@ -22,7 +22,7 @@ interface WebEditorMainState {
     content: string;
     isReadOnly: boolean;
     showCode: boolean;
-    showMarkdown: boolean;
+    showRendered: boolean;
 
     success: string;
     error: string;
@@ -38,8 +38,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         this.state = {
             content: "",
             isReadOnly: this.props.isReadOnly,
-            showCode: true,
-            showMarkdown: true,
+            showCode: !this.props.isReadOnly,
+            showRendered: true,
             success: null,
             error: null,
             snippetOutput: null
@@ -62,8 +62,18 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                         <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
                     </div>
                     <div className="col-3">
-                        <button type="button" className="btn btn-primary" onClick={() => { this.showOnlyCode(); }}>Code only</button>
-                        <button type="button" className="btn btn-primary" onClick={() => { this.showOnlyMarkdown(); }}>Markdown only</button>
+                        <div className="form-check form-check-inline">
+                            <input className="form-check-input" type="checkbox" checked={this.state.showCode} id="showCodeCheckbox"
+                                   onChange={event => { this.changeCode(event); }} />
+                            <label className="form-check-label" htmlFor="showCodeCheckbox">Code</label>
+                        </div>
+
+                        <div className="form-check form-check-inline">
+                            <input className="form-check-input" type="checkbox" checked={this.state.showRendered} id="showRenderedheckbox"
+                                   onChange={event => { this.changeRendered(event); }} />
+                            <label className="form-check-label" htmlFor="showRenderedheckbox">Rendered</label>
+                        </div>
+
                     </div>
                 </div>
                 {this.renderSuccess()}
@@ -141,7 +151,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     }
 
     renderMarkdown() {
-        if (!this.state.showMarkdown) {
+        if (!this.state.showRendered) {
             return null;
         }
 
@@ -209,17 +219,15 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         );
     }
 
-    showOnlyCode() {
+    changeCode(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({
-            showCode: true,
-            showMarkdown: !this.state.showMarkdown
+            showCode: event.target.checked,
         });
     }
 
-    showOnlyMarkdown() {
+    changeRendered(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({
-            showCode: !this.state.showCode,
-            showMarkdown: true
+            showRendered: event.target.checked,
         });
     }
 
@@ -314,7 +322,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     }
 
     numViewsVisible() {
-        return (this.state.showCode ? 1 : 0) + (this.state.showMarkdown ? 1 : 0);
+        return (this.state.showCode ? 1 : 0) + (this.state.showRendered ? 1 : 0);
     }
 }
 

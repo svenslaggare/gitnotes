@@ -34,6 +34,7 @@ pub struct WebEditorConfig {
     pub port: u16,
     pub launch_web_view: bool,
     pub is_read_only: bool,
+    pub is_standalone: bool,
     pub repository_path: Option<PathBuf>,
     pub snippet_config: Option<SnippetFileConfig>
 }
@@ -44,6 +45,7 @@ impl Default for WebEditorConfig {
             port: 9000,
             launch_web_view: default_launch_web_view(),
             is_read_only: false,
+            is_standalone: false,
             repository_path: None,
             snippet_config: None
         }
@@ -69,6 +71,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     let state = Arc::new(WebServerState::new(
         path.to_owned(),
         config.is_read_only,
+        config.is_standalone,
         config.repository_path.clone(),
         SnippetRunnerManger::from_config(config.snippet_config.as_ref()).unwrap()
     ));
@@ -143,6 +146,7 @@ struct WebServerState {
     path: PathBuf,
     notify: Notify,
     is_read_only: bool,
+    is_standalone: bool,
     repository_path: Option<PathBuf>,
     snippet_runner_manager: SnippetRunnerManger
 }
@@ -150,12 +154,14 @@ struct WebServerState {
 impl WebServerState {
     pub fn new(path: PathBuf,
                is_read_only: bool,
+               is_standalone: bool,
                repository_path: Option<PathBuf>,
                snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
         WebServerState {
             path,
             notify: Notify::new(),
             is_read_only,
+            is_standalone,
             repository_path,
             snippet_runner_manager
         }
@@ -198,14 +204,16 @@ impl IntoResponse for WebServerError {
 struct AppTemplate {
     time: i64,
     file_path: String,
-    is_read_only: bool
+    is_read_only: bool,
+    is_standalone: bool
 }
 
 async fn index(State(state): State<Arc<WebServerState>>) -> Response {
     let template = AppTemplate {
         time: Local::now().timestamp(),
         file_path: state.path.to_str().unwrap().to_owned(),
-        is_read_only: state.is_read_only
+        is_read_only: state.is_read_only,
+        is_standalone: state.is_standalone
     };
 
     Html(template.render().unwrap()).into_response()

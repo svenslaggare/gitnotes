@@ -16,11 +16,13 @@ import axios from "axios";
 class WebEditorMainProps {
     filePath: string;
     isReadOnly: boolean;
+    isStandalone: boolean;
 }
 
 interface WebEditorMainState {
     content: string;
     isReadOnly: boolean;
+    isStandalone: boolean;
     showCode: boolean;
     showRendered: boolean;
 
@@ -38,6 +40,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         this.state = {
             content: "",
             isReadOnly: this.props.isReadOnly,
+            isStandalone: this.props.isStandalone,
             showCode: !this.props.isReadOnly,
             showRendered: true,
             success: null,
@@ -57,7 +60,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
-                        <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
+                        { !this.state.isStandalone ? <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button> : null }
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
                         <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
                     </div>
@@ -73,7 +76,6 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                                    onChange={event => { this.changeRendered(event); }} />
                             <label className="form-check-label" htmlFor="showRenderedheckbox">Rendered</label>
                         </div>
-
                     </div>
                 </div>
                 {this.renderSuccess()}
@@ -352,6 +354,7 @@ ReactDOM.render(
     <WebEditorMain
         filePath={(document.getElementById("file_path") as HTMLInputElement).value}
         isReadOnly={(document.getElementById("is_read_only") as HTMLInputElement).value == "true"}
+        isStandalone={(document.getElementById("is_standalone") as HTMLInputElement).value == "true"}
     />,
     document.getElementById("root")
 );

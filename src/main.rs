@@ -64,6 +64,7 @@ fn run(input_command: InputCommand, main_input_command: MainInputCommand) -> Res
             let mut config = WebEditorConfig::default();
             config.port = port;
             config.is_read_only = is_read_only;
+            config.is_standalone = true;
             web_editor::launch_sync(config, &path);
             Ok(())
         }

@@ -62,6 +62,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         _this.state = {
             content: "",
             isReadOnly: _this.props.isReadOnly,
+            isStandalone: _this.props.isStandalone,
             showCode: !_this.props.isReadOnly,
             showRendered: true,
             success: null,
@@ -79,7 +80,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
                 react_1.default.createElement("div", { className: "col-9" },
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
-                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
+                    !this.state.isStandalone ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet") : null,
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
                     react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
                 react_1.default.createElement("div", { className: "col-3" },
@@ -291,4 +292,4 @@ function sendMessageToServer(cmd) {
     }
     throw new Error('Failed to locate webkit external handler');
 }
-react_dom_1.default.render(react_1.default.createElement(WebEditorMain, { filePath: document.getElementById("file_path").value, isReadOnly: document.getElementById("is_read_only").value == "true" }), document.getElementById("root"));
+react_dom_1.default.render(react_1.default.createElement(WebEditorMain, { filePath: document.getElementById("file_path").value, isReadOnly: document.getElementById("is_read_only").value == "true", isStandalone: document.getElementById("is_standalone").value == "true" }), document.getElementById("root"));

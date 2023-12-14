@@ -189,6 +189,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     <div className="col-4" />
                     <div className="col-4">
                         <b>Snippet output</b>
+                        <i className="fas fa-times linkButton" style={{ float: "right" }} onClick={() => { this.setState({ snippetOutput: null }); }} />
                         <p className="text-monospace snippetOutput">
                             {this.state.snippetOutput}
                         </p>

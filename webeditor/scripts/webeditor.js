@@ -146,11 +146,13 @@ var WebEditorMain = /** @class */ (function (_super) {
                 } })));
     };
     WebEditorMain.prototype.renderSnippetOutput = function () {
+        var _this = this;
         if (this.state.snippetOutput != null) {
             return (react_1.default.createElement("div", { className: "row" },
                 react_1.default.createElement("div", { className: "col-4" }),
                 react_1.default.createElement("div", { className: "col-4" },
                     react_1.default.createElement("b", null, "Snippet output"),
+                    react_1.default.createElement("i", { className: "fas fa-times linkButton", style: { float: "right" }, onClick: function () { _this.setState({ snippetOutput: null }); } }),
                     react_1.default.createElement("p", { className: "text-monospace snippetOutput" }, this.state.snippetOutput)),
                 react_1.default.createElement("div", { className: "col-4" })));
         }

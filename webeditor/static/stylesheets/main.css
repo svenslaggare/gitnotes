@@ -33,3 +33,7 @@ html {
     min-height: 5em;
     white-space: pre-wrap;
 }
+
+.linkButton:hover {
+    cursor: pointer;
+}

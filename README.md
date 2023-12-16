@@ -4,8 +4,8 @@ CLI based notes & snippet application powered by Git.
 ## Features
 * Notes stored in Markdown format in a Git repository.
 * Edit notes using your favorite editor.
-* Notes ordered by a virtual file system.
-* Possible to run snippets (currently: Python, C++ & Rust) and save output inside notes.
+* Notes organized in a virtual file system.
+* Possible to run snippets (currently: Python, C++, and Rust) and save output inside notes.
 * Ability to search through notes using either content "grep" or note properties.
 * Includes an optional web based Markdown editor.
 
@@ -31,22 +31,24 @@ You can also add tags to a note with `--tags x y` argument.
 It is also possible to use pipes as input, `echo Hello | gitnotes add <path>`.
 
 ### Editing an existing note
-To edit a note, use `gitnotes edit <path>`. This will launch an editor where you can change the content of the note. After saving the changes, a new commit will be created. 
+To edit a note, use `gitnotes edit <path>`. This will launch an editor where you can change the content of the note. After saving the changes, a new commit will be created. If you save without making any changes, a commit won't be created.
 
 Other than changing the content, the edit command can be used for adding new tags using `--add-tags` argument or clearing all tags using `--clear-tags` argument.
 
-### Viewing content of a note
-To view the content of a note, the `gitnotes show <path>` command can be used (view launches the editor, changes are not stored). The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--history` argument or only view code/output using `--code` & `--output` options.
+### Viewing the content of a note
+The content of a note can be shown using an editor using the `gitnotes show <path>` command (changes are not stored).
+
+The raw content of the note can be printed using the `gitnotes cat <path>` command. You can view past content using the `--history` argument. Additional filtering such as only showing the code can be done with the `--code` argument.
 
 ### Running a snippet
 With the `gitnotes run <path>` command, you can run the code blocks that are embedded in the note. If you supply the `--save` arguments, the output is stored in the note.
 
 ### Searching for notes
-Notes can be searched through in different way. The simplest way is to use the (virtual) file system using `gitnotes ls` or `gitnotes tree`. 
+There are multiple ways that we can search for notes. The simplest way is to list the notes using the (virtual) file system with `gitnotes ls` or `gitnotes tree` commands. 
 
-More advanced searching can be done with `gitnotes find` for searching based on properties or `gitnotes grep` to search based on content.
+Searching for properties of notes (such as tags or creation date) can be done using the `gitnotes find` command.
 
-As the data is stored in a git repository, it is possible to grep for past content as well using the `--history` argument.
+Content based searches "grep" can be done with the `gitnotes grep` command. It is also possible to search for past content using the `--history` argument where a git commit spec is used.
 
 ### Interactive mode
 The interactive mode have some additional features that are not available using the CLi directly such as the ability of combining different operations into one commit:

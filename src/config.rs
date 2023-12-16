@@ -110,6 +110,10 @@ impl Config {
         println!("Use real: {}", self.use_real);
         println!("Real base dir: {}", self.real_base_dir.as_ref().map(|x| x.to_str().unwrap()).unwrap_or("N/A"));
     }
+
+    pub fn resources_dir(&self) -> PathBuf {
+        self.repository.join("resources")
+    }
 }
 
 fn get_user_name_and_email() -> (String, String) {

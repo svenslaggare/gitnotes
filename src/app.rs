@@ -2,6 +2,7 @@ use std::cell::RefCell;
 use std::io::{IsTerminal, stdin};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
+use std::process::Stdio;
 use std::rc::Rc;
 use globset::Glob;
 
@@ -288,6 +289,20 @@ impl App {
                         }
                     }
                 }
+            }
+            InputCommand::ListResources { query, print_absolute } => {
+                let base_dir = self.config.resources_dir();
+                querying::list_resources(&base_dir, query, print_absolute)?;
+            }
+            InputCommand::ApplyCommandOnResource { command, resource } => {
+                let full_path = self.config.resources_dir().join(resource).canonicalize()?;
+
+                let mut result = std::process::Command::new(&command)
+                    .arg(full_path)
+                    .stdin(Stdio::inherit())
+                    .spawn()
+                    .map_err(|err| CommandError::SubProcess(err))?;
+                result.wait().map_err(|err| CommandError::SubProcess(err))?;
             }
             InputCommand::Log { count } => {
                 let repository = self.repository.borrow();
@@ -757,6 +772,22 @@ pub enum InputCommand {
         /// Creates an interactive prompt to choose which match to launch a new command with
         #[structopt(long, short)]
         interactive: Option<String>
+    },
+    /// Lists the resources
+    ListResources {
+        /// The directory to list. Leave empty for all.
+        query: Option<PathBuf>,
+        /// Prints the absolute path.
+        #[structopt(long)]
+        print_absolute: bool
+    },
+    /// Applies a command on a resource
+    #[structopt(name="apply-resource")]
+    ApplyCommandOnResource {
+        /// The command to apply. Path to resource is given as first argument
+        command: String,
+        /// The resource to apply on
+        resource: PathBuf
     },
     /// Lists git commits
     Log {

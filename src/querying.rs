@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use std::io::{IsTerminal, stdout};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
 use chrono::{Datelike, DateTime, Local, Timelike};
@@ -465,6 +465,38 @@ impl<'a> ListTree<'a> {
             }
         );
     }
+}
+
+pub fn list_resources(base_dir: &Path,
+                      query: Option<PathBuf>,
+                      print_absolute: bool) -> QueryingResult<()> {
+    println!("Resources:");
+    let mut initial_search_dir = base_dir.to_owned();
+    if let Some(query) = query {
+        initial_search_dir = base_dir.join(query);
+    }
+
+    let mut stack = vec![initial_search_dir];
+    'outer:
+    while let Some(top) = stack.pop() {
+        for entry in std::fs::read_dir(top)? {
+            if let Ok(entry) = entry {
+                let path = entry.path();
+                if path.is_file() {
+                    let relative_path = path.strip_prefix(&base_dir).unwrap();
+                    let path_to_use = if print_absolute { &path } else { relative_path };
+
+                    println!("{}", path_to_use.to_str().unwrap());
+                } else {
+                    stack.push(entry.path());
+                }
+            } else {
+                break 'outer;
+            }
+        }
+    }
+
+    Ok(())
 }
 
 pub struct GitLog<'a> {

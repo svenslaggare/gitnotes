@@ -12,9 +12,22 @@ CLI based notes & snippet application powered by Git.
 Note: have only been tested on Linux.
 
 ## Build
+Instructions below is how to build it on a Linux based system (currently Ubuntu based one).
+
+### Binary
+Building the `gitnotes` binary is done using:
+
 * Requires cargo (https://rustup.rs/).
 * Build with: `cargo build --release`
 * Build output in `target/release/gitnotes`
+
+### Web editor
+Building the web editor is done using:
+* Requires yarn (https://yarnpkg.com/).
+* Build with `cd webeditor && ./build_js.sh`
+
+### Debian package
+A debian package can be built using the `build_deb.sh` command. This will also include bash auto-completions.
 
 ## How to guide
 

@@ -9,8 +9,9 @@ CLI based notes & snippet application powered by Git.
 * Ability to search through notes using either content "grep" or note properties.
 * Includes an optional web based Markdown editor.
 
+Note: have only been tested on Linux.
+
 ## Build
-* Currently only supported on Linux.
 * Requires cargo (https://rustup.rs/).
 * Build with: `cargo build --release`
 * Build output in `target/release/gitnotes`
@@ -48,7 +49,7 @@ More advanced searching can be done with `gitnotes find` for searching based on 
 As the data is stored in a git repository, it is possible to grep for past content as well using the `--history` argument.
 
 ### Interactive mode
-The interactive mode allows some new features, such as the ability of combining different operations into one commit:
+The interactive mode have some additional features that are not available using the CLi directly such as the ability of combining different operations into one commit:
 
 ```
 $ gitnotes
@@ -58,14 +59,14 @@ $ gitnotes
 > commit
 ```
 
-It also supports better auto-completion that is aware of the notes inside the repository.
+An auto-completion that is aware of the notes that are actually stored in the repository.
 
 ### Editor
-Any editor can be used to edit notes. The editors that are most preferred are the ones that offer split code/markdown views such as vscode. To aid in this regard, a web based such editor is included with GitNotes.
-This is used by setting the `editor` config to `web-editor`. It is also possible to run in a standalone fashion using `gitnotes web-editor <path>`.
+Any editor can be used to edit notes. The editors that are most preferred are the ones that offer a split code/markdown views such as Visual Studio Code. To minimize the need to use external editors though, a simple web based editor is included with GitNotes. This is used by setting the `editor` config to `web-editor`. It is also possible to run in a standalone fashion using `gitnotes web-editor <path>`.
 
 ### Virtual file system
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
 
 ### Using real working dir
-With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. An additional config file `real_base_dir` (defaults to `$HOME`) will be used to determine the relative path that is actually stored.
+With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. That is, if you change the directory of your terminal, that will reflect in the commands you execute.
+The base for this is defined in the config file as the `real_base_dir` (defaults to `$HOME`).

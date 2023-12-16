@@ -32,6 +32,7 @@ html {
     border: 2px #dfdfdf solid;
     min-height: 5em;
     white-space: pre-wrap;
+    text-align: left;
 }
 
 .linkButton:hover {

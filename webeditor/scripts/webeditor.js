@@ -63,11 +63,12 @@ var WebEditorMain = /** @class */ (function (_super) {
             content: "",
             isReadOnly: _this.props.isReadOnly,
             isStandalone: _this.props.isStandalone,
-            showCode: !_this.props.isReadOnly,
+            showText: !_this.props.isReadOnly,
             showRendered: true,
             success: null,
             error: null,
-            snippetOutput: null
+            snippetOutput: null,
+            snippetOutputContent: null
         };
         _this.editArea = react_1.default.createRef();
         _this.fetchContent();
@@ -85,8 +86,8 @@ var WebEditorMain = /** @class */ (function (_super) {
                     react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
                 react_1.default.createElement("div", { className: "col-3" },
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
-                        react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showCode, id: "showCodeCheckbox", onChange: function (event) { _this.changeCode(event); } }),
-                        react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showCodeCheckbox" }, "Code")),
+                        react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showText, id: "showTextCheckbox", onChange: function (event) { _this.changeText(event); } }),
+                        react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showTextCheckbox" }, "Text")),
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
                         react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showRendered, id: "showRenderedheckbox", onChange: function (event) { _this.changeRendered(event); } }),
                         react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showRenderedheckbox" }, "Rendered")))),
@@ -94,7 +95,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             this.renderError(),
             this.renderSnippetOutput(),
             react_1.default.createElement("div", { className: "row" },
-                this.renderCode(),
+                this.renderText(),
                 this.renderMarkdown())));
     };
     WebEditorMain.prototype.renderSuccess = function () {
@@ -121,9 +122,9 @@ var WebEditorMain = /** @class */ (function (_super) {
                 this.state.error),
             react_1.default.createElement("div", { className: "col-4" })));
     };
-    WebEditorMain.prototype.renderCode = function () {
+    WebEditorMain.prototype.renderText = function () {
         var _this = this;
-        if (!this.state.showCode) {
+        if (!this.state.showText) {
             return null;
         }
         return (react_1.default.createElement("div", { className: this.numViewsVisible() == 2 ? "col-6" : "col" },
@@ -152,9 +153,13 @@ var WebEditorMain = /** @class */ (function (_super) {
             return (react_1.default.createElement("div", { className: "row" },
                 react_1.default.createElement("div", { className: "col-4" }),
                 react_1.default.createElement("div", { className: "col-4" },
-                    react_1.default.createElement("b", null, "Snippet output"),
-                    react_1.default.createElement("i", { className: "fas fa-times linkButton", style: { float: "right" }, onClick: function () { _this.setState({ snippetOutput: null }); } }),
-                    react_1.default.createElement("p", { className: "text-monospace snippetOutput" }, this.state.snippetOutput)),
+                    react_1.default.createElement("div", { className: "card", style: { marginBottom: "10px", textAlign: "center" } },
+                        react_1.default.createElement("div", { className: "card-body" },
+                            react_1.default.createElement("h5", { className: "card-title" },
+                                "Snippet output",
+                                react_1.default.createElement("i", { className: "fas fa-times linkButton", style: { float: "right" }, onClick: function () { _this.closeSnippetOutput(); } })),
+                            react_1.default.createElement("p", { className: "text-monospace snippetOutput" }, this.state.snippetOutput),
+                            react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.updateContentUsingSnippet(); } }, "Update content")))),
                 react_1.default.createElement("div", { className: "col-4" })));
         }
         else {
@@ -170,15 +175,28 @@ var WebEditorMain = /** @class */ (function (_super) {
                         react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
                     react_1.default.createElement("div", { className: "modal-body" }, "Web editor has been closed. Please close this browser tab.")))));
     };
-    WebEditorMain.prototype.changeCode = function (event) {
+    WebEditorMain.prototype.changeText = function (event) {
         this.setState({
-            showCode: event.target.checked,
+            showText: event.target.checked,
         });
     };
     WebEditorMain.prototype.changeRendered = function (event) {
         this.setState({
             showRendered: event.target.checked,
         });
+    };
+    WebEditorMain.prototype.closeSnippetOutput = function () {
+        this.setState({
+            snippetOutput: null,
+            snippetOutputContent: null
+        });
+    };
+    WebEditorMain.prototype.updateContentUsingSnippet = function () {
+        if (this.state.snippetOutputContent != null) {
+            this.setState({
+                content: this.state.snippetOutputContent
+            });
+        }
     };
     WebEditorMain.prototype.fetchContent = function () {
         var _this = this;
@@ -223,7 +241,8 @@ var WebEditorMain = /** @class */ (function (_super) {
             .then(function (response) {
             _this.setState({
                 error: null,
-                snippetOutput: response.data["output"]
+                snippetOutput: response.data["output"],
+                snippetOutputContent: response.data["newContent"]
             });
         }).catch(function (error) {
             _this.setState({
@@ -267,7 +286,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         });
     };
     WebEditorMain.prototype.numViewsVisible = function () {
-        return (this.state.showCode ? 1 : 0) + (this.state.showRendered ? 1 : 0);
+        return (this.state.showText ? 1 : 0) + (this.state.showRendered ? 1 : 0);
     };
     return WebEditorMain;
 }(react_1.default.Component));

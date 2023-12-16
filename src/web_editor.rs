@@ -22,12 +22,10 @@ use tower_http::services::{ServeDir, ServeFile};
 
 use askama::{Template};
 use axum::body::Body;
-use comrak::nodes::NodeValue;
 
-use crate::command::CommandError;
 use crate::config::SnippetFileConfig;
-use crate::markdown;
-use crate::snippets::{SnippetError, SnippetRunnerManger};
+use crate::{command, markdown};
+use crate::snippets::{SnippetRunnerManger};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WebEditorConfig {
@@ -255,39 +253,32 @@ struct RunSnippet {
 
 async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json<RunSnippet>) -> WebServerResult<Response> {
     let arena = markdown::storage();
-    let root = markdown::parse(&arena, &input.content);
 
     let mut snippet_output = String::new();
-    markdown::visit_code_blocks::<CommandError, _>(
-        &root,
-        |current_node| {
-            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                let snippet_result = state.snippet_runner_manager.run(
-                    &block.info,
-                    &block.literal
-                );
+    let result = command::run_snippet(
+        &state.snippet_runner_manager,
+        &arena,
+        &input.content,
+        |text| { snippet_output += text }
+    );
 
-                match snippet_result {
-                    Ok(output_stdout) => {
-                        snippet_output += &output_stdout;
-                    }
-                    Err(SnippetError::Execution { output, .. }) => {
-                        snippet_output += &output;
-                    }
-                    Err(err) => {
-                        snippet_output += &err.to_string();
-                        snippet_output.push('\n');
-                    }
-                };
-            }
+    let mut new_content = None;
+    match result {
+        Ok(root) => {
+            new_content = markdown::ast_to_string(&root).ok();
+        }
+        Err(err) => {
+            snippet_output += &err.to_string();
+            snippet_output.push('\n');
+        }
+    }
 
-            Ok(())
-        },
-        true,
-        false
-    ).unwrap();
-
-    Ok(Json(json!({ "output": snippet_output })).into_response())
+    Ok(
+        Json(json!({
+            "output": snippet_output,
+            "newContent": new_content
+        })).into_response()
+    )
 }
 
 async fn get_local_file(headers: HeaderMap, AxumPath(path): AxumPath<String>) -> Response {

@@ -2,9 +2,10 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use chrono::Local;
+use comrak::Arena;
 use thiserror::Error;
 
-use comrak::nodes::NodeValue;
+use comrak::nodes::{AstNode, NodeValue};
 
 use crate::config::Config;
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
@@ -222,54 +223,7 @@ impl CommandInterpreter {
                     let content = std::fs::read_to_string(&abs_note_path)?;
 
                     let arena = markdown::storage();
-                    let root = markdown::parse(&arena, &content);
-
-                    markdown::visit_code_blocks::<CommandError, _>(
-                        &root,
-                        |current_node| {
-                            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
-                                let snippet_result = self.snippet_runner_manager.run(
-                                    &block.info,
-                                    &block.literal
-                                );
-
-                                let output_stdout = match snippet_result {
-                                    Ok(output_stdout) => {
-                                        print!("{}", output_stdout);
-                                        output_stdout
-                                    }
-                                    Err(SnippetError::Execution { status, output }) => {
-                                        print!("{}", output);
-                                        return Err(Snippet(SnippetError::Execution { status, output }));
-                                    }
-                                    Err(err) => {
-                                        return Err(Snippet(err));
-                                    }
-                                };
-
-                                let mut create_output_node = true;
-                                if let Some(next_node) = current_node.next_sibling() {
-                                    match next_node.data.borrow_mut().value {
-                                        NodeValue::CodeBlock(ref mut output_block) => {
-                                            if output_block.info == "output" {
-                                                output_block.literal = output_stdout.clone();
-                                                create_output_node = false;
-                                            }
-                                        }
-                                        _ => {}
-                                    }
-                                }
-
-                                if create_output_node {
-                                    current_node.insert_after(markdown::create_output_code_block(&arena, output_stdout));
-                                }
-                            }
-
-                            Ok(())
-                        },
-                        true,
-                        false
-                    )?;
+                    let root = run_snippet(&self.snippet_runner_manager, &arena, &content, |text| print!("{}", text))?;
 
                     if save_output {
                         std::fs::write(abs_note_path, markdown::ast_to_string(&root)?)?;
@@ -649,4 +603,60 @@ impl From<std::io::Error> for CommandError {
     fn from(err: std::io::Error) -> Self {
         CommandError::IO(err)
     }
+}
+
+pub fn run_snippet<'a, F: FnMut(&str)>(snippet_runner_manager: &SnippetRunnerManger,
+                                       arena: &'a Arena<AstNode<'a>>,
+                                       content: &str,
+                                       mut do_print: F) -> CommandResult<&'a AstNode<'a>> {
+    let root = markdown::parse(&arena, content);
+
+    markdown::visit_code_blocks::<CommandError, _>(
+        &root,
+        |current_node| {
+            if let NodeValue::CodeBlock(ref block) = current_node.data.borrow().value {
+                let snippet_result = snippet_runner_manager.run(
+                    &block.info,
+                    &block.literal
+                );
+
+                let output_stdout = match snippet_result {
+                    Ok(output_stdout) => {
+                        do_print(&output_stdout);
+                        output_stdout
+                    }
+                    Err(SnippetError::Execution { status, output }) => {
+                        do_print(&output);
+                        return Err(CommandError::Snippet(SnippetError::Execution { status, output }));
+                    }
+                    Err(err) => {
+                        return Err(CommandError::Snippet(err));
+                    }
+                };
+
+                let mut create_output_node = true;
+                if let Some(next_node) = current_node.next_sibling() {
+                    match next_node.data.borrow_mut().value {
+                        NodeValue::CodeBlock(ref mut output_block) => {
+                            if output_block.info == "output" {
+                                output_block.literal = output_stdout.clone();
+                                create_output_node = false;
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if create_output_node {
+                    current_node.insert_after(markdown::create_output_code_block(&arena, output_stdout));
+                }
+            }
+
+            Ok(())
+        },
+        true,
+        false
+    )?;
+
+    Ok(root)
 }

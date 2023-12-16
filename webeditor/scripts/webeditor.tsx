@@ -23,12 +23,13 @@ interface WebEditorMainState {
     content: string;
     isReadOnly: boolean;
     isStandalone: boolean;
-    showCode: boolean;
+    showText: boolean;
     showRendered: boolean;
 
     success: string;
     error: string;
     snippetOutput: string;
+    snippetOutputContent: string;
 }
 
 class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainState> {
@@ -41,11 +42,12 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             content: "",
             isReadOnly: this.props.isReadOnly,
             isStandalone: this.props.isStandalone,
-            showCode: !this.props.isReadOnly,
+            showText: !this.props.isReadOnly,
             showRendered: true,
             success: null,
             error: null,
-            snippetOutput: null
+            snippetOutput: null,
+            snippetOutputContent: null
         };
 
         this.editArea = React.createRef();
@@ -66,9 +68,9 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     </div>
                     <div className="col-3">
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="checkbox" checked={this.state.showCode} id="showCodeCheckbox"
-                                   onChange={event => { this.changeCode(event); }} />
-                            <label className="form-check-label" htmlFor="showCodeCheckbox">Code</label>
+                            <input className="form-check-input" type="checkbox" checked={this.state.showText} id="showTextCheckbox"
+                                   onChange={event => { this.changeText(event); }} />
+                            <label className="form-check-label" htmlFor="showTextCheckbox">Text</label>
                         </div>
 
                         <div className="form-check form-check-inline">
@@ -82,7 +84,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 {this.renderError()}
                 {this.renderSnippetOutput()}
                 <div className="row">
-                    {this.renderCode()}
+                    {this.renderText()}
                     {this.renderMarkdown()}
                 </div>
             </div>
@@ -124,8 +126,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         );
     }
 
-    renderCode() {
-        if (!this.state.showCode) {
+    renderText() {
+        if (!this.state.showText) {
             return null;
         }
 
@@ -190,11 +192,21 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 <div className="row">
                     <div className="col-4" />
                     <div className="col-4">
-                        <b>Snippet output</b>
-                        <i className="fas fa-times linkButton" style={{ float: "right" }} onClick={() => { this.setState({ snippetOutput: null }); }} />
-                        <p className="text-monospace snippetOutput">
-                            {this.state.snippetOutput}
-                        </p>
+                        <div className="card" style={{ marginBottom: "10px", textAlign: "center" }}>
+                            <div className="card-body">
+                                <h5 className="card-title">
+                                    Snippet output
+
+                                    <i className="fas fa-times linkButton" style={{ float: "right" }} onClick={() => { this.closeSnippetOutput(); }} />
+                                </h5>
+
+                                <p className="text-monospace snippetOutput">
+                                    {this.state.snippetOutput}
+                                </p>
+
+                                <button type="button" className="btn btn-success" onClick={() => { this.updateContentUsingSnippet(); }}>Update content</button>
+                            </div>
+                        </div>
                     </div>
                     <div className="col-4" />
                 </div>
@@ -222,9 +234,9 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         );
     }
 
-    changeCode(event: React.ChangeEvent<HTMLInputElement>) {
+    changeText(event: React.ChangeEvent<HTMLInputElement>) {
         this.setState({
-            showCode: event.target.checked,
+            showText: event.target.checked,
         });
     }
 
@@ -232,6 +244,21 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         this.setState({
             showRendered: event.target.checked,
         });
+    }
+
+    closeSnippetOutput() {
+        this.setState({
+            snippetOutput: null,
+            snippetOutputContent: null
+        });
+    }
+
+    updateContentUsingSnippet() {
+        if (this.state.snippetOutputContent != null) {
+            this.setState({
+                content: this.state.snippetOutputContent
+            })
+        }
     }
 
     fetchContent() {
@@ -279,7 +306,8 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             .then(response => {
                 this.setState({
                     error: null,
-                    snippetOutput: response.data["output"]
+                    snippetOutput: response.data["output"],
+                    snippetOutputContent: response.data["newContent"]
                 });
             }).catch(error => {
             this.setState({
@@ -325,7 +353,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     }
 
     numViewsVisible() {
-        return (this.state.showCode ? 1 : 0) + (this.state.showRendered ? 1 : 0);
+        return (this.state.showText ? 1 : 0) + (this.state.showRendered ? 1 : 0);
     }
 }
 

@@ -15,9 +15,6 @@ assets = [
     ["completions/gitnotes.bash", "etc/bash_completion.d/gitnotes", "644"]
 ]
 
-[features]
-webview = ["web-view"]
-
 [dependencies]
 thiserror = "1"
 chrono = { version = "0.4", features=["serde"] }
@@ -35,14 +32,14 @@ rustyline-derive = "0.9"
 shellwords = "1"
 
 serde = { version = "1", features=["derive"] }
-toml = "0.7"
+toml = "0.8"
 serde_json = "1"
 
 git2 = "0.17"
-comrak = "0.18"
+comrak = "0.20"
 tempfile = "3"
 libc = "0.2"
-crossterm = "0.26"
+crossterm = "0.27"
 home = "0.5"
 
 rake = "0.3"
@@ -52,5 +49,3 @@ tokio = { version = "1", features = ["full"] }
 tower-http = { version = "0.4", features = ["fs"] }
 askama = "0.12"
 open = "5"
-
-web-view = { version = "0.7", optional = true }

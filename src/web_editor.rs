@@ -42,7 +42,6 @@ impl Default for AccessMode {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WebEditorConfig {
     pub port: u16,
-    pub launch_web_view: bool,
     pub access_mode: AccessMode,
     pub is_standalone: bool,
     pub snippet_config: Option<SnippetFileConfig>
@@ -52,7 +51,6 @@ impl Default for WebEditorConfig {
     fn default() -> Self {
         WebEditorConfig {
             port: 9000,
-            launch_web_view: default_launch_web_view(),
             access_mode: AccessMode::default(),
             is_standalone: false,
             snippet_config: None
@@ -72,16 +70,6 @@ impl WebEditorInput {
             repository_path: None
         }
     }
-}
-
-#[cfg(feature="webview")]
-fn default_launch_web_view() -> bool {
-    true
-}
-
-#[cfg(not(feature="webview"))]
-fn default_launch_web_view() -> bool {
-    false
 }
 
 pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
@@ -114,11 +102,7 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
     let web_address = format!("http://{}", address);
     println!("Opening file '{}' with web editor available at {}.", input.path.to_str().unwrap(), web_address);
 
-    if config.launch_web_view {
-        launch_web_view(state.clone(), &config);
-    } else {
-        open::that(web_address).unwrap();
-    }
+    open::that(web_address).unwrap();
 
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
@@ -133,35 +117,6 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
 pub fn launch_sync(config: WebEditorConfig, input: WebEditorInput) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
     runtime.block_on(launch(config, input));
-}
-
-#[cfg(feature="webview")]
-fn launch_web_view(state: Arc<WebServerState>, config: &WebEditorConfig) {
-    let port = config.port;
-    tokio::task::spawn_blocking(move || {
-        web_view::builder()
-            .title("WebEditor")
-            .content(web_view::Content::Url(format!("http://localhost:{}", port)))
-            .size(1440, 960)
-            .resizable(true)
-            .debug(true)
-            .user_data(())
-            .invoke_handler(|webview, arg| {
-                if arg == "exit" {
-                    webview.exit();
-                }
-
-                Ok(())
-            })
-            .run()
-            .unwrap();
-        state.notify.notify_one();
-    });
-}
-
-#[cfg(not(feature="webview"))]
-fn launch_web_view(_state: Arc<WebServerState>, _config: &WebEditorConfig) {
-    panic!("Webview feature not compiled - compile with --features webview.");
 }
 
 struct WebServerState {

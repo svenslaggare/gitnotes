@@ -3,6 +3,7 @@ use std::path::Path;
 use crate::app::{App, AppError, InputCommand};
 use crate::command::{Command, CommandError, CommandInterpreter};
 use crate::config::{Config, FileConfig};
+use crate::editor::EditorOutput;
 
 #[test]
 fn test_add() {
@@ -59,7 +60,8 @@ print([x * x for x in xs])
             config,
             repository,
             Box::new(move |_, path| {
-                std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))
+                std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))?;
+                Ok(EditorOutput::default())
             })
         )
     }).unwrap();
@@ -895,7 +897,8 @@ print([x * x for x in xs])
             config,
             repository,
             Box::new(move |_, path| {
-                std::fs::write(path, &note_content2_clone).map_err(|err| CommandError::IO(err))
+                std::fs::write(path, &note_content2_clone).map_err(|err| CommandError::IO(err))?;
+                Ok(EditorOutput::default())
             })
         )
     }).unwrap();
@@ -951,7 +954,7 @@ print([x * x for x in xs])
             config,
             repository,
             Box::new(move |_, _| {
-                Ok(())
+                Ok(EditorOutput::default())
             })
         )
     }).unwrap();

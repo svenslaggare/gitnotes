@@ -1,5 +1,5 @@
 use std::io::Write;
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use crate::command::{CommandError, CommandResult};
@@ -9,9 +9,21 @@ use crate::model::NOTE_CONTENT_EXT;
 use crate::web_editor;
 use crate::web_editor::{AccessMode, WebEditorConfig, WebEditorInput};
 
+pub struct EditorOutput {
+    pub added_resources: Vec<PathBuf>
+}
+
+impl Default for EditorOutput {
+    fn default() -> Self {
+        EditorOutput {
+            added_resources: Vec::new(),
+        }
+    }
+}
+
 pub fn launch(config: &Config,
               path: &Path,
-              access_mode: AccessMode) -> CommandResult<()> {
+              access_mode: AccessMode) -> CommandResult<EditorOutput> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
@@ -20,14 +32,15 @@ pub fn launch(config: &Config,
             web_config.access_mode = access_mode;
             web_config.snippet_config = config.snippet.clone();
 
-            web_editor::launch_sync(
-                web_config,
-                WebEditorInput {
-                    path: path.to_owned(),
-                    repository_path: Some(config.repository.clone())
-                }
+            return Ok(
+                web_editor::launch_sync(
+                    web_config,
+                    WebEditorInput {
+                        path: path.to_owned(),
+                        repository_path: Some(config.repository.clone())
+                    }
+                )
             );
-            return Ok(());
         }
         _ => {}
     }
@@ -40,7 +53,7 @@ pub fn launch(config: &Config,
 
     let result = result.wait().map_err(|err| CommandError::SubProcess(err))?;
     if result.success() {
-        Ok(())
+        Ok(EditorOutput::default())
     } else {
         Err(CommandError::SubProcess(io_error(format!("Non successful result: {}", result.code().unwrap_or(1)))))
     }
@@ -48,7 +61,7 @@ pub fn launch(config: &Config,
 
 pub fn launch_with_content(config: &Config,
                            content: &str,
-                           access_mode: AccessMode) -> CommandResult<()> {
+                           access_mode: AccessMode) -> CommandResult<EditorOutput> {
     let ext = ".".to_owned() + NOTE_CONTENT_EXT;
     let temp_file = tempfile::Builder::new()
         .suffix(&ext)

@@ -68,9 +68,11 @@ var WebEditorMain = /** @class */ (function (_super) {
             success: null,
             error: null,
             snippetOutput: null,
-            snippetOutputContent: null
+            snippetOutputContent: null,
+            selectedFile: null
         };
         _this.editArea = react_1.default.createRef();
+        _this.addResourceModal = null;
         _this.fetchContent();
         return _this;
     }
@@ -78,12 +80,13 @@ var WebEditorMain = /** @class */ (function (_super) {
         var _this = this;
         return (react_1.default.createElement("div", null,
             this.renderExited(),
+            this.renderAddResourceModal(),
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
                 react_1.default.createElement("div", { className: "col-9" },
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
-                    !this.state.isStandalone ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet") : null,
                     !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
-                    react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")),
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit"),
+                    this.renderActions()),
                 react_1.default.createElement("div", { className: "col-3" },
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
                         react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showText, id: "showTextCheckbox", onChange: function (event) { _this.changeText(event); } }),
@@ -122,6 +125,15 @@ var WebEditorMain = /** @class */ (function (_super) {
                 this.state.error),
             react_1.default.createElement("div", { className: "col-4" })));
     };
+    WebEditorMain.prototype.renderActions = function () {
+        var _this = this;
+        if (this.state.isStandalone) {
+            return null;
+        }
+        return (react_1.default.createElement("span", { style: { paddingLeft: "15px" } },
+            react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
+            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource") : null));
+    };
     WebEditorMain.prototype.renderText = function () {
         var _this = this;
         if (!this.state.showText) {
@@ -159,7 +171,7 @@ var WebEditorMain = /** @class */ (function (_super) {
                                 "Snippet output",
                                 react_1.default.createElement("i", { className: "fas fa-times linkButton", style: { float: "right" }, onClick: function () { _this.closeSnippetOutput(); } })),
                             react_1.default.createElement("p", { className: "text-monospace snippetOutput" }, this.state.snippetOutput),
-                            react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.updateContentUsingSnippet(); } }, "Update content")))),
+                            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.updateTextUsingSnippet(); } }, "Update text") : null))),
                 react_1.default.createElement("div", { className: "col-4" })));
         }
         else {
@@ -191,7 +203,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             snippetOutputContent: null
         });
     };
-    WebEditorMain.prototype.updateContentUsingSnippet = function () {
+    WebEditorMain.prototype.updateTextUsingSnippet = function () {
         if (this.state.snippetOutputContent != null) {
             this.setState({
                 content: this.state.snippetOutputContent
@@ -249,6 +261,62 @@ var WebEditorMain = /** @class */ (function (_super) {
                 error: getErrorMessage(error)
             });
         });
+    };
+    WebEditorMain.prototype.showAddResourceModel = function () {
+        // @ts-ignore
+        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        // modal.show();
+        this.addResourceModal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        this.addResourceModal.show();
+    };
+    WebEditorMain.prototype.hideAddResourceModal = function () {
+        // @ts-ignore
+        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        // console.log(modal);
+        // modal.hide();
+        if (this.addResourceModal != null) {
+            this.addResourceModal.hide();
+        }
+    };
+    WebEditorMain.prototype.renderAddResourceModal = function () {
+        var _this = this;
+        return (react_1.default.createElement("div", { className: "modal", id: "addResourceModal", tabIndex: -1, "aria-labelledby": "addResourceModalLabel", "aria-hidden": "true" },
+            react_1.default.createElement("div", { className: "modal-dialog" },
+                react_1.default.createElement("div", { className: "modal-content" },
+                    react_1.default.createElement("div", { className: "modal-header" },
+                        react_1.default.createElement("h1", { className: "modal-title fs-5", id: "addResourceModalLabel" }, "Add resource"),
+                        react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
+                    react_1.default.createElement("div", { className: "modal-body" },
+                        react_1.default.createElement("input", { type: "file", onChange: function (event) { _this.onFileChanged(event); } }),
+                        react_1.default.createElement("br", null),
+                        react_1.default.createElement("br", null),
+                        react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.addResource(); } }, "Upload"))))));
+    };
+    WebEditorMain.prototype.onFileChanged = function (event) {
+        this.setState({
+            selectedFile: event.target.files[0]
+        });
+    };
+    WebEditorMain.prototype.addResource = function () {
+        var _this = this;
+        if (this.state.selectedFile != null) {
+            var formData = new FormData();
+            formData.append("file", this.state.selectedFile, this.state.selectedFile.name);
+            axios_1.default.post("/api/add-resource", formData)
+                .then(function (response) {
+                _this.hideAddResourceModal();
+                var editor = _this.editArea.current.editor;
+                editor.session.insert({ row: editor.session.getLength(), column: 0 }, "\n![](resource/".concat(_this.state.selectedFile.name, ")"));
+                _this.setState({
+                    error: null,
+                    selectedFile: null
+                });
+            }).catch(function (error) {
+                _this.setState({
+                    error: getErrorMessage(error)
+                });
+            });
+        }
     };
     WebEditorMain.prototype.saveContentAndExit = function () {
         var _this = this;

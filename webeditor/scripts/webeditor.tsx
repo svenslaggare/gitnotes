@@ -30,10 +30,13 @@ interface WebEditorMainState {
     error: string;
     snippetOutput: string;
     snippetOutputContent: string;
+
+    selectedFile: File;
 }
 
 class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainState> {
     editArea: React.RefObject<any>;
+    addResourceModal: any;
 
     constructor(props) {
         super(props);
@@ -44,13 +47,17 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             isStandalone: this.props.isStandalone,
             showText: !this.props.isReadOnly,
             showRendered: true,
+
             success: null,
             error: null,
             snippetOutput: null,
-            snippetOutputContent: null
+            snippetOutputContent: null,
+
+            selectedFile: null
         };
 
         this.editArea = React.createRef();
+        this.addResourceModal = null;
         this.fetchContent();
     }
 
@@ -58,13 +65,15 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         return (
             <div>
                 {this.renderExited()}
+                {this.renderAddResourceModal()}
 
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
-                        { !this.state.isStandalone ? <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button> : null }
                         { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
                         <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
+
+                        {this.renderActions()}
                     </div>
                     <div className="col-3">
                         <div className="form-check form-check-inline">
@@ -123,6 +132,19 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 </div>
                 <div className="col-4" />
             </div>
+        );
+    }
+
+    renderActions() {
+        if (this.state.isStandalone) {
+            return null;
+        }
+
+        return (
+            <span style={{ paddingLeft: "15px" }}>
+                <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
+                { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button> : null }
+            </span>
         );
     }
 
@@ -204,7 +226,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                                     {this.state.snippetOutput}
                                 </p>
 
-                                <button type="button" className="btn btn-success" onClick={() => { this.updateContentUsingSnippet(); }}>Update content</button>
+                                { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.updateTextUsingSnippet(); }}>Update text</button> : null }
                             </div>
                         </div>
                     </div>
@@ -253,7 +275,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         });
     }
 
-    updateContentUsingSnippet() {
+    updateTextUsingSnippet() {
         if (this.state.snippetOutputContent != null) {
             this.setState({
                 content: this.state.snippetOutputContent
@@ -314,6 +336,79 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 error: getErrorMessage(error)
             });
         });
+    }
+
+    showAddResourceModel() {
+        // @ts-ignore
+        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        // modal.show();
+        this.addResourceModal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        this.addResourceModal.show();
+    }
+
+    hideAddResourceModal() {
+        // @ts-ignore
+        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
+        // console.log(modal);
+        // modal.hide();
+        if (this.addResourceModal != null) {
+            this.addResourceModal.hide();
+        }
+    }
+
+    renderAddResourceModal() {
+        return (
+            <div className="modal" id="addResourceModal" tabIndex={-1} aria-labelledby="addResourceModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h1 className="modal-title fs-5" id="addResourceModalLabel">Add resource</h1>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <input type="file" onChange={(event) => { this.onFileChanged(event); }} />
+
+                            <br />
+                            <br />
+                            <button type="button" className="btn btn-primary" onClick={() => { this.addResource(); }}>Upload</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    onFileChanged(event: React.ChangeEvent<HTMLInputElement>) {
+        this.setState({
+            selectedFile: event.target.files[0]
+        });
+    }
+
+    addResource() {
+        if (this.state.selectedFile != null) {
+            let formData = new FormData();
+            formData.append("file", this.state.selectedFile, this.state.selectedFile.name);
+
+            axios.post("/api/add-resource", formData)
+                .then(response => {
+                    this.hideAddResourceModal();
+
+                    let editor = this.editArea.current.editor;
+                    editor.session.insert(
+                        {row: editor.session.getLength(), column: 0},
+                        `\n![](resource/${this.state.selectedFile.name})`
+                    );
+
+                    this.setState({
+                        error: null,
+                        selectedFile: null
+                    });
+                }).catch(error => {
+                    this.setState({
+                        error: getErrorMessage(error)
+                    });
+                });
+        }
     }
 
     saveContentAndExit() {

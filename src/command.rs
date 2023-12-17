@@ -11,6 +11,7 @@ use crate::config::Config;
 use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
 use crate::{editor, markdown, tags};
 use crate::app::RepositoryRef;
+use crate::editor::EditorOutput;
 use crate::helpers::{get_or_insert_with, OrderedSet};
 use crate::querying::{GitContentFetcher};
 use crate::snippets::{SnippetError, SnippetRunnerManger};
@@ -61,7 +62,7 @@ pub enum Command {
     Commit
 }
 
-pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<()>>;
+pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<EditorOutput>>;
 pub struct CommandInterpreter {
     config: Config,
 
@@ -156,7 +157,7 @@ impl CommandInterpreter {
                         std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
                     }
 
-                    (self.launch_editor)(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    let output = (self.launch_editor)(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     self.edited_file(relative_content_path)?;
 
@@ -165,6 +166,19 @@ impl CommandInterpreter {
 
                     if changed {
                         self.commit_message_lines.insert(format!("Updated note '{}'.", real_path.to_str().unwrap()));
+                    }
+
+                    for path in output.added_resources.iter() {
+                        self.index()?.add_path(&    Path::new("resources").join(path))?;
+
+                        self.commit_message_lines.insert(format!(
+                            "Added resource '{}'",
+                            path.to_str().unwrap_or("N/A")
+                        ));
+                    }
+
+                    if !output.added_resources.is_empty() {
+                        self.index()?.write()?;
                     }
                 }
                 Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {

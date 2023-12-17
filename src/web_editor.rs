@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::net::{Ipv4Addr, SocketAddr};
+use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
@@ -10,13 +11,13 @@ use thiserror::Error;
 use serde_json::json;
 use serde::{Deserialize, Serialize};
 
-use tokio::sync::Notify;
+use tokio::sync::{Mutex, Notify};
 
 use axum::response::{Html, IntoResponse, Response};
 use axum::{Json, Router};
 use axum::http::{HeaderMap, Request, StatusCode};
 use axum::routing::{get, post, put};
-use axum::extract::{Path as AxumPath, Query, State};
+use axum::extract::{DefaultBodyLimit, Multipart, Path as AxumPath, Query, State};
 
 use tower_http::services::{ServeDir, ServeFile};
 
@@ -25,6 +26,7 @@ use axum::body::Body;
 
 use crate::config::SnippetFileConfig;
 use crate::{command, markdown};
+use crate::editor::EditorOutput;
 use crate::snippets::{SnippetRunnerManger};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -72,7 +74,7 @@ impl WebEditorInput {
     }
 }
 
-pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
+pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOutput {
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
@@ -93,9 +95,11 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
         .route("/api/content", get(get_content))
         .route("/api/content", put(save_content))
         .route("/api/run-snippet", post(run_snippet))
+        .route("/api/add-resource", post(add_resource))
         .route("/local/*path", get(get_local_file))
         .route("/resource/*path", get(get_resource_file))
         .with_state(state.clone())
+        .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         ;
 
     let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), config.port);
@@ -107,16 +111,19 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
             result.unwrap();
+            EditorOutput::default()
         }
         _ = state.notify.notified() => {
-            return;
+            return EditorOutput {
+                added_resources: std::mem::take(state.added_resources.lock().await.deref_mut())
+            }
         }
     }
 }
 
-pub fn launch_sync(config: WebEditorConfig, input: WebEditorInput) {
+pub fn launch_sync(config: WebEditorConfig, input: WebEditorInput) -> EditorOutput {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(launch(config, input));
+    runtime.block_on(launch(config, input))
 }
 
 struct WebServerState {
@@ -125,7 +132,8 @@ struct WebServerState {
     access_mode: AccessMode,
     is_standalone: bool,
     repository_path: Option<PathBuf>,
-    snippet_runner_manager: SnippetRunnerManger
+    snippet_runner_manager: SnippetRunnerManger,
+    added_resources: Mutex<Vec<PathBuf>>
 }
 
 impl WebServerState {
@@ -140,7 +148,8 @@ impl WebServerState {
             access_mode,
             is_standalone,
             repository_path,
-            snippet_runner_manager
+            snippet_runner_manager,
+            added_resources: Mutex::new(Vec::new())
         }
     }
 }
@@ -151,7 +160,16 @@ enum WebServerError {
     ExpectedQueryParameter(String),
 
     #[error("{0}")]
+    Multipart(axum::extract::multipart::MultipartError),
+
+    #[error("{0}")]
     IO(std::io::Error)
+}
+
+impl From<axum::extract::multipart::MultipartError> for WebServerError {
+    fn from(err: axum::extract::multipart::MultipartError) -> Self {
+        WebServerError::Multipart(err)
+    }
 }
 
 impl From<std::io::Error> for WebServerError {
@@ -258,6 +276,23 @@ async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json
             "newContent": new_content
         })).into_response()
     )
+}
+
+async fn add_resource(State(state): State<Arc<WebServerState>>,
+                      mut multipart: Multipart) -> WebServerResult<Response> {
+    if let Some(repository_path) = state.repository_path.as_ref() {
+        while let Some(field) = multipart.next_field().await? {
+            let filename = field.file_name().unwrap_or("file.bin").to_owned();
+            let data = field.bytes().await?;
+
+            println!("Adding resource: {} ({} bytes)", filename, data.len());
+            let path = repository_path.join("resources").join(&filename);
+            std::fs::write(path, data)?;
+            state.added_resources.lock().await.push(Path::new(&filename).to_owned())
+        }
+    }
+
+    Ok("".into_response())
 }
 
 async fn get_local_file(headers: HeaderMap, AxumPath(path): AxumPath<String>) -> Response {

@@ -125,9 +125,10 @@ impl CommandInterpreter {
                         std::fs::write(&abs_note_path, "").map_err(|err| FailedToAddNote(err.to_string()))?;
                     }
 
-                    (self.launch_editor)(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    let output = (self.launch_editor)(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
 
                     self.add_note(id, &relative_note_path, path, tags)?;
+                    self.add_resources_from_editor_output(output)?;
                 }
                 Command::AddNoteWithContent { path, tags, content } => {
                     self.check_if_note_exists(&path)?;
@@ -168,18 +169,7 @@ impl CommandInterpreter {
                         self.commit_message_lines.insert(format!("Updated note '{}'.", real_path.to_str().unwrap()));
                     }
 
-                    for path in output.added_resources.iter() {
-                        self.index()?.add_path(&    Path::new("resources").join(path))?;
-
-                        self.commit_message_lines.insert(format!(
-                            "Added resource '{}'",
-                            path.to_str().unwrap_or("N/A")
-                        ));
-                    }
-
-                    if !output.added_resources.is_empty() {
-                        self.index()?.write()?;
-                    }
+                    self.add_resources_from_editor_output(output)?;
                 }
                 Command::EditNoteSetContent { path, clear_tags, add_tags, content } => {
                     let id = self.get_note_id(&path)?;
@@ -420,6 +410,23 @@ impl CommandInterpreter {
         index.add_path(&path)?;
         index.write()?;
         self.changed_files.push(path);
+        Ok(())
+    }
+
+    fn add_resources_from_editor_output(&mut self, output: EditorOutput) -> CommandResult<()> {
+        for path in output.added_resources.iter() {
+            self.index()?.add_path(&Path::new("resources").join(path))?;
+
+            self.commit_message_lines.insert(format!(
+                "Added resource '{}'",
+                path.to_str().unwrap_or("N/A")
+            ));
+        }
+
+        if !output.added_resources.is_empty() {
+            self.index()?.write()?;
+        }
+
         Ok(())
     }
 

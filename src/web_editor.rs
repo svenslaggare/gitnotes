@@ -237,10 +237,19 @@ struct SaveContent {
     content: String
 }
 
-async fn save_content(Json(input): Json<SaveContent>) -> WebServerResult<Response> {
-    std::fs::write(&input.path, input.content)?;
-    println!("Saved content for '{}'.",  input.path.to_str().unwrap());
-    Ok(Json(json!({})).into_response())
+async fn save_content(State(state): State<Arc<WebServerState>>, Json(input): Json<SaveContent>) -> WebServerResult<Response> {
+    if state.access_mode == AccessMode::ReadWrite {
+        std::fs::write(&input.path, input.content)?;
+        println!("Saved content for '{}'.", input.path.to_str().unwrap());
+        Ok(Json(json!({})).into_response())
+    } else {
+        Ok(
+            with_response_code(
+                "File is read only".into_response(),
+                StatusCode::BAD_REQUEST
+            )
+        )
+    }
 }
 
 #[derive(Deserialize)]

@@ -9,7 +9,9 @@ use crate::model::NOTE_CONTENT_EXT;
 use crate::web_editor;
 use crate::web_editor::{WebEditorConfig, WebEditorInput};
 
-pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult<()> {
+pub fn launch(config: &Config,
+              path: &Path,
+              is_read_only: bool) -> CommandResult<()> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
@@ -22,7 +24,7 @@ pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult
                 web_config,
                 WebEditorInput {
                     path: path.to_owned(),
-                    repository_path: Some(config.repository.clone()),
+                    repository_path: Some(config.repository.clone())
                 }
             );
             return Ok(());
@@ -44,7 +46,9 @@ pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult
     }
 }
 
-pub fn launch_with_content(config: &Config, content: &str, is_read_only: bool) -> CommandResult<()> {
+pub fn launch_with_content(config: &Config,
+                           content: &str,
+                           is_read_only: bool) -> CommandResult<()> {
     let ext = ".".to_owned() + NOTE_CONTENT_EXT;
     let temp_file = tempfile::Builder::new()
         .suffix(&ext)

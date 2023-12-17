@@ -27,11 +27,23 @@ use crate::config::SnippetFileConfig;
 use crate::{command, markdown};
 use crate::snippets::{SnippetRunnerManger};
 
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
+pub enum AccessMode {
+    Read,
+    ReadWrite
+}
+
+impl Default for AccessMode {
+    fn default() -> Self {
+        Self::ReadWrite
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct WebEditorConfig {
     pub port: u16,
     pub launch_web_view: bool,
-    pub is_read_only: bool,
+    pub access_mode: AccessMode,
     pub is_standalone: bool,
     pub snippet_config: Option<SnippetFileConfig>
 }
@@ -41,7 +53,7 @@ impl Default for WebEditorConfig {
         WebEditorConfig {
             port: 9000,
             launch_web_view: default_launch_web_view(),
-            is_read_only: false,
+            access_mode: AccessMode::default(),
             is_standalone: false,
             snippet_config: None
         }
@@ -80,7 +92,7 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
 
     let state = Arc::new(WebServerState::new(
         input.path.clone(),
-        config.is_read_only,
+        config.access_mode,
         config.is_standalone,
         input.repository_path.clone(),
         SnippetRunnerManger::from_config(config.snippet_config.as_ref()).unwrap()
@@ -155,7 +167,7 @@ fn launch_web_view(_state: Arc<WebServerState>, _config: &WebEditorConfig) {
 struct WebServerState {
     path: PathBuf,
     notify: Notify,
-    is_read_only: bool,
+    access_mode: AccessMode,
     is_standalone: bool,
     repository_path: Option<PathBuf>,
     snippet_runner_manager: SnippetRunnerManger
@@ -163,14 +175,14 @@ struct WebServerState {
 
 impl WebServerState {
     pub fn new(path: PathBuf,
-               is_read_only: bool,
+               access_mode: AccessMode,
                is_standalone: bool,
                repository_path: Option<PathBuf>,
                snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
         WebServerState {
             path,
             notify: Notify::new(),
-            is_read_only,
+            access_mode,
             is_standalone,
             repository_path,
             snippet_runner_manager
@@ -222,7 +234,7 @@ async fn index(State(state): State<Arc<WebServerState>>) -> Response {
     let template = AppTemplate {
         time: Local::now().timestamp(),
         file_path: state.path.to_str().unwrap().to_owned(),
-        is_read_only: state.is_read_only,
+        is_read_only: state.access_mode == AccessMode::Read,
         is_standalone: state.is_standalone
     };
 

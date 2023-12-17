@@ -17,6 +17,7 @@ use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, PassthroughVirtualPathResolver, RealBaseDirPathResolver};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
+use crate::web_editor::AccessMode;
 
 pub type RepositoryRef = Rc<RefCell<git2::Repository>>;
 
@@ -205,7 +206,7 @@ impl App {
 
                 let content = self.get_note_content(&path, history)?;
                 let content = querying::extract_content(content, only_code, only_output)?;
-                editor::launch_with_content(&self.config, &content, true)?;
+                editor::launch_with_content(&self.config, &content, AccessMode::Read)?;
             }
             InputCommand::ListDirectory { query } => {
                 let query = query.unwrap_or_else(|| Path::new("").to_owned());

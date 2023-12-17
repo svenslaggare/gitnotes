@@ -14,6 +14,7 @@ use crate::app::RepositoryRef;
 use crate::helpers::{get_or_insert_with, OrderedSet};
 use crate::querying::{GitContentFetcher};
 use crate::snippets::{SnippetError, SnippetRunnerManger};
+use crate::web_editor::AccessMode;
 
 #[derive(Debug)]
 pub enum Command {
@@ -81,7 +82,7 @@ impl CommandInterpreter {
         CommandInterpreter::with_launch_editor(
             config,
             repository.clone(),
-            Box::new(|config, path| editor::launch(config, path, false))
+            Box::new(|config, path| editor::launch(config, path, AccessMode::default()))
         )
     }
 

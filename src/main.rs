@@ -22,7 +22,7 @@ mod app_tests;
 use crate::app::{AppError, App, InputCommand, MainInputCommand};
 use crate::config::{Config, config_path, FileConfig};
 use crate::helpers::base_dir;
-use crate::web_editor::WebEditorConfig;
+use crate::web_editor::{WebEditorConfig, WebEditorInput};
 
 fn main() {
     if generate_completions() {
@@ -65,7 +65,7 @@ fn run(input_command: InputCommand, main_input_command: MainInputCommand) -> Res
             config.port = port;
             config.is_read_only = is_read_only;
             config.is_standalone = true;
-            web_editor::launch_sync(config, &path);
+            web_editor::launch_sync(config, WebEditorInput::from_path(&path));
             Ok(())
         }
         _ => {

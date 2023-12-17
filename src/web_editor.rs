@@ -33,7 +33,6 @@ pub struct WebEditorConfig {
     pub launch_web_view: bool,
     pub is_read_only: bool,
     pub is_standalone: bool,
-    pub repository_path: Option<PathBuf>,
     pub snippet_config: Option<SnippetFileConfig>
 }
 
@@ -44,8 +43,21 @@ impl Default for WebEditorConfig {
             launch_web_view: default_launch_web_view(),
             is_read_only: false,
             is_standalone: false,
-            repository_path: None,
             snippet_config: None
+        }
+    }
+}
+
+pub struct WebEditorInput {
+    pub path: PathBuf,
+    pub repository_path: Option<PathBuf>
+}
+
+impl WebEditorInput {
+    pub fn from_path(path: &Path) -> WebEditorInput {
+        WebEditorInput {
+            path: path.to_owned(),
+            repository_path: None
         }
     }
 }
@@ -60,17 +72,17 @@ fn default_launch_web_view() -> bool {
     false
 }
 
-pub async fn launch(config: WebEditorConfig, path: &Path) {
+pub async fn launch(config: WebEditorConfig, input: WebEditorInput) {
     let mut content_dir = Path::new("webeditor/static");
     if !content_dir.exists() {
         content_dir = Path::new("/etc/gitnotes/static");
     }
 
     let state = Arc::new(WebServerState::new(
-        path.to_owned(),
+        input.path.clone(),
         config.is_read_only,
         config.is_standalone,
-        config.repository_path.clone(),
+        input.repository_path.clone(),
         SnippetRunnerManger::from_config(config.snippet_config.as_ref()).unwrap()
     ));
 
@@ -88,7 +100,7 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
 
     let address = SocketAddr::new(Ipv4Addr::from_str(&"127.0.0.1").unwrap().into(), config.port);
     let web_address = format!("http://{}", address);
-    println!("Opening file '{}' with web editor available at {}.", path.to_str().unwrap(), web_address);
+    println!("Opening file '{}' with web editor available at {}.", input.path.to_str().unwrap(), web_address);
 
     if config.launch_web_view {
         launch_web_view(state.clone(), &config);
@@ -106,9 +118,9 @@ pub async fn launch(config: WebEditorConfig, path: &Path) {
     }
 }
 
-pub fn launch_sync(config: WebEditorConfig, path: &Path) {
+pub fn launch_sync(config: WebEditorConfig, input: WebEditorInput) {
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime.block_on(launch(config, path));
+    runtime.block_on(launch(config, input));
 }
 
 #[cfg(feature="webview")]

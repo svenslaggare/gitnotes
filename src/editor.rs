@@ -7,7 +7,7 @@ use crate::config::Config;
 use crate::helpers::io_error;
 use crate::model::NOTE_CONTENT_EXT;
 use crate::web_editor;
-use crate::web_editor::WebEditorConfig;
+use crate::web_editor::{WebEditorConfig, WebEditorInput};
 
 pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult<()> {
     let mut editor_command = std::process::Command::new(&config.editor);
@@ -16,10 +16,15 @@ pub fn launch(config: &Config, path: &Path, is_read_only: bool) -> CommandResult
         "web-editor" => {
             let mut web_config = WebEditorConfig::default();
             web_config.is_read_only = is_read_only;
-            web_config.repository_path = Some(config.repository.clone());
             web_config.snippet_config = config.snippet.clone();
 
-            web_editor::launch_sync(web_config, path);
+            web_editor::launch_sync(
+                web_config,
+                WebEditorInput {
+                    path: path.to_owned(),
+                    repository_path: Some(config.repository.clone()),
+                }
+            );
             return Ok(());
         }
         _ => {}

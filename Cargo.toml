@@ -16,7 +16,7 @@ assets = [
 ]
 
 [dependencies]
-thiserror = "1"
+thiserror = "2"
 chrono = { version = "0.4", features=["serde"] }
 rand = "0.8"
 fnv = "1"
@@ -35,11 +35,11 @@ serde = { version = "1", features=["derive"] }
 toml = "0.8"
 serde_json = "1"
 
-git2 = "0.17"
-comrak = "0.20"
+git2 = "0.20"
+comrak = "0.33"
 tempfile = "3"
 libc = "0.2"
-crossterm = "0.27"
+crossterm = "0.28"
 home = "0.5"
 
 rake = "0.3"

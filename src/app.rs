@@ -15,7 +15,7 @@ use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
-use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR, PassthroughVirtualPathResolver};
+use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 use crate::web_editor::AccessMode;
 
@@ -27,7 +27,7 @@ pub struct App {
     command_interpreter: CommandInterpreter,
     note_metadata_storage: Option<NoteMetadataStorage>,
     auto_commit: bool,
-    virtual_working_dir: Option<PathBuf>
+    working_dir: Option<PathBuf>
 }
 
 impl App {
@@ -50,7 +50,7 @@ impl App {
                 command_interpreter: create_ci(config.clone(), repository)?,
                 note_metadata_storage: None,
                 auto_commit: true,
-                virtual_working_dir: get_initial_virtual_working_dir(&config)
+                working_dir: get_initial_working_dir(&config)
             }
         )
     }
@@ -92,7 +92,7 @@ impl App {
 
                         self.config.print();
                     } else {
-                        return Err(AppError::Input(format!("Format: key=value")));
+                        return Err(AppError::Input("Format: key=value".to_string()));
                     }
                 } else {
                     if only_repository {
@@ -333,14 +333,14 @@ impl App {
             }
             InputCommand::ChangeWorkingDirectory { path } => {
                 let new_working_dir = change_working_dir(
-                    self.virtual_working_dir.as_ref().map(|p| p.as_path()),
+                    self.working_dir.as_ref().map(|p| p.as_path()),
                     path
                 );
 
                 let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
                 match note_file_tree.find(&new_working_dir)  {
                     Some(working_dir_tree) if working_dir_tree.is_tree() => {
-                        self.virtual_working_dir = Some(new_working_dir);
+                        self.working_dir = Some(new_working_dir);
                     }
                     Some(_) => {
                         return Err(AppError::ChangeDirectory("The path is not a directory".to_owned()));
@@ -351,10 +351,10 @@ impl App {
                 }
             }
             InputCommand::PrintWorkingDirectory {} => {
-                if let Some(virtual_working_dir) = self.virtual_working_dir.as_ref() {
-                    let virtual_working_dir = virtual_working_dir.to_str().unwrap();
-                    if !virtual_working_dir.is_empty() {
-                        println!("{}", virtual_working_dir);
+                if let Some(working_dir) = self.working_dir.as_ref() {
+                    let working_dir = working_dir.to_str().unwrap();
+                    if !working_dir.is_empty() {
+                        println!("{}", working_dir);
                     } else {
                         println!("(root)");
                     }
@@ -400,7 +400,7 @@ impl App {
     pub fn note_metadata_storage(&mut self) -> std::io::Result<&NoteMetadataStorage> {
         get_or_insert_with(
             &mut self.note_metadata_storage,
-            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
+            || Ok(NoteMetadataStorage::from_dir_with_config(&self.config)?)
         ).map(|x| &*x)
     }
 
@@ -565,13 +565,10 @@ impl App {
     }
 
     fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {
-        let path = self.virtual_working_dir.as_ref().map(|dir| dir.join(path.clone())).unwrap_or_else(|| path);
-        let path = resolve_absolute_path(self.config.base_dir.as_ref(), path);
-
         self.note_metadata_storage()?;
         self.note_metadata_storage_ref()?.resolve_path(
-            &PassthroughVirtualPathResolver::new(),
-            path,
+            self.working_dir.as_ref(),
+            path
         ).map_err(|err| AppError::InvalidPath(err))
     }
 }
@@ -911,7 +908,7 @@ fn open_repository(path: &Path) -> AppResult<git2::Repository> {
     git2::Repository::open(path).map_err(|err| AppError::FailedToOpenRepository(err))
 }
 
-fn get_initial_virtual_working_dir(config: &Config) -> Option<PathBuf> {
+fn get_initial_working_dir(config: &Config) -> Option<PathBuf> {
     if !config.use_working_dir {
         return None;
     }
@@ -941,22 +938,6 @@ fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> Path
     }
 
     current_working_dir
-}
-
-fn resolve_absolute_path(base_dir: Option<&PathBuf>, path: PathBuf) -> PathBuf {
-    let path = if let Some(base_dir) = base_dir.as_ref() {
-        path.strip_prefix(base_dir).unwrap_or(path.as_ref()).to_owned()
-    } else {
-        path
-    };
-
-    let path = if path.is_absolute() {
-        path.strip_prefix("/").unwrap_or(path.as_ref()).to_owned()
-    } else {
-        path
-    };
-
-    path
 }
 
 #[test]

@@ -14,6 +14,7 @@ use rand::{Rng, thread_rng};
 
 use serde::{Serialize, Deserialize, Deserializer, Serializer};
 use serde::de::{Error, Visitor};
+use crate::config::Config;
 
 use crate::helpers::io_error;
 
@@ -162,12 +163,13 @@ impl NoteMetadata {
 
 pub struct NoteMetadataStorage {
     root_dir: PathBuf,
+    base_dir: Option<PathBuf>,
     id_to_notes: FnvHashMap<NoteId, NoteMetadata>,
     path_to_id: FnvHashMap<PathBuf, NoteId>
 }
 
 impl NoteMetadataStorage {
-    pub fn from_dir(root_dir: &Path) -> std::io::Result<NoteMetadataStorage> {
+    pub fn from_dir(root_dir: &Path, base_dir: Option<&Path>) -> std::io::Result<NoteMetadataStorage> {
         let mut path_to_id = FnvHashMap::default();
         let mut id_to_notes = FnvHashMap::default();
 
@@ -179,9 +181,17 @@ impl NoteMetadataStorage {
         Ok(
             NoteMetadataStorage {
                 root_dir: root_dir.to_path_buf(),
+                base_dir: base_dir.map(|x| x.to_owned()),
                 path_to_id,
                 id_to_notes
             }
+        )
+    }
+
+    pub fn from_dir_with_config(config: &Config) -> std::io::Result<NoteMetadataStorage> {
+        NoteMetadataStorage::from_dir(
+            &config.repository,
+            config.base_dir.as_ref().map(|x| x.as_path())
         )
     }
 
@@ -209,12 +219,17 @@ impl NoteMetadataStorage {
         self.id_to_notes.get_mut(id)
     }
 
-    pub fn resolve_path(&self, resolver: &dyn ResolveVirtualPath, path: PathBuf) -> Result<PathBuf, String> {
+    pub fn resolve_path(&self,
+                        working_dir: Option<&PathBuf>,
+                        path: PathBuf) -> Result<PathBuf, String> {
         if let Some(note_id) = self.try_resolve_id(&path) {
             return Ok(Path::new(&note_id.to_string()).to_owned());
         }
 
-        resolver.resolve(path)
+        let path = working_dir.as_ref().map(|dir| dir.join(path.clone())).unwrap_or_else(|| path);
+        let path = resolve_absolute_path(self.base_dir.as_ref(), path);
+
+        Ok(path)
     }
 
     fn try_resolve_id(&self, path: &Path) -> Option<NoteId> {
@@ -260,26 +275,20 @@ impl NoteMetadataStorage {
     }
 }
 
-pub trait ResolveVirtualPath {
-    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String>;
-}
+fn resolve_absolute_path(base_dir: Option<&PathBuf>, path: PathBuf) -> PathBuf {
+    let path = if let Some(base_dir) = base_dir.as_ref() {
+        path.strip_prefix(base_dir).unwrap_or(path.as_ref()).to_owned()
+    } else {
+        path
+    };
 
-pub struct PassthroughVirtualPathResolver {
+    let path = if path.is_absolute() {
+        path.strip_prefix("/").unwrap_or(path.as_ref()).to_owned()
+    } else {
+        path
+    };
 
-}
-
-impl PassthroughVirtualPathResolver {
-    pub fn new() -> PassthroughVirtualPathResolver {
-        PassthroughVirtualPathResolver {
-
-        }
-    }
-}
-
-impl ResolveVirtualPath for PassthroughVirtualPathResolver {
-    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String> {
-        Ok(path)
-    }
+    path
 }
 
 pub struct NoteFileTreeCreateConfig {

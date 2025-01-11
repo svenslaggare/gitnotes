@@ -867,6 +867,57 @@ print([x * x for x in xs])
 }
 
 #[test]
+fn test_edit_note_id() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = create_test_config(&temp_repository_dir);
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample");
+    let note_content = r#"Hello, World!
+
+``` python
+xs = list(range(0, 10))
+print([x * x for x in xs])
+```
+"#.to_string();
+    let note_content2 = r#"Hello, World!
+
+``` python
+xs = list(range(0, 15))
+print([x * x for x in xs])
+```
+"#.to_string();
+
+    let mut app = App::new(config).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::AddNoteWithContent {
+            path: note_path.to_path_buf(),
+            tags: vec![],
+            content: note_content.clone()
+        },
+    ]).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+    assert_eq!(vec!["snippet".to_owned(), "python".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);
+
+    let note_id = app.note_metadata_storage().unwrap().get_id(note_path).unwrap();
+
+    app.create_and_execute_commands(vec![
+        Command::EditNoteSetContent {
+            path: Path::new(&note_id.to_string()).to_owned(),
+            clear_tags: false,
+            add_tags: vec![],
+            content: note_content2.clone()
+        },
+    ]).unwrap();
+    assert_eq!(note_content2, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
 fn test_edit_with_editor() {
     use tempfile::TempDir;
 

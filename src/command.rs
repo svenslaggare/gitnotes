@@ -561,7 +561,7 @@ impl CommandInterpreter {
     fn note_metadata_storage_mut(&mut self) -> CommandResult<&mut NoteMetadataStorage> {
         get_or_insert_with(
             &mut self.note_metadata_storage,
-            || Ok(NoteMetadataStorage::from_dir(&self.config.repository)?)
+            || Ok(NoteMetadataStorage::from_dir_with_config(&self.config)?)
         )
     }
 

@@ -15,7 +15,7 @@ use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
-use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, PassthroughVirtualPathResolver};
+use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR, PassthroughVirtualPathResolver};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 use crate::web_editor::AccessMode;
 
@@ -37,6 +37,11 @@ impl App {
 
     pub fn with_custom<F: FnOnce(Config, RepositoryRef) -> CommandResult<CommandInterpreter>>(config: Config, create_ci: F) -> AppResult<App> {
         let repository = Rc::new(RefCell::new(open_repository(&config.repository)?));
+
+        let notes_dir = config.repository.join(NOTES_DIR);
+        if !notes_dir.exists() {
+            std::fs::create_dir_all(notes_dir)?;
+        }
 
         Ok(
             App {

@@ -15,7 +15,7 @@ use crossterm::style::Attribute::Bold;
 
 use crate::helpers::{TablePrinter, ToChronoDateTime};
 use crate::markdown;
-use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage};
+use crate::model::{NOTE_CONTENT_EXT, NOTE_METADATA_EXT, NoteFileTree, NoteFileTreeCreateConfig, NoteMetadata, NoteMetadataStorage, NOTES_DIR};
 
 pub const DATETIME_FORMAT: &str = "%Y-%m-%d %H:%M:%S";
 
@@ -572,7 +572,7 @@ impl<'a> GitContentFetcher<'a> {
         let git_id = self.repository.revparse_single(spec)?.id();
         let tree = self.repository.find_commit(git_id)?.tree()?;
 
-        if let Some(entry) = tree.get_name(&(note_id.to_string() + "." + NOTE_CONTENT_EXT)) {
+        if let Ok(entry) = tree.get_path(Path::new(&format!("{}/{}.{}", NOTES_DIR, note_id.to_string(), NOTE_CONTENT_EXT))) {
             let entry_object = entry.to_object(&self.repository)?;
             if let Some(entry_blob) = entry_object.as_blob() {
                 return Ok(Some(String::from_utf8_lossy(entry_blob.content()).to_string()))

@@ -17,6 +17,7 @@ use serde::de::{Error, Visitor};
 
 use crate::helpers::io_error;
 
+pub const NOTES_DIR: &str = ".notes";
 pub const NOTE_METADATA_EXT: &str = "metadata";
 pub const NOTE_CONTENT_EXT: &str = "md";
 
@@ -170,7 +171,7 @@ impl NoteMetadataStorage {
         let mut path_to_id = FnvHashMap::default();
         let mut id_to_notes = FnvHashMap::default();
 
-        NoteMetadata::load_all(root_dir, |note_metadata| {
+        NoteMetadata::load_all(&root_dir.join(NOTES_DIR), |note_metadata| {
             path_to_id.insert(note_metadata.path.clone(), note_metadata.id);
             id_to_notes.insert(note_metadata.id, note_metadata);
         })?;
@@ -248,14 +249,14 @@ impl NoteMetadataStorage {
 
     pub fn get_note_storage_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
         let relative_path = Path::new(&(id.to_string() + "." + NOTE_CONTENT_EXT)).to_path_buf();
-        let abs_path = root_dir.join(&relative_path);
-        (relative_path, abs_path)
+        let abs_path = root_dir.join(NOTES_DIR).join(&relative_path);
+        (Path::new(NOTES_DIR).join(relative_path), abs_path)
     }
 
     pub fn get_note_metadata_path(root_dir: &Path, id: &NoteId) -> (PathBuf, PathBuf) {
         let relative_path = Path::new(&(id.to_string() + "." + NOTE_METADATA_EXT)).to_path_buf();
-        let abs_path = root_dir.join(&relative_path);
-        (relative_path, abs_path)
+        let abs_path = root_dir.join(NOTES_DIR).join(&relative_path);
+        (Path::new(NOTES_DIR).join(relative_path), abs_path)
     }
 }
 

@@ -26,11 +26,11 @@ jobs:
       run: cargo build --release --verbose
     - name: Build Debian package
       run: cargo install cargo-deb && ./build_deb.sh
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gitnotes_linux_x86_64_ubuntu2004
         path: target/release/gitnotes
-    - uses: actions/upload-artifact@v2
+    - uses: actions/upload-artifact@v4
       with:
         name: gitnotes_linux_x86_64_ubuntu2004_debian
         path: target/debian/
@@ -42,11 +42,11 @@ jobs:
         run: cargo build --release --verbose
       - name: Build Debian package
         run: cargo install cargo-deb && ./build_deb.sh
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: gitnotes_linux_x86_64_ubuntu2204
           path: target/release/gitnotes
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v4
         with:
           name: gitnotes_linux_x86_64_ubuntu2204_debian
           path: target/debian/

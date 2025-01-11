@@ -102,6 +102,11 @@ impl App {
                     }
                 }
             }
+            InputCommand::UpdateSymbolicLinks {} => {
+                self.create_and_execute_commands(vec![
+                    Command::UpdateSymbolicLinks {}
+                ])?;
+            }
             InputCommand::Add { path, tags } => {
                 let path = self.get_path(path)?;
 
@@ -617,6 +622,10 @@ pub enum InputCommand {
         /// Sets the given config value (format key=value).
         #[structopt(long)]
         set: Option<String>
+    },
+    /// Updates the symbolic links
+    UpdateSymbolicLinks {
+
     },
     /// Create a new note.
     Add {

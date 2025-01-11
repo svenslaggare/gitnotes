@@ -4,6 +4,7 @@ use home::home_dir;
 use serde::{Serialize, Deserialize};
 
 use crate::helpers::{base_dir, io_error};
+use crate::model::RESOURCES_DIR;
 use crate::snippets::{PythonSnippetRunnerConfig, RustSnippetRunnerConfig};
 
 pub fn config_path() -> PathBuf {
@@ -105,7 +106,7 @@ impl Config {
     }
 
     pub fn resources_dir(&self) -> PathBuf {
-        self.repository.join("resources")
+        self.repository.join(RESOURCES_DIR)
     }
 }
 

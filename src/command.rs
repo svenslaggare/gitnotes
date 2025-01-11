@@ -1,3 +1,4 @@
+use std::ffi::{OsStr};
 use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
@@ -8,9 +9,9 @@ use thiserror::Error;
 use comrak::nodes::{AstNode, NodeValue};
 
 use crate::config::Config;
-use crate::model::{NoteId, NoteMetadata, NoteMetadataStorage};
+use crate::model::{NOTE_CONTENT_EXT, NoteId, NoteMetadata, NoteMetadataStorage, NOTES_DIR, RESOURCES_DIR};
 use crate::{editor, markdown, tags};
-use crate::app::RepositoryRef;
+use crate::app::{RepositoryRef};
 use crate::editor::EditorOutput;
 use crate::helpers::{get_or_insert_with, OrderedSet};
 use crate::querying::{GitContentFetcher};
@@ -19,6 +20,9 @@ use crate::web_editor::AccessMode;
 
 #[derive(Debug)]
 pub enum Command {
+    UpdateSymbolicLinks {
+
+    },
     AddNote {
         path: PathBuf,
         tags: Vec<String>
@@ -115,6 +119,16 @@ impl CommandInterpreter {
 
         for command in commands.into_iter() {
             match command {
+                Command::UpdateSymbolicLinks { } => {
+                    self.note_metadata_storage()?;
+                    let note_metadata_storage = self.note_metadata_storage_ref()?;
+
+                    clear_note_symbolic_links(&self.config.repository)?;
+
+                    for note in note_metadata_storage.notes() {
+                        create_note_symbolic_link(&self.config.repository, note)?;
+                    }
+                }
                 Command::AddNote { path, tags } => {
                     self.check_if_note_exists(&path)?;
 
@@ -189,6 +203,9 @@ impl CommandInterpreter {
                     let id = self.get_note_id(&source)?;
                     let real_source_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
 
+                    self.note_metadata_storage_mut()?;
+                    let note_symbolic_link = get_note_symbolic_link(&self.config.repository, self.get_note_metadata(&id)?)?;
+
                     let destination_exist = self.get_note_id(&destination).is_ok();
                     if destination_exist {
                         if force {
@@ -205,7 +222,12 @@ impl CommandInterpreter {
 
                     self.try_change_last_updated(&id)?;
 
-                    self.commit_message_lines.insert(format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap()));
+                    let _ = std::fs::remove_file(&note_symbolic_link);
+                    create_note_symbolic_link(&self.config.repository, self.get_note_metadata(&id)?)?;
+
+                    self.commit_message_lines.insert(
+                        format!("Moved note from '{}' to '{}'.", real_source_path, destination.to_str().unwrap())
+                    );
                 }
                 Command::RemoveNote { path } => {
                     self.remove_note(&path)?;
@@ -249,7 +271,7 @@ impl CommandInterpreter {
                 }
                 Command::AddResource { path, destination } => {
                     if path.exists() {
-                        let destination_resource_path = Path::new("resources").join(&destination);
+                        let destination_resource_path = Path::new(RESOURCES_DIR).join(&destination);
                         let destination_path = destination_resource_path.join(&destination);
                         if let Some(destination_parent) = destination_path.parent() {
                             std::fs::create_dir_all(destination_parent)?;
@@ -366,6 +388,8 @@ impl CommandInterpreter {
         index.add_path(&relative_metadata_path)?;
         index.write()?;
 
+        create_note_symbolic_link(&self.config.repository, &metadata)?;
+
         let tags_str = if !metadata.tags.is_empty() {
             format!(" using tags: {}", metadata.tags.join(", "))
         } else {
@@ -387,6 +411,7 @@ impl CommandInterpreter {
 
         let id = self.get_note_id(path)?;
         let real_path = self.get_note_path(&id)?.to_str().unwrap().to_owned();
+        let note_symbolic_link = get_note_symbolic_link(&self.config.repository, self.get_note_metadata(&id)?)?;
 
         let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
         let (relative_metadata_path, abs_metadata_path) = self.get_note_metadata_path(&id);
@@ -398,6 +423,8 @@ impl CommandInterpreter {
         index.remove_path(&relative_content_path)?;
         index.remove_path(&relative_metadata_path)?;
         index.write()?;
+
+        let _ = std::fs::remove_file(note_symbolic_link);
 
         self.commit_message_lines.insert(format!("Deleted note '{}'.", real_path));
         self.changed_files.push(relative_metadata_path);
@@ -415,7 +442,7 @@ impl CommandInterpreter {
 
     fn add_resources_from_editor_output(&mut self, output: EditorOutput) -> CommandResult<()> {
         for path in output.added_resources.iter() {
-            self.index()?.add_path(&Path::new("resources").join(path))?;
+            self.index()?.add_path(&Path::new(RESOURCES_DIR).join(path))?;
 
             self.commit_message_lines.insert(format!(
                 "Added resource '{}'",
@@ -531,6 +558,12 @@ impl CommandInterpreter {
         self.note_metadata_storage()?
             .get_by_id(id)
             .map(|note| note.path.as_path())
+            .ok_or_else(|| CommandError::NoteNotFound(id.to_string()))
+    }
+
+    fn get_note_metadata(&self, id: &NoteId) -> CommandResult<&NoteMetadata> {
+        self.note_metadata_storage_ref()?
+            .get_by_id(id)
             .ok_or_else(|| CommandError::NoteNotFound(id.to_string()))
     }
 
@@ -685,4 +718,45 @@ pub fn run_snippet<'a, F: FnMut(&str)>(snippet_runner_manager: &SnippetRunnerMan
     )?;
 
     Ok(root)
+}
+
+fn create_note_symbolic_link(repository: &Path, note: &NoteMetadata) -> CommandResult<()> {
+    let (relative_note_path, _) = NoteMetadataStorage::get_note_storage_path(repository, &note.id);
+    let symbolic_link_path = get_note_symbolic_link(repository, note)?;
+
+    let path_length = symbolic_link_path.strip_prefix(repository).unwrap()
+        .components().count();
+    let mut relative_target_path = PathBuf::from_iter((0..path_length - 1).map(|_| OsStr::new("..")));
+    relative_target_path.push(&relative_note_path);
+
+    if let Some(parent) = symbolic_link_path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    let _ = std::fs::remove_file(&symbolic_link_path);
+    std::os::unix::fs::symlink(&relative_target_path, &symbolic_link_path)?;
+
+    Ok(())
+}
+
+fn clear_note_symbolic_links(repository: &Path) -> CommandResult<()> {
+    for entry in std::fs::read_dir(repository)? {
+        let entry = entry?;
+        if let Some(file_name) = entry.file_name().to_str() {
+            if !(file_name == NOTES_DIR || file_name == RESOURCES_DIR || file_name.starts_with(".")) {
+                std::fs::remove_dir_all(entry.path())?;
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn get_note_symbolic_link(repository: &Path, note: &NoteMetadata) -> CommandResult<PathBuf> {
+    let path = repository.join(&note.path);
+    let mut components = path.components().map(|c| c.as_os_str()).collect::<Vec<_>>();
+    let mut last_component = components.last().unwrap().to_os_string();
+    last_component.push(&format!(".{}", NOTE_CONTENT_EXT));
+    *components.last_mut().unwrap() = last_component.as_os_str();
+    Ok(PathBuf::from_iter(components))
 }

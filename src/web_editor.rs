@@ -27,6 +27,7 @@ use axum::body::Body;
 use crate::config::SnippetFileConfig;
 use crate::{command, markdown};
 use crate::editor::EditorOutput;
+use crate::model::RESOURCES_DIR;
 use crate::snippets::{SnippetRunnerManger};
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
@@ -295,7 +296,7 @@ async fn add_resource(State(state): State<Arc<WebServerState>>,
             let data = field.bytes().await?;
 
             println!("Adding resource: {} ({} bytes)", filename, data.len());
-            let path = repository_path.join("resources").join(&filename);
+            let path = repository_path.join(RESOURCES_DIR).join(&filename);
             std::fs::write(path, data)?;
             state.added_resources.lock().await.push(Path::new(&filename).to_owned())
         }
@@ -312,7 +313,7 @@ async fn get_resource_file(State(state): State<Arc<WebServerState>>,
                            headers: HeaderMap,
                            AxumPath(path): AxumPath<String>) -> Response {
     if let Some(repository_path) = state.repository_path.as_ref() {
-        serve_file(headers, &repository_path.join("resources").join(&path)).await
+        serve_file(headers, &repository_path.join(RESOURCES_DIR).join(&path)).await
     } else {
         with_response_code(
             "Repository path not set.".into_response(),

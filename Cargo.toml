@@ -7,6 +7,7 @@ description = "CLI & Git based notes/snippet application"
 license = "MIT"
 homepage = "https://github.com/svenslaggare/gitnotes"
 default-run = "gitnotes"
+readme = "README.md"
 
 [package.metadata.deb]
 assets = [

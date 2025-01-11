@@ -21,6 +21,7 @@ use crate::helpers::io_error;
 pub const NOTES_DIR: &str = ".notes";
 pub const NOTE_METADATA_EXT: &str = "metadata";
 pub const NOTE_CONTENT_EXT: &str = "md";
+pub const RESOURCES_DIR: &str = "resources";
 
 const NOTE_ID_SIZE: usize = 6;
 

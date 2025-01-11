@@ -281,35 +281,6 @@ impl ResolveVirtualPath for PassthroughVirtualPathResolver {
     }
 }
 
-pub struct RealBaseDirPathResolver<'a> {
-    base_dir: Option<&'a Path>
-}
-
-impl<'a> RealBaseDirPathResolver<'a> {
-    pub fn new(base_dir: Option<&'a Path>) -> RealBaseDirPathResolver<'a> {
-        RealBaseDirPathResolver {
-            base_dir
-        }
-    }
-}
-
-impl<'a> ResolveVirtualPath for RealBaseDirPathResolver<'a> {
-    fn resolve(&self, path: PathBuf) -> Result<PathBuf, String> {
-        let base_dir = self.base_dir.as_ref().ok_or_else(|| "No real base dir".to_owned())?;
-
-        let path = if path.is_absolute() {
-            path
-        } else {
-            let current_dir = std::env::current_dir().map_err(|err| err.to_string())?;
-            base_dir.join(current_dir.join(path))
-        };
-
-        path.strip_prefix(&base_dir)
-            .map_err(|err| err.to_string())
-            .map(|path| path.to_owned())
-    }
-}
-
 pub struct NoteFileTreeCreateConfig {
     pub using_date: bool,
     pub using_tags: bool,

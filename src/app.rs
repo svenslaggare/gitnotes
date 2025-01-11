@@ -15,7 +15,7 @@ use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, interactive, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
-use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, PassthroughVirtualPathResolver, RealBaseDirPathResolver};
+use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, PassthroughVirtualPathResolver};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
 use crate::web_editor::AccessMode;
 
@@ -42,10 +42,10 @@ impl App {
             App {
                 config: config.clone(),
                 repository: repository.clone(),
-                command_interpreter: create_ci(config, repository)?,
+                command_interpreter: create_ci(config.clone(), repository)?,
                 note_metadata_storage: None,
                 auto_commit: true,
-                virtual_working_dir: None
+                virtual_working_dir: get_initial_virtual_working_dir(&config)
             }
         )
     }
@@ -327,38 +327,34 @@ impl App {
                 }
             }
             InputCommand::ChangeWorkingDirectory { path } => {
-                if !self.config.use_real {
-                    let new_working_dir = change_working_dir(
-                        self.virtual_working_dir.as_ref().map(|p| p.as_path()),
-                        path
-                    );
+                let new_working_dir = change_working_dir(
+                    self.virtual_working_dir.as_ref().map(|p| p.as_path()),
+                    path
+                );
 
-                    let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
-                    match note_file_tree.find(&new_working_dir)  {
-                        Some(working_dir_tree) if working_dir_tree.is_tree() => {
-                            self.virtual_working_dir = Some(new_working_dir);
-                        }
-                        Some(_) => {
-                            return Err(AppError::ChangeDirectory("The path is not a directory".to_owned()));
-                        }
-                        None => {
-                            return Err(AppError::ChangeDirectory("The path doesn't exist".to_owned()));
-                        }
+                let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
+                match note_file_tree.find(&new_working_dir)  {
+                    Some(working_dir_tree) if working_dir_tree.is_tree() => {
+                        self.virtual_working_dir = Some(new_working_dir);
                     }
-                } else {
-                    std::env::set_current_dir(path).map_err(|err| AppError::ChangeDirectory(err.to_string()))?;
+                    Some(_) => {
+                        return Err(AppError::ChangeDirectory("The path is not a directory".to_owned()));
+                    }
+                    None => {
+                        return Err(AppError::ChangeDirectory("The path doesn't exist".to_owned()));
+                    }
                 }
             }
             InputCommand::PrintWorkingDirectory {} => {
-                if !self.config.use_real {
-                    if let Some(virtual_working_dir) = self.virtual_working_dir.as_ref() {
-                        println!("{}", virtual_working_dir.to_str().unwrap());
+                if let Some(virtual_working_dir) = self.virtual_working_dir.as_ref() {
+                    let virtual_working_dir = virtual_working_dir.to_str().unwrap();
+                    if !virtual_working_dir.is_empty() {
+                        println!("{}", virtual_working_dir);
                     } else {
                         println!("(root)");
                     }
                 } else {
-                    let working_dir = std::env::current_dir().map_err(|err| AppError::Input(err.to_string()))?;
-                    println!("{}", working_dir.to_str().unwrap());
+                    println!("(root)");
                 }
             }
             InputCommand::WebEditor { .. } => {
@@ -565,43 +561,30 @@ impl App {
 
     fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {
         let path = self.virtual_working_dir.as_ref().map(|dir| dir.join(path.clone())).unwrap_or_else(|| path);
+        let path = resolve_absolute_path(self.config.base_dir.as_ref(), path);
 
         self.note_metadata_storage()?;
-        if self.config.use_real {
-            self.note_metadata_storage_ref()?.resolve_path(
-                &RealBaseDirPathResolver::new(self.config.real_base_dir.as_ref().map(|p| p.as_path())),
-                path,
-            ).map_err(|err| AppError::InvalidPath(err))
-        } else {
-            self.note_metadata_storage_ref()?.resolve_path(
-                &PassthroughVirtualPathResolver::new(),
-                path,
-            ).map_err(|err| AppError::InvalidPath(err))
-        }
+        self.note_metadata_storage_ref()?.resolve_path(
+            &PassthroughVirtualPathResolver::new(),
+            path,
+        ).map_err(|err| AppError::InvalidPath(err))
     }
 }
 
 #[derive(StructOpt)]
 #[structopt(about="CLI based notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
-    /// Use real working directory
-    #[structopt(long="real")]
-    pub use_real: bool,
-    /// Don't use real working directory
-    #[structopt(long="no-real")]
-    pub use_non_real: bool,
+    /// Don't use current directory as working dir
+    #[structopt(long="no-working-dir")]
+    pub use_non_working_dir: bool,
     #[structopt(subcommand)]
     pub command: Option<InputCommand>
 }
 
 impl MainInputCommand {
     pub fn apply(&self, mut config: Config) -> Config {
-        if self.use_real {
-            config.use_real = true;
-        }
-
-        if self.use_non_real {
-            config.use_real = false;
+        if self.use_non_working_dir {
+            config.use_working_dir = false;
         }
 
         config
@@ -923,7 +906,22 @@ fn open_repository(path: &Path) -> AppResult<git2::Repository> {
     git2::Repository::open(path).map_err(|err| AppError::FailedToOpenRepository(err))
 }
 
+fn get_initial_virtual_working_dir(config: &Config) -> Option<PathBuf> {
+    if !config.use_working_dir {
+        return None;
+    }
+
+    let base_dir = config.base_dir.as_ref()?;
+    let current_dir = std::env::current_dir().ok()?;
+    let working_dir = current_dir.strip_prefix(base_dir).ok()?;
+    Some(working_dir.to_owned())
+}
+
 fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> PathBuf {
+    if &path == &Path::new("/") {
+        return Path::new("").to_owned();
+    }
+
     let mut current_working_dir = current_working_dir.unwrap_or_else(|| Path::new("")).to_owned();
     for part in path.iter() {
         if part == ".." {
@@ -938,6 +936,22 @@ fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> Path
     }
 
     current_working_dir
+}
+
+fn resolve_absolute_path(base_dir: Option<&PathBuf>, path: PathBuf) -> PathBuf {
+    let path = if let Some(base_dir) = base_dir.as_ref() {
+        path.strip_prefix(base_dir).unwrap_or(path.as_ref()).to_owned()
+    } else {
+        path
+    };
+
+    let path = if path.is_absolute() {
+        path.strip_prefix("/").unwrap_or(path.as_ref()).to_owned()
+    } else {
+        path
+    };
+
+    path
 }
 
 #[test]
@@ -993,5 +1007,13 @@ fn test_change_working_dir7() {
     assert_eq!(
         Path::new("Code/gitnotes-cli"),
         change_working_dir(Some(Path::new("")), Path::new("Code/gitnotes-cli").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir8() {
+    assert_eq!(
+        Path::new(""),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("/").to_owned())
     );
 }

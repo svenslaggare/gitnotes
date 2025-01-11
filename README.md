@@ -36,6 +36,11 @@ First, create a repository using `gitnotes init <name>`. This will create a new 
 
 It's also possible to use an existing git repository (at an arbitrary path) using the `gitnotes init <path> --use-existing` command.
 
+### Paths
+Your current working directory will be used as the prefix for all the actions done. However, this is only applied if this path is relative your `base_dir` (defaults to $HOME).
+
+If you specify a path that starts with `/` this means the path will be relative the root of the notes, not the computer.
+
 ### Adding a new note
 To add a new note, use `gitnotes add <path>`. This will launch an editor where you can put the initial content of the note. After you are done, a commit will be created.
 
@@ -81,7 +86,3 @@ Any editor can be used to edit notes. The editors that are most preferred are th
 
 ### Virtual file system
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
-
-### Using real working dir
-With `--real` (command line) or `use_real = true` (file), the real working directory will be used when resolving paths. That is, if you change the directory of your terminal, that will reflect in the commands you execute.
-The base for this is defined in the config file as the `real_base_dir` (defaults to `$HOME`).

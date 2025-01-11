@@ -10,7 +10,7 @@ fn test_add() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -41,7 +41,7 @@ fn test_add_with_editor() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let mut config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let mut config = create_test_config(&temp_repository_dir);
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
@@ -80,7 +80,7 @@ fn test_run_snippet() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -165,7 +165,7 @@ fn test_move() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -201,7 +201,7 @@ fn test_move_to_existing1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -244,7 +244,7 @@ fn test_move_to_existing2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -283,7 +283,7 @@ fn test_move_dir1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample");
@@ -337,7 +337,7 @@ fn test_move_dir2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample");
@@ -391,7 +391,7 @@ fn test_move_dir_to_existing1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/test1");
@@ -454,7 +454,7 @@ fn test_move_file_to_dir() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -495,7 +495,7 @@ fn test_move_glob1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample1");
@@ -549,7 +549,7 @@ fn test_move_glob2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample1");
@@ -604,7 +604,7 @@ fn test_remove() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -639,7 +639,7 @@ fn test_remove_recursive() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/test1");
@@ -679,7 +679,7 @@ fn test_remove_glob1() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample1");
@@ -729,7 +729,7 @@ fn test_remove_glob2() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note1_path = Path::new("2023/07/sample1");
@@ -780,7 +780,7 @@ fn test_change_tags() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -822,7 +822,7 @@ fn test_edit() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -871,7 +871,7 @@ fn test_edit_with_editor() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let mut config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let mut config = create_test_config(&temp_repository_dir);
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
@@ -929,7 +929,7 @@ fn test_edit_with_editor_and_history() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let mut config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let mut config = create_test_config(&temp_repository_dir);
     config.allow_stdin = false;
     let repository = git2::Repository::init(&config.repository).unwrap();
 
@@ -996,7 +996,7 @@ fn test_undo() {
     use tempfile::TempDir;
 
     let temp_repository_dir = TempDir::new().unwrap();
-    let config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    let config = create_test_config(&temp_repository_dir);
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -1030,4 +1030,10 @@ fn test_undo() {
     app.run(InputCommand::Undo { commit: commit_id.to_string() }).unwrap();
     assert_eq!(note_content1, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(3, repository.reflog("HEAD").unwrap().len());
+}
+
+fn create_test_config(temp_repository_dir: &tempfile::TempDir) -> Config {
+    let mut config = Config::from_env(FileConfig::new(&temp_repository_dir.path().to_path_buf()));
+    config.use_working_dir = false;
+    config
 }

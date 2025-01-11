@@ -1,5 +1,4 @@
 use std::path::{Path, PathBuf};
-use std::str::FromStr;
 use home::home_dir;
 
 use serde::{Serialize, Deserialize};
@@ -17,8 +16,7 @@ pub struct FileConfig {
     pub repository: PathBuf,
     pub editor: Option<String>,
     pub snippet: Option<SnippetFileConfig>,
-    pub use_real: bool,
-    pub real_base_dir: Option<PathBuf>
+    pub base_dir: Option<PathBuf>
 }
 
 impl FileConfig {
@@ -27,8 +25,7 @@ impl FileConfig {
             repository: repository.to_owned(),
             editor: None,
             snippet: None,
-            use_real: false,
-            real_base_dir: None
+            base_dir: None
         }
     }
 
@@ -50,11 +47,8 @@ impl FileConfig {
             "editor" => {
                 self.editor = Some(value.to_owned());
             }
-            "use_real" => {
-                self.use_real = bool::from_str(value).map_err(|err| err.to_string())?;
-            }
-            "real_base_dir" => {
-                self.real_base_dir = Some(Path::new(value).to_owned());
+            "base_dir" => {
+                self.base_dir = Some(Path::new(value).to_owned());
             }
             _ => {
                 return Err(format!("Undefined key: {}", key));
@@ -79,8 +73,8 @@ pub struct Config {
     pub user_name_and_email: (String, String),
     pub editor: String,
     pub snippet: Option<SnippetFileConfig>,
-    pub use_real: bool,
-    pub real_base_dir: Option<PathBuf>,
+    pub base_dir: Option<PathBuf>,
+    pub use_working_dir: bool,
     pub allow_stdin: bool
 }
 
@@ -91,8 +85,8 @@ impl Config {
             user_name_and_email: get_user_name_and_email(),
             editor: std::env::var("GITNOTES_EDITOR").unwrap_or_else(|_| file_config.editor.unwrap_or("web-editor".to_owned())),
             snippet: file_config.snippet,
-            use_real: file_config.use_real,
-            real_base_dir: file_config.real_base_dir.or_else(|| home_dir()),
+            base_dir: file_config.base_dir.or_else(|| home_dir()),
+            use_working_dir: true,
             allow_stdin: true
         }
     }
@@ -107,8 +101,7 @@ impl Config {
         println!("User name: {}, email: {}", self.user_name_and_email.0, self.user_name_and_email.1);
         println!("Editor: {}", self.editor);
         println!("Snippet: {}", self.snippet.is_some());
-        println!("Use real: {}", self.use_real);
-        println!("Real base dir: {}", self.real_base_dir.as_ref().map(|x| x.to_str().unwrap()).unwrap_or("N/A"));
+        println!("Base dir: {}", self.base_dir.as_ref().map(|x| x.to_str().unwrap()).unwrap_or("N/A"));
     }
 
     pub fn resources_dir(&self) -> PathBuf {

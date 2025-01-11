@@ -373,7 +373,7 @@ impl CommandInterpreter {
         };
 
         self.commit_message_lines.insert(format!(
-            "Added note '{}' (id: {}) {}.",
+            "Added note '{}' (id: {}){}.",
             path.to_str().unwrap(),
             id,
             tags_str

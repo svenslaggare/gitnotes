@@ -17,7 +17,9 @@ pub struct FileConfig {
     pub repository: PathBuf,
     pub editor: Option<String>,
     pub snippet: Option<SnippetFileConfig>,
-    pub base_dir: Option<PathBuf>
+    pub base_dir: Option<PathBuf>,
+    pub sync_default_branch: Option<String>,
+    pub sync_default_remote: Option<String>
 }
 
 impl FileConfig {
@@ -26,7 +28,9 @@ impl FileConfig {
             repository: repository.to_owned(),
             editor: None,
             snippet: None,
-            base_dir: None
+            base_dir: None,
+            sync_default_branch: None,
+            sync_default_remote: None
         }
     }
 
@@ -50,6 +54,12 @@ impl FileConfig {
             }
             "base_dir" => {
                 self.base_dir = Some(Path::new(value).to_owned());
+            }
+            "sync_default_branch" => {
+                self.sync_default_branch = Some(value.to_owned());
+            }
+            "sync_default_remote" => {
+                self.sync_default_remote = Some(value.to_owned());
             }
             _ => {
                 return Err(format!("Undefined key: {}", key));
@@ -76,7 +86,9 @@ pub struct Config {
     pub snippet: Option<SnippetFileConfig>,
     pub base_dir: Option<PathBuf>,
     pub use_working_dir: bool,
-    pub allow_stdin: bool
+    pub allow_stdin: bool,
+    pub sync_default_branch: String,
+    pub sync_default_remote: String
 }
 
 impl Config {
@@ -88,7 +100,9 @@ impl Config {
             snippet: file_config.snippet,
             base_dir: file_config.base_dir.or_else(|| home_dir()),
             use_working_dir: true,
-            allow_stdin: true
+            allow_stdin: true,
+            sync_default_branch: file_config.sync_default_branch.unwrap_or("master".to_owned()),
+            sync_default_remote: file_config.sync_default_remote.unwrap_or("origin".to_owned())
         }
     }
 

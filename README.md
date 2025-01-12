@@ -86,3 +86,6 @@ Any editor can be used to edit notes. The editors that are most preferred are th
 
 ### Virtual file system
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
+
+### Synchronization
+Synchronization can be done by adding a git remote (manually) and then using the `gitnotes sync` command.

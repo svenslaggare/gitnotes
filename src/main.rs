@@ -15,6 +15,7 @@ mod web_editor;
 mod tags;
 mod interactive;
 mod app;
+mod git_helpers;
 
 #[cfg(test)]
 mod app_tests;

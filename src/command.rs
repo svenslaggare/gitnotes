@@ -7,10 +7,11 @@ use comrak::Arena;
 use thiserror::Error;
 
 use comrak::nodes::{AstNode, NodeValue};
+use git2::{BranchType, FetchOptions, PushOptions, RemoteCallbacks};
 
 use crate::config::Config;
 use crate::model::{NOTE_CONTENT_EXT, NoteId, NoteMetadata, NoteMetadataStorage, NOTES_DIR, RESOURCES_DIR};
-use crate::{editor, markdown, tags};
+use crate::{editor, git_helpers, markdown, tags};
 use crate::app::{RepositoryRef};
 use crate::editor::EditorOutput;
 use crate::helpers::{get_or_insert_with, OrderedSet};
@@ -63,7 +64,13 @@ pub enum Command {
         path: PathBuf,
         destination: PathBuf
     },
-    Commit
+    Commit,
+    Synchronize {
+        branch: String,
+        remote: String,
+        pull: bool,
+        push: bool
+    }
 }
 
 pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<EditorOutput>>;
@@ -332,6 +339,40 @@ impl CommandInterpreter {
                         self.index = None;
                         self.note_metadata_storage = None;
                         self.changed_files.clear();
+                    }
+                }
+                Command::Synchronize { branch, remote, pull, push } => {
+                    let repository = self.repository.borrow();
+
+                    let branch_ref = repository.find_branch(&branch, BranchType::Local).map_err(|_| BranchNotFound(branch.clone()))?;
+                    let branch_ref = branch_ref.into_reference();
+                    let branch_ref = branch_ref.name().ok_or_else(|| InternalError("Failed to unwrap branch ref".to_owned()))?;
+
+                    let mut remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.clone()))?;
+
+                    if pull {
+                        println!("Pulling from remote...");
+
+                        let mut fetch_options = FetchOptions::new();
+                        let mut callbacks = RemoteCallbacks::new();
+                        callbacks.credentials(git_helpers::create_ssh_credentials());
+                        fetch_options.remote_callbacks(callbacks);
+
+                        remote.fetch(&[branch_ref], Some(&mut fetch_options), None)?;
+                        let fetch_head = repository.find_reference("FETCH_HEAD")?;
+                        let fetch_commit = repository.reference_to_annotated_commit(&fetch_head)?;
+                        git_helpers::merge(&repository, &branch, fetch_commit)?;
+                    }
+
+                    if push {
+                        println!("Pushing to remote...");
+
+                        let mut push_options = PushOptions::new();
+                        let mut callbacks = RemoteCallbacks::new();
+                        callbacks.credentials(git_helpers::create_ssh_credentials());
+                        push_options.remote_callbacks(callbacks);
+
+                        remote.push(&[branch_ref], Some(&mut push_options))?;
                     }
                 }
             }
@@ -640,6 +681,11 @@ pub enum CommandError {
 
     #[error("Resource not found: {0}")]
     ResourceNotFound(String),
+
+    #[error("Branch '{0}' not found")]
+    BranchNotFound(String),
+    #[error("Remote '{0}' not found")]
+    RemoteNotFound(String),
 
     #[error("Internal error: {0}")]
     InternalError(String),

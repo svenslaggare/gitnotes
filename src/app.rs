@@ -204,6 +204,19 @@ impl App {
                 self.execute_commands(vec![Command::Commit])?;
                 self.auto_commit = true;
             }
+            InputCommand::Synchronize { branch, remote, no_pull, no_push } => {
+                let branch = branch.unwrap_or_else(|| self.config.sync_default_branch.clone());
+                let remote = remote.unwrap_or_else(|| self.config.sync_default_remote.clone());
+
+                self.execute_commands(vec![
+                    Command::Synchronize {
+                        branch,
+                        remote,
+                        pull: !no_pull,
+                        push: !no_push
+                    }
+                ])?;
+            }
             InputCommand::PrintContent { path, history, only_code, only_output } => {
                 let path = self.get_path(path)?;
 
@@ -620,6 +633,7 @@ pub enum InputCommand {
         #[structopt(long="repo")]
         only_repository: bool,
         /// Sets the given config value (format key=value).
+        /// Supported keys: repository, editor, base_dir, sync_default_branch, sync_default_remote
         #[structopt(long)]
         set: Option<String>
     },
@@ -697,6 +711,20 @@ pub enum InputCommand {
     /// Commits the started transaction. If no changes have been made, a commit is not created (interactive mode only).
     Commit {
 
+    },
+    /// Synchronizes the notes with a remote git instance
+    #[structopt(name="sync")]
+    Synchronize {
+        /// The branch to synchronize. If missing, uses default (typically master)
+        branch: Option<String>,
+        /// The remote to synchronize with. If missing, uses default (typically origin)
+        remote: Option<String>,
+        /// Don't pull when synchronizing
+        #[structopt(long="no-pull")]
+        no_pull: bool,
+        /// Don't push when synchronizing
+        #[structopt(long="no-push")]
+        no_push: bool
     },
     /// Prints the content of a note.
     #[structopt(name="cat")]

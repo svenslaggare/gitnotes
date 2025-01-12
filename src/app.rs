@@ -4,16 +4,20 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::rc::Rc;
+
 use globset::Glob;
 
 use regex::Regex;
 use thiserror::Error;
 
+use git2::{BranchType, FetchOptions, PushOptions, RemoteCallbacks};
+
 use structopt::StructOpt;
 
 use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
-use crate::{editor, interactive, querying};
+use crate::{editor, git_helpers, interactive, querying};
+use crate::command::CommandError::{BranchNotFound, InternalError, RemoteNotFound};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
@@ -211,15 +215,41 @@ impl App {
             InputCommand::Synchronize { branch, remote, no_pull, no_push } => {
                 let branch = branch.unwrap_or_else(|| self.config.sync_default_branch.clone());
                 let remote = remote.unwrap_or_else(|| self.config.sync_default_remote.clone());
+                let pull = !no_pull;
+                let push = !no_push;
 
-                self.execute_commands(vec![
-                    Command::Synchronize {
-                        branch,
-                        remote,
-                        pull: !no_pull,
-                        push: !no_push
-                    }
-                ])?;
+                let repository = self.repository.borrow();
+
+                let branch_ref = repository.find_branch(&branch, BranchType::Local).map_err(|_| BranchNotFound(branch.clone()))?;
+                let branch_ref = branch_ref.into_reference();
+                let branch_ref = branch_ref.name().ok_or_else(|| InternalError("Failed to unwrap branch ref".to_owned()))?;
+
+                let mut remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.clone()))?;
+
+                if pull {
+                    println!("Pulling from remote...");
+
+                    let mut fetch_options = FetchOptions::new();
+                    let mut callbacks = RemoteCallbacks::new();
+                    callbacks.credentials(git_helpers::create_ssh_credentials());
+                    fetch_options.remote_callbacks(callbacks);
+
+                    remote.fetch(&[branch_ref], Some(&mut fetch_options), None)?;
+                    let fetch_head = repository.find_reference("FETCH_HEAD")?;
+                    let fetch_commit = repository.reference_to_annotated_commit(&fetch_head)?;
+                    git_helpers::merge(&repository, &branch, fetch_commit)?;
+                }
+
+                if push {
+                    println!("Pushing to remote...");
+
+                    let mut push_options = PushOptions::new();
+                    let mut callbacks = RemoteCallbacks::new();
+                    callbacks.credentials(git_helpers::create_ssh_credentials());
+                    push_options.remote_callbacks(callbacks);
+
+                    remote.push(&[branch_ref], Some(&mut push_options))?;
+                }
             }
             InputCommand::PrintContent { path, history, only_code, only_output } => {
                 let path = self.get_path(path)?;

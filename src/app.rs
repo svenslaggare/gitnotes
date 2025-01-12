@@ -598,7 +598,7 @@ impl App {
 #[derive(StructOpt)]
 #[structopt(about="CLI based notes & snippet application powered by Git.")]
 pub struct MainInputCommand {
-    /// Don't use current directory as working dir
+    /// Don't use current directory as initial working dir
     #[structopt(long="no-working-dir")]
     pub use_non_working_dir: bool,
     #[structopt(subcommand)]
@@ -841,7 +841,7 @@ pub enum InputCommand {
     PrintWorkingDirectory {
 
     },
-    /// Runs web editor in stand alone mode (use web-editor in editor config to use it)
+    /// Runs web editor in stand-alone mode (use web-editor in editor config to use it)
     WebEditor {
         /// The (file system) path to edit
         path: PathBuf,

@@ -43,6 +43,7 @@ fn test_add_with_editor() {
     let temp_repository_dir = TempDir::new().unwrap();
     let mut config = create_test_config(&temp_repository_dir);
     config.allow_stdin = false;
+
     let repository = git2::Repository::init(&config.repository).unwrap();
 
     let note_path = Path::new("2023/07/sample");
@@ -68,6 +69,48 @@ print([x * x for x in xs])
 
     app.run(InputCommand::Add {
         path: note_path.to_path_buf(),
+        tags: vec![],
+    }).unwrap();
+    assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+    assert_eq!(vec!["snippet".to_owned(), "python".to_owned()], app.note_metadata_storage().unwrap().get(note_path).unwrap().tags);
+}
+
+#[test]
+fn test_add_with_working_dir() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let mut config = create_test_config(&temp_repository_dir);
+    config.allow_stdin = false;
+    config.use_working_dir = true;
+
+    let repository = git2::Repository::init(&config.repository).unwrap();
+
+    let note_path = Path::new("2023/07/sample");
+    let note_content = r#"Hello, World!
+
+``` python
+xs = list(range(0, 10))
+print([x * x for x in xs])
+```
+"#.to_string();
+
+    let note_content_clone = note_content.clone();
+    let mut app = App::with_custom(config, move |config, repository| {
+        CommandInterpreter::with_launch_editor(
+            config,
+            repository,
+            Box::new(move |_, path| {
+                std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))?;
+                Ok(EditorOutput::default())
+            })
+        )
+    }).unwrap();
+    app.set_working_dir(Path::new("2023/07"));
+
+    app.run(InputCommand::Add {
+        path: Path::new("sample").to_owned(),
         tags: vec![],
     }).unwrap();
     assert_eq!(note_content, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());

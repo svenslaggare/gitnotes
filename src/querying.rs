@@ -471,6 +471,11 @@ pub fn list_resources(base_dir: &Path,
                       query: Option<PathBuf>,
                       print_absolute: bool) -> QueryingResult<()> {
     println!("Resources:");
+
+    if !base_dir.exists() {
+        return Ok(());
+    }
+
     let mut initial_search_dir = base_dir.to_owned();
     if let Some(query) = query {
         initial_search_dir = base_dir.join(query);

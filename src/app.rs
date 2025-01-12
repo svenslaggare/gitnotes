@@ -349,8 +349,8 @@ impl App {
                 }
             }
             InputCommand::ListResources { query, print_absolute } => {
-                let base_dir = self.config.resources_dir();
-                querying::list_resources(&base_dir, query, print_absolute)?;
+                let resources_dir = self.config.resources_dir();
+                querying::list_resources(&resources_dir, query, print_absolute)?;
             }
             InputCommand::ApplyCommandOnResource { command, resource } => {
                 let full_path = self.config.resources_dir().join(resource).canonicalize()?;

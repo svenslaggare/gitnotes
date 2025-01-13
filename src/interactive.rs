@@ -164,6 +164,7 @@ impl<'a> AutoCompletion<'a> {
                 "undo".to_owned(),
                 "cd".to_owned(),
                 "pwd".to_owned(),
+                "update-symbolic-links".to_owned(),
             ],
             path_subcommands: HashSet::from_iter(vec![
                "add".to_owned(),

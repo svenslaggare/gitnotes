@@ -444,7 +444,16 @@ impl<'a> ListTree<'a> {
                 print!("{}── ", if stack.is_last {"└"} else {"├"});
                 let (content, color) = match tree {
                     NoteFileTree::Note(note_metadata) => {
-                        (format!("{} (id: {})", name.to_str().unwrap(), note_metadata.id), Color::Green)
+                        let date_part = format!(
+                            "{}-{:0>2}-{:0>2} {:0>2}:{:0>2}",
+                            note_metadata.last_updated.year(),
+                            note_metadata.last_updated.month(),
+                            note_metadata.last_updated.day(),
+                            note_metadata.last_updated.hour(),
+                            note_metadata.last_updated.minute()
+                        );
+
+                        (format!("{} (id: {}, updated: {})", name.to_str().unwrap(), note_metadata.id, date_part), Color::Green)
                     }
                     NoteFileTree::Tree { .. } => {
                         (format!("{}", name.to_str().unwrap().to_owned()), Color::Blue)

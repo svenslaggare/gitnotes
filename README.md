@@ -5,7 +5,12 @@ CLI based notes & snippet application powered by Git.
 * Notes stored in Markdown format in a Git repository.
 * Edit notes using your favorite editor.
 * Notes organized in a virtual file system.
-* Possible to run snippets (currently: Python, C++, and Rust) and save output inside notes.
+* Possible to run snippets and save output inside notes. Supported languages:
+    * Python
+    * JavaScript (requires Node.JS)
+    * TypeScript (requires Node.JS & tsc)
+    * C++ (requires G++)
+    * Rust (required rustc)
 * Ability to search through notes using either content "grep" or note properties.
 * Includes an optional web based Markdown editor.
 

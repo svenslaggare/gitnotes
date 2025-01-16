@@ -75,6 +75,8 @@ impl SnippetRunnerManger {
         self.change_config_opt("python", file_config.python.as_ref())?;
         self.change_config_opt("cpp", file_config.python.as_ref())?;
         self.change_config_opt("rust", file_config.rust.as_ref())?;
+        self.change_config_opt("javascript", file_config.rust.as_ref())?;
+        self.change_config_opt("typescript", file_config.rust.as_ref())?;
         Ok(())
     }
 
@@ -99,6 +101,8 @@ impl Default for SnippetRunnerManger {
         manager.add_runner("python", Box::new(PythonSnippetRunner::default()));
         manager.add_runner("cpp", Box::new(CppSnippetRunner::default()));
         manager.add_runner("rust", Box::new(RustSnippetRunner::default()));
+        manager.add_runner("javascript", Box::new(JavaScriptSnippetRunner::default()));
+        manager.add_runner("typescript", Box::new(TypeScriptSnippetRunner::default()));
         manager
     }
 }
@@ -300,6 +304,124 @@ impl SnippetRunner for RustSnippetRunner {
     }
 }
 
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct JavaScriptSnippetRunnerConfig {
+    pub executable: PathBuf
+}
+
+pub struct JavaScriptSnippetRunner {
+    config: JavaScriptSnippetRunnerConfig
+}
+
+impl JavaScriptSnippetRunner {
+    pub fn new(config: JavaScriptSnippetRunnerConfig) -> JavaScriptSnippetRunner {
+        JavaScriptSnippetRunner {
+            config
+        }
+    }
+}
+
+impl Default for JavaScriptSnippetRunner {
+    fn default() -> Self {
+        JavaScriptSnippetRunner::new(
+            JavaScriptSnippetRunnerConfig {
+                executable: Path::new("node").to_owned(),
+            }
+        )
+    }
+}
+
+impl SnippetRunner for JavaScriptSnippetRunner {
+    fn run(&self, source_code: &str) -> SnippetResult<String> {
+        let mut source_code_file = tempfile::Builder::new()
+            .suffix(".js")
+            .tempfile()?;
+        source_code_file.write_all(source_code.as_bytes())?;
+
+        run_and_capture(Command::new(&self.config.executable).arg(source_code_file.path()))
+    }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<JavaScriptSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct TypeScriptSnippetRunnerConfig {
+    pub compiler_executable: PathBuf,
+    pub node_executable: PathBuf,
+}
+
+pub struct TypeScriptSnippetRunner {
+    config: TypeScriptSnippetRunnerConfig
+}
+
+impl TypeScriptSnippetRunner {
+    pub fn new(config: TypeScriptSnippetRunnerConfig) -> TypeScriptSnippetRunner {
+        TypeScriptSnippetRunner {
+            config
+        }
+    }
+}
+
+impl Default for TypeScriptSnippetRunner {
+    fn default() -> Self {
+        TypeScriptSnippetRunner::new(
+            TypeScriptSnippetRunnerConfig {
+                compiler_executable: Path::new("tsc").to_owned(),
+                node_executable: Path::new("node").to_owned()
+            }
+        )
+    }
+}
+
+impl SnippetRunner for TypeScriptSnippetRunner {
+    fn run(&self, source_code: &str) -> SnippetResult<String> {
+        let mut source_code_file = tempfile::Builder::new()
+            .suffix(".ts")
+            .tempfile()?;
+        source_code_file.write_all(source_code.as_bytes())?;
+
+        let compiled_javascript = {
+            tempfile::Builder::new()
+                .suffix(".js")
+                .tempfile()?
+                .path().to_path_buf()
+        };
+        let _delete_compiled_executable = DeleteFileGuard::new(&compiled_javascript);
+
+        let output = Command::new(&self.config.compiler_executable)
+            .arg(source_code_file.path())
+            .arg("--outFile")
+            .arg(&compiled_javascript)
+            .spawn()?
+            .wait()?;
+
+        if !output.success() {
+            return Err(SnippetError::Compiler);
+        }
+
+        run_and_capture(&mut Command::new(&self.config.node_executable).arg(compiled_javascript))
+    }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<TypeScriptSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
+    }
+}
+
 fn run_and_capture(command: &mut Command) -> SnippetResult<String> {
     let output = unsafe {
         command
@@ -465,6 +587,30 @@ fn test_rust_success2() {
 fn main() {
     println!("Hello, World!");
 }
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
+}
+
+#[test]
+fn test_javascript_success() {
+    let runner = JavaScriptSnippetRunner::default();
+    let result = runner.run(r#"
+console.log("Hello, World!");
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
+}
+
+#[test]
+fn test_typescript_success() {
+    let runner = TypeScriptSnippetRunner::default();
+    let result = runner.run(r#"
+function printMessage(msg: string) {
+    console.log(msg);
+}
+
+printMessage("Hello, World!");
     "#);
 
     assert_eq!("Hello, World!\n".to_owned(), result.unwrap());

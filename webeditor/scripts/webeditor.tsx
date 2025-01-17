@@ -251,10 +251,13 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             <span>
                 <i className="editorButton fa-solid fa-bold" onClick={() => { this.addBold(); }}></i>
                 <i className="editorButton fa-solid fa-italic" onClick={() => { this.addItalic(); }}></i>
+                <span className="separator">|</span>
+                <i className="editorButton fa-solid fa-list-ul" onClick={() => { this.addUnorderedList(); }}></i>
+                <i className="editorButton fa-solid fa-list-ol" onClick={() => { this.addOrderedList(); }}></i>
+                <span className="separator">|</span>
                 <i title="Add Python code block" className="editorButton fa-brands fa-python" onClick={() => { this.addCode("python"); }} />
                 <i title="Add JavaScript code block" className="editorButton fa-brands fa-js" onClick={() => { this.addCode("javascript"); }} />
                 <img title="Add TypeScript code block" className="editorButton svgIcon" onClick={() => { this.addCode("typescript"); }} src="/content/images/typescript.svg" />
-                {/*<i title="Add C++ code block" className="editorButton fa-brands fa-codepen" onClick={() => { this.addCode("cpp"); }} />*/}
                 <img title="Add C++ code block" className="editorButton svgIcon" onClick={() => { this.addCode("cpp"); }} src="/content/images/cpp.svg" />
                 <i title="Add Rust code block" className="editorButton fa-brands fa-rust" onClick={() => { this.addCode("rust"); }} />
                 <i title="Add code block" className="editorButton fa-solid fa-code" onClick={() => { this.addCode(); }} />      
@@ -308,20 +311,34 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     }
 
     addBold() {
-        let editor = this.editArea.current.editor;
-        editor.session.insert(editor.selection.getRange().end, "**");
-        editor.session.insert(editor.selection.getRange().start, "**");
+        this.insertAround("**", "**");
     }
 
     addItalic() {
-        let editor = this.editArea.current.editor;
-        editor.session.insert(editor.selection.getRange().end, "*");
-        editor.session.insert(editor.selection.getRange().start, "*");
+        this.insertAround("*", "*");
+    }
+
+    addUnorderedList() {
+        this.insertAtEnd("\n* Item\n");
+    }
+
+    addOrderedList() {
+        this.insertAtEnd("\n1. Item\n");
     }
 
     addCode(language = "text") {
+        this.insertAtEnd("\n```" + language + "\nCode\n```");
+    }
+
+    insertAround(begin: string, end: string) {
         let editor = this.editArea.current.editor;
-        editor.session.insert({ row: editor.session.getLength(), column: 0 }, "\n\n```" + language + "\nCode\n```");
+        editor.session.insert(editor.selection.getRange().end, begin);
+        editor.session.insert(editor.selection.getRange().start, end);
+    }
+
+    insertAtEnd(text: string) {
+        let editor = this.editArea.current.editor;
+        editor.session.insert({ row: editor.session.getLength(), column: 0 }, text);
     }
 
     fetchContent() {

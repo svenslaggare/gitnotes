@@ -189,6 +189,10 @@ var WebEditorMain = /** @class */ (function (_super) {
         return (react_1.default.createElement("span", null,
             react_1.default.createElement("i", { className: "editorButton fa-solid fa-bold", onClick: function () { _this.addBold(); } }),
             react_1.default.createElement("i", { className: "editorButton fa-solid fa-italic", onClick: function () { _this.addItalic(); } }),
+            react_1.default.createElement("span", { className: "separator" }, "|"),
+            react_1.default.createElement("i", { className: "editorButton fa-solid fa-list-ul", onClick: function () { _this.addUnorderedList(); } }),
+            react_1.default.createElement("i", { className: "editorButton fa-solid fa-list-ol", onClick: function () { _this.addOrderedList(); } }),
+            react_1.default.createElement("span", { className: "separator" }, "|"),
             react_1.default.createElement("i", { title: "Add Python code block", className: "editorButton fa-brands fa-python", onClick: function () { _this.addCode("python"); } }),
             react_1.default.createElement("i", { title: "Add JavaScript code block", className: "editorButton fa-brands fa-js", onClick: function () { _this.addCode("javascript"); } }),
             react_1.default.createElement("img", { title: "Add TypeScript code block", className: "editorButton svgIcon", onClick: function () { _this.addCode("typescript"); }, src: "/content/images/typescript.svg" }),
@@ -229,19 +233,29 @@ var WebEditorMain = /** @class */ (function (_super) {
         }
     };
     WebEditorMain.prototype.addBold = function () {
-        var editor = this.editArea.current.editor;
-        editor.session.insert(editor.selection.getRange().end, "**");
-        editor.session.insert(editor.selection.getRange().start, "**");
+        this.insertAround("**", "**");
     };
     WebEditorMain.prototype.addItalic = function () {
-        var editor = this.editArea.current.editor;
-        editor.session.insert(editor.selection.getRange().end, "*");
-        editor.session.insert(editor.selection.getRange().start, "*");
+        this.insertAround("*", "*");
+    };
+    WebEditorMain.prototype.addUnorderedList = function () {
+        this.insertAtEnd("\n* Item\n");
+    };
+    WebEditorMain.prototype.addOrderedList = function () {
+        this.insertAtEnd("\n1. Item\n");
     };
     WebEditorMain.prototype.addCode = function (language) {
         if (language === void 0) { language = "text"; }
+        this.insertAtEnd("\n```" + language + "\nCode\n```");
+    };
+    WebEditorMain.prototype.insertAround = function (begin, end) {
         var editor = this.editArea.current.editor;
-        editor.session.insert({ row: editor.session.getLength(), column: 0 }, "\n\n```" + language + "\nCode\n```");
+        editor.session.insert(editor.selection.getRange().end, begin);
+        editor.session.insert(editor.selection.getRange().start, end);
+    };
+    WebEditorMain.prototype.insertAtEnd = function (text) {
+        var editor = this.editArea.current.editor;
+        editor.session.insert({ row: editor.session.getLength(), column: 0 }, text);
     };
     WebEditorMain.prototype.fetchContent = function () {
         var _this = this;

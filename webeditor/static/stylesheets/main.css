@@ -47,6 +47,13 @@ html {
     cursor: pointer;
 }
 
+.separator {
+    margin-left: 5px;
+    color: rgb(219, 219, 219);
+    font-weight: lighter;
+    font-size: 19px;
+}
+
 .svgIcon {
     width: 14px;
     margin-bottom: 5px;

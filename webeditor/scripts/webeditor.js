@@ -83,9 +83,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             this.renderAddResourceModal(),
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
                 react_1.default.createElement("div", { className: "col-9" },
-                    !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
-                    !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
-                    react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit"),
+                    this.renderSaveExit(),
                     this.renderActions()),
                 react_1.default.createElement("div", { className: "col-3" },
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
@@ -97,6 +95,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             this.renderSuccess(),
             this.renderError(),
             this.renderSnippetOutput(),
+            this.renderEditorCommands(),
             react_1.default.createElement("div", { className: "row" },
                 this.renderText(),
                 this.renderMarkdown())));
@@ -124,6 +123,13 @@ var WebEditorMain = /** @class */ (function (_super) {
                 react_1.default.createElement("h4", { className: "alert-heading" }, "Error"),
                 this.state.error),
             react_1.default.createElement("div", { className: "col-4" })));
+    };
+    WebEditorMain.prototype.renderSaveExit = function () {
+        var _this = this;
+        return (react_1.default.createElement("span", null,
+            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
+            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
+            react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")));
     };
     WebEditorMain.prototype.renderActions = function () {
         var _this = this;
@@ -178,6 +184,18 @@ var WebEditorMain = /** @class */ (function (_super) {
             return null;
         }
     };
+    WebEditorMain.prototype.renderEditorCommands = function () {
+        var _this = this;
+        return (react_1.default.createElement("span", null,
+            react_1.default.createElement("i", { className: "editorButton fa-solid fa-bold", onClick: function () { _this.addBold(); } }),
+            react_1.default.createElement("i", { className: "editorButton fa-solid fa-italic", onClick: function () { _this.addItalic(); } }),
+            react_1.default.createElement("i", { title: "Add Python code block", className: "editorButton fa-brands fa-python", onClick: function () { _this.addCode("python"); } }),
+            react_1.default.createElement("i", { title: "Add JavaScript code block", className: "editorButton fa-brands fa-js", onClick: function () { _this.addCode("javascript"); } }),
+            react_1.default.createElement("img", { title: "Add TypeScript code block", className: "editorButton svgIcon", onClick: function () { _this.addCode("typescript"); }, src: "/content/images/typescript.svg" }),
+            react_1.default.createElement("img", { title: "Add C++ code block", className: "editorButton svgIcon", onClick: function () { _this.addCode("cpp"); }, src: "/content/images/cpp.svg" }),
+            react_1.default.createElement("i", { title: "Add Rust code block", className: "editorButton fa-brands fa-rust", onClick: function () { _this.addCode("rust"); } }),
+            react_1.default.createElement("i", { title: "Add code block", className: "editorButton fa-solid fa-code", onClick: function () { _this.addCode(); } })));
+    };
     WebEditorMain.prototype.renderExited = function () {
         return (react_1.default.createElement("div", { className: "modal fade", id: "exitedModal", tabIndex: -1, "aria-labelledby": "exitedModalLabel", "aria-hidden": "true" },
             react_1.default.createElement("div", { className: "modal-dialog" },
@@ -209,6 +227,21 @@ var WebEditorMain = /** @class */ (function (_super) {
                 content: this.state.snippetOutputContent
             });
         }
+    };
+    WebEditorMain.prototype.addBold = function () {
+        var editor = this.editArea.current.editor;
+        editor.session.insert(editor.selection.getRange().end, "**");
+        editor.session.insert(editor.selection.getRange().start, "**");
+    };
+    WebEditorMain.prototype.addItalic = function () {
+        var editor = this.editArea.current.editor;
+        editor.session.insert(editor.selection.getRange().end, "*");
+        editor.session.insert(editor.selection.getRange().start, "*");
+    };
+    WebEditorMain.prototype.addCode = function (language) {
+        if (language === void 0) { language = "text"; }
+        var editor = this.editArea.current.editor;
+        editor.session.insert({ row: editor.session.getLength(), column: 0 }, "\n\n```" + language + "\nCode\n```");
     };
     WebEditorMain.prototype.fetchContent = function () {
         var _this = this;
@@ -264,16 +297,10 @@ var WebEditorMain = /** @class */ (function (_super) {
     };
     WebEditorMain.prototype.showAddResourceModel = function () {
         // @ts-ignore
-        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
-        // modal.show();
         this.addResourceModal = new bootstrap.Modal(document.getElementById("addResourceModal"));
         this.addResourceModal.show();
     };
     WebEditorMain.prototype.hideAddResourceModal = function () {
-        // @ts-ignore
-        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
-        // console.log(modal);
-        // modal.hide();
         if (this.addResourceModal != null) {
             this.addResourceModal.hide();
         }

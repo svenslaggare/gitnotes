@@ -35,7 +35,7 @@ interface WebEditorMainState {
 }
 
 class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainState> {
-    editArea: React.RefObject<any>;
+    editArea: React.RefObject<AceEditor>;
     addResourceModal: any;
 
     constructor(props) {
@@ -69,10 +69,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
-                        { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
-                        { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
-                        <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
-
+                        {this.renderSaveExit()}
                         {this.renderActions()}
                     </div>
                     <div className="col-3">
@@ -92,6 +89,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 {this.renderSuccess()}
                 {this.renderError()}
                 {this.renderSnippetOutput()}
+                {this.renderEditorCommands()}
                 <div className="row">
                     {this.renderText()}
                     {this.renderMarkdown()}
@@ -132,6 +130,16 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 </div>
                 <div className="col-4" />
             </div>
+        );
+    }
+
+    renderSaveExit() {
+        return (
+            <span>
+                { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
+                { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
+                <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
+            </span>
         );
     }
 
@@ -238,6 +246,22 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         }
     }
 
+    renderEditorCommands() {
+        return (
+            <span>
+                <i className="editorButton fa-solid fa-bold" onClick={() => { this.addBold(); }}></i>
+                <i className="editorButton fa-solid fa-italic" onClick={() => { this.addItalic(); }}></i>
+                <i title="Add Python code block" className="editorButton fa-brands fa-python" onClick={() => { this.addCode("python"); }} />
+                <i title="Add JavaScript code block" className="editorButton fa-brands fa-js" onClick={() => { this.addCode("javascript"); }} />
+                <img title="Add TypeScript code block" className="editorButton svgIcon" onClick={() => { this.addCode("typescript"); }} src="/content/images/typescript.svg" />
+                {/*<i title="Add C++ code block" className="editorButton fa-brands fa-codepen" onClick={() => { this.addCode("cpp"); }} />*/}
+                <img title="Add C++ code block" className="editorButton svgIcon" onClick={() => { this.addCode("cpp"); }} src="/content/images/cpp.svg" />
+                <i title="Add Rust code block" className="editorButton fa-brands fa-rust" onClick={() => { this.addCode("rust"); }} />
+                <i title="Add code block" className="editorButton fa-solid fa-code" onClick={() => { this.addCode(); }} />      
+            </span>
+        );
+    }
+    
     renderExited() {
         return (
             <div className="modal fade" id="exitedModal" tabIndex={-1} aria-labelledby="exitedModalLabel" aria-hidden="true">
@@ -281,6 +305,23 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 content: this.state.snippetOutputContent
             })
         }
+    }
+
+    addBold() {
+        let editor = this.editArea.current.editor;
+        editor.session.insert(editor.selection.getRange().end, "**");
+        editor.session.insert(editor.selection.getRange().start, "**");
+    }
+
+    addItalic() {
+        let editor = this.editArea.current.editor;
+        editor.session.insert(editor.selection.getRange().end, "*");
+        editor.session.insert(editor.selection.getRange().start, "*");
+    }
+
+    addCode(language = "text") {
+        let editor = this.editArea.current.editor;
+        editor.session.insert({ row: editor.session.getLength(), column: 0 }, "\n\n```" + language + "\nCode\n```");
     }
 
     fetchContent() {
@@ -340,17 +381,11 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
     showAddResourceModel() {
         // @ts-ignore
-        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
-        // modal.show();
         this.addResourceModal = new bootstrap.Modal(document.getElementById("addResourceModal"));
         this.addResourceModal.show();
     }
 
     hideAddResourceModal() {
-        // @ts-ignore
-        // let modal = new bootstrap.Modal(document.getElementById("addResourceModal"));
-        // console.log(modal);
-        // modal.hide();
         if (this.addResourceModal != null) {
             this.addResourceModal.hide();
         }

@@ -38,3 +38,16 @@ html {
 .linkButton:hover {
     cursor: pointer;
 }
+
+.editorButton {
+    margin-left: 5px;
+}
+
+.editorButton:hover {
+    cursor: pointer;
+}
+
+.svgIcon {
+    width: 14px;
+    margin-bottom: 5px;
+}

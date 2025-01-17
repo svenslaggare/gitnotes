@@ -17,6 +17,9 @@ pub enum SnippetError {
     #[error("No runner found for '{0}'")]
     RunnerNotFound(String),
 
+    #[error("Compiler not found")]
+    CompilerNotFound,
+
     #[error("The configuration type is not valid for this runner")]
     InvalidConfigType,
 

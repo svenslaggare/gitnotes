@@ -216,7 +216,12 @@ impl<'a> AutoCompletion<'a> {
                 path.parent().unwrap_or(path)
             };
 
-            self.get_base_note_tree().find(&path)
+            if path.is_absolute() {
+                let path = path.strip_prefix("/").ok()?;
+                self.note_file_tree.find(path)
+            } else {
+                self.get_base_note_tree().find(&path)
+            }
         } else {
             Some(self.get_base_note_tree())
         }
@@ -246,6 +251,7 @@ impl<'a> Completer for AutoCompletion<'a> {
         let mut current_word = Vec::new();
         let mut current_path_segment = Vec::new();
         let mut path_segment_done = false;
+        let mut num_done_path_segments = 0;
         for char in line.chars().rev() {
             if char.is_whitespace() {
                 break;
@@ -253,6 +259,7 @@ impl<'a> Completer for AutoCompletion<'a> {
 
             if char == '/' {
                 path_segment_done = true;
+                num_done_path_segments += 1;
             }
 
             current_word.push(char);
@@ -266,6 +273,12 @@ impl<'a> Completer for AutoCompletion<'a> {
 
         let current_path_segment_length = current_path_segment.len();
         let current_path_segment = String::from_iter(current_path_segment.into_iter().rev());
+
+        if let Some(first) = current_word.chars().next() {
+            if first == '/' && num_done_path_segments == 1 {
+                path_segment_done = false;
+            }
+        }
 
         let mut current_completion = &current_word;
         let mut current_completion_length = current_word_length;

@@ -31,7 +31,8 @@ pub struct App {
     command_interpreter: CommandInterpreter,
     note_metadata_storage: Option<NoteMetadataStorage>,
     auto_commit: bool,
-    working_dir: Option<PathBuf>
+    working_dir: Option<PathBuf>,
+    version: u64
 }
 
 impl App {
@@ -54,7 +55,8 @@ impl App {
                 command_interpreter: create_ci(config.clone(), repository)?,
                 note_metadata_storage: None,
                 auto_commit: true,
-                working_dir: get_initial_working_dir(&config)
+                working_dir: get_initial_working_dir(&config),
+                version: 0
             }
         )
     }
@@ -608,6 +610,16 @@ impl App {
 
     pub fn clear_cache(&mut self) {
         self.note_metadata_storage = None;
+        self.version += 1;
+    }
+
+    pub fn has_changed(&self, version: &mut u64) -> bool {
+        if *version != self.version {
+            *version = self.version;
+            true
+        } else {
+            false
+        }
     }
 
     pub fn working_dir(&mut self) -> AppResult<PathBuf> {

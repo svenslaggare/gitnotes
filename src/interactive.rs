@@ -14,6 +14,7 @@ use rustyline::{Context, Editor};
 use rustyline::error::ReadlineError;
 use rustyline_derive::{Helper, Highlighter, Hinter};
 use rustyline::validate::{ValidationContext, ValidationResult, Validator};
+use rustyline::history::FileHistory;
 
 use substring::Substring;
 
@@ -23,7 +24,19 @@ use crate::model::{NoteFileTree, NoteMetadata};
 
 pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
     let mut app = App::new(main_input_command.apply(crate::load_config(&config_path())))?;
+    let mut history = FileHistory::new();
+    let mut notes_version = 0;
 
+    loop {
+        if !run_app(&mut app, &mut history, &mut notes_version)? {
+            break;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_app(app: &mut App, history: &mut FileHistory, notes_version: &mut u64) -> Result<bool, AppError> {
     let notes_metadata = app.note_metadata_storage()?.notes().cloned().collect::<Vec<_>>();
     let note_file_tree = NoteFileTree::from_iter(notes_metadata.iter()).unwrap();
 
@@ -31,8 +44,10 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
     line_editor.set_helper(Some(AutoCompletion::new(note_file_tree)));
 
     if let Some(helper) = line_editor.helper_mut() {
-        helper.update_note_file_tree(&mut app);
+        helper.update(app);
     }
+
+    std::mem::swap(history, line_editor.history_mut());
 
     while let Ok(mut line) = line_editor.readline("> ") {
         if line.ends_with('\n') {
@@ -42,7 +57,7 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
         line_editor.add_history_entry(line.clone()).unwrap();
 
         if let Some(helper) = line_editor.helper_mut() {
-            helper.update_note_file_tree(&mut app);
+            helper.update(app);
         }
 
         match input_command_interactive(&line) {
@@ -55,9 +70,14 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
                 print!("{}", err);
             }
         }
+
+        if app.has_changed(notes_version) {
+            std::mem::swap(history, line_editor.history_mut());
+            return Ok(true);
+        }
     }
 
-    Ok(())
+    Ok(false)
 }
 
 pub fn select<F: Fn(&str, usize) -> String>(
@@ -193,7 +213,7 @@ impl<'a> AutoCompletion<'a> {
         }
     }
 
-    pub fn update_note_file_tree(&mut self, app: &mut App) {
+    pub fn update(&mut self, app: &mut App) {
         self.working_dir = app.working_dir().ok();
     }
 

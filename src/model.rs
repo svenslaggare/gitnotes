@@ -415,10 +415,10 @@ impl<'a> NoteFileTree<'a> {
 
     pub fn walk<F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, NoteFileTreeWalkStack) -> bool>(&'a self, mut apply: F) {
         fn do_walk<'a, F: FnMut(usize, &Path, &OsString, &'a NoteFileTree, NoteFileTreeWalkStack) -> bool>(apply: &mut F,
-                                                                                                              level: usize,
-                                                                                                              parent: &Path,
-                                                                                                              is_last_stack: &mut Vec<bool>,
-                                                                                                              tree: &'a NoteFileTree) {
+                                                                                                           level: usize,
+                                                                                                           parent: &Path,
+                                                                                                           is_last_stack: &mut Vec<bool>,
+                                                                                                           tree: &'a NoteFileTree) {
             if let Some(children) = tree.children() {
                 let num_children = children.len();
                 for (child_index, (name, child)) in children.iter().enumerate() {

@@ -30,6 +30,10 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
     let mut line_editor = Editor::new().unwrap();
     line_editor.set_helper(Some(AutoCompletion::new(note_file_tree)));
 
+    if let Some(helper) = line_editor.helper_mut() {
+        helper.update_note_file_tree(&mut app);
+    }
+
     while let Ok(mut line) = line_editor.readline("> ") {
         if line.ends_with('\n') {
             line.pop();

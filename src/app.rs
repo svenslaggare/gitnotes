@@ -385,7 +385,9 @@ impl App {
                     path
                 );
 
-                let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
+                let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage()?.notes())
+                    .ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?;
+                
                 match note_file_tree.find(&new_working_dir)  {
                     Some(working_dir_tree) if working_dir_tree.is_tree() => {
                         self.working_dir = Some(new_working_dir);
@@ -990,9 +992,12 @@ fn get_initial_working_dir(config: &Config) -> Option<PathBuf> {
     Some(working_dir.to_owned())
 }
 
-fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> PathBuf {
-    if &path == &Path::new("/") {
-        return Path::new("").to_owned();
+fn change_working_dir(mut current_working_dir: Option<&Path>, mut path: PathBuf) -> PathBuf {
+    if path.is_absolute() {
+        if let Ok(base) = path.strip_prefix("/") {
+            current_working_dir = None;
+            path = base.to_owned();
+        }
     }
 
     let mut current_working_dir = current_working_dir.unwrap_or_else(|| Path::new("")).to_owned();
@@ -1007,7 +1012,7 @@ fn change_working_dir(current_working_dir: Option<&Path>, path: PathBuf) -> Path
             current_working_dir = current_working_dir.join(part);
         }
     }
-
+    
     current_working_dir
 }
 
@@ -1072,5 +1077,13 @@ fn test_change_working_dir8() {
     assert_eq!(
         Path::new(""),
         change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("/").to_owned())
+    );
+}
+
+#[test]
+fn test_change_working_dir9() {
+    assert_eq!(
+        Path::new("projects"),
+        change_working_dir(Some(Path::new("Code/gitnotes-cli")), Path::new("/projects").to_owned())
     );
 }

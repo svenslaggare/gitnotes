@@ -5,13 +5,14 @@ use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::Arc;
 
-use chrono::{Local};
+use chrono::Local;
 use thiserror::Error;
 
 use serde_json::json;
 use serde::{Deserialize, Serialize};
 
 use tokio::sync::{Mutex, Notify};
+use tokio::signal;
 
 use axum::response::{Html, IntoResponse, Response};
 use axum::{Json, Router};
@@ -21,14 +22,14 @@ use axum::extract::{DefaultBodyLimit, Multipart, Path as AxumPath, Query, State}
 
 use tower_http::services::{ServeDir, ServeFile};
 
-use askama::{Template};
+use askama::Template;
 use axum::body::Body;
 
 use crate::config::SnippetFileConfig;
 use crate::{command, markdown};
 use crate::editor::EditorOutput;
 use crate::model::RESOURCES_DIR;
-use crate::snippets::{SnippetRunnerManger};
+use crate::snippets::SnippetRunnerManger;
 
 #[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq)]
 pub enum AccessMode {
@@ -112,6 +113,9 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
     tokio::select! {
         result = axum::Server::bind(&address).serve(app.into_make_service()) => {
             result.unwrap();
+            EditorOutput::default()
+        }
+        _ = signal::ctrl_c() => {
             EditorOutput::default()
         }
         _ = state.notify.notified() => {

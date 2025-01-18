@@ -1,6 +1,7 @@
-use std::path::{Path};
+use std::path::{Path, PathBuf};
 use std::collections::HashSet;
-use std::io::{stdout};
+use std::io::stdout;
+
 use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
@@ -35,6 +36,10 @@ pub fn run(main_input_command: MainInputCommand) -> Result<(), AppError> {
         }
 
         line_editor.add_history_entry(line.clone()).unwrap();
+
+        if let Some(helper) = line_editor.helper_mut() {
+            helper.update_note_file_tree(&mut app);
+        }
 
         match input_command_interactive(&line) {
             Ok(input_command) => {
@@ -136,7 +141,8 @@ fn input_command_interactive(line: &str) -> Result<InputCommand, String> {
 struct AutoCompletion<'a> {
     subcommands: Vec<String>,
     path_subcommands: HashSet<String>,
-    note_file_tree: NoteFileTree<'a>
+    note_file_tree: NoteFileTree<'a>,
+    working_dir: Option<PathBuf>
 }
 
 impl<'a> AutoCompletion<'a> {
@@ -178,7 +184,45 @@ impl<'a> AutoCompletion<'a> {
                "info".to_owned(),
                "cd".to_owned(),
             ]),
-            note_file_tree
+            note_file_tree,
+            working_dir: None
+        }
+    }
+
+    pub fn update_note_file_tree(&mut self, app: &mut App) {
+        self.working_dir = app.working_dir().ok();
+    }
+
+    fn current_command<'b>(&'b self, line: &'b str) -> Option<&'b str> {
+        for (index, current) in line.chars().enumerate() {
+            if current.is_whitespace() {
+                return Some(line.substring(0, index));
+            }
+        }
+
+        None
+    }
+
+    fn get_note_tree(&self, current_word: &str, path_segment_done: bool) -> Option<&'a NoteFileTree> {
+        if path_segment_done {
+            let path = Path::new(&current_word);
+            let path = if current_word.ends_with("/") {
+                path
+            } else {
+                path.parent().unwrap_or(path)
+            };
+
+            self.get_base_note_tree().find(&path)
+        } else {
+            Some(self.get_base_note_tree())
+        }
+    }
+
+    fn get_base_note_tree(&self) -> &'a NoteFileTree {
+        if let Some(working_dir) = self.working_dir.as_ref() {
+            self.note_file_tree.find(&working_dir).unwrap_or_else(|| &self.note_file_tree)
+        } else {
+            &self.note_file_tree
         }
     }
 }
@@ -261,32 +305,5 @@ impl<'a> Completer for AutoCompletion<'a> {
         }
 
         Ok((pos - current_completion_length, results))
-    }
-}
-
-impl<'a> AutoCompletion<'a> {
-    fn current_command<'b>(&'b self, line: &'b str) -> Option<&'b str> {
-        for (index, current) in line.chars().enumerate() {
-            if current.is_whitespace() {
-                return Some(line.substring(0, index));
-            }
-        }
-
-        None
-    }
-
-    fn get_note_tree(&self, current_word: &str, path_segment_done: bool) -> Option<&'a NoteFileTree> {
-        if path_segment_done {
-            let path = Path::new(&current_word);
-            let path = if current_word.ends_with("/") {
-                path
-            } else {
-                path.parent().unwrap_or(path)
-            };
-
-            self.note_file_tree.find(&path)
-        } else {
-            Some(&self.note_file_tree)
-        }
     }
 }

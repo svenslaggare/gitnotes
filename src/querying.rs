@@ -519,7 +519,7 @@ pub struct GitLog<'a> {
 }
 
 impl<'a> GitLog<'a> {
-    pub fn new(repository: &'a git2::Repository, count: isize) -> QueryingResult<GitLog> {
+    pub fn new(repository: &'a git2::Repository, count: isize) -> QueryingResult<GitLog<'a>> {
         Ok(
             GitLog {
                 repository,

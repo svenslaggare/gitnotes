@@ -59,10 +59,6 @@ impl App {
         )
     }
 
-    pub fn set_working_dir(&mut self, working_dir: &Path) {
-        self.working_dir = Some(working_dir.to_owned());
-    }
-
     pub fn run(&mut self, input_command: InputCommand) -> AppResult<Option<InputCommand>> {
         match input_command {
             InputCommand::Initialize { .. } => {
@@ -612,8 +608,12 @@ impl App {
         self.note_metadata_storage = None;
     }
 
-    fn working_dir(&mut self) -> AppResult<PathBuf> {
+    pub fn working_dir(&mut self) -> AppResult<PathBuf> {
         self.get_path(Path::new("").to_owned())
+    }
+
+    pub fn set_working_dir(&mut self, working_dir: &Path) {
+        self.working_dir = Some(working_dir.to_owned());
     }
 
     fn get_path(&mut self, path: PathBuf) -> AppResult<PathBuf> {

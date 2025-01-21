@@ -17,9 +17,6 @@ pub enum SnippetError {
     #[error("No runner found for '{0}'")]
     RunnerNotFound(String),
 
-    #[error("Compiler not found")]
-    CompilerNotFound,
-
     #[error("The configuration type is not valid for this runner")]
     InvalidConfigType,
 
@@ -76,10 +73,11 @@ impl SnippetRunnerManger {
 
     pub fn apply_config(&mut self, file_config: &SnippetFileConfig) -> SnippetResult<()> {
         self.change_config_opt("python", file_config.python.as_ref())?;
-        self.change_config_opt("cpp", file_config.python.as_ref())?;
+        self.change_config_opt("bash", file_config.bash.as_ref())?;
+        self.change_config_opt("cpp", file_config.cpp.as_ref())?;
         self.change_config_opt("rust", file_config.rust.as_ref())?;
-        self.change_config_opt("javascript", file_config.rust.as_ref())?;
-        self.change_config_opt("typescript", file_config.rust.as_ref())?;
+        self.change_config_opt("javascript", file_config.javascript.as_ref())?;
+        self.change_config_opt("typescript", file_config.typescript.as_ref())?;
         Ok(())
     }
 
@@ -102,6 +100,7 @@ impl Default for SnippetRunnerManger {
     fn default() -> Self {
         let mut manager = SnippetRunnerManger::new();
         manager.add_runner("python", Box::new(PythonSnippetRunner::default()));
+        manager.add_runner("bash", Box::new(BashSnippetRunner::default()));
         manager.add_runner("cpp", Box::new(CppSnippetRunner::default()));
         manager.add_runner("rust", Box::new(RustSnippetRunner::default()));
         manager.add_runner("javascript", Box::new(JavaScriptSnippetRunner::default()));
@@ -156,6 +155,57 @@ impl SnippetRunner for PythonSnippetRunner {
 
     fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
         if let Some(config) = config.downcast_ref::<PythonSnippetRunnerConfig>() {
+            self.config = config.clone();
+            Ok(())
+        } else {
+            Err(SnippetError::InvalidConfigType)
+        }
+    }
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct BashSnippetRunnerConfig {
+    pub executable: PathBuf
+}
+
+pub struct BashSnippetRunner {
+    config: BashSnippetRunnerConfig
+}
+
+impl BashSnippetRunner {
+    pub fn new(config: BashSnippetRunnerConfig) -> BashSnippetRunner {
+        BashSnippetRunner {
+            config
+        }
+    }
+}
+
+impl Default for BashSnippetRunner {
+    fn default() -> Self {
+        BashSnippetRunner::new(
+            BashSnippetRunnerConfig {
+                executable: Path::new("bash").to_owned(),
+            }
+        )
+    }
+}
+
+impl SnippetRunner for BashSnippetRunner {
+    fn run(&self, source_code: &str) -> SnippetResult<String> {
+        let mut source_code_file = tempfile::Builder::new()
+            .suffix(".sh")
+            .tempfile()?;
+        source_code_file.write_all(source_code.as_bytes())?;
+
+        run_and_capture(
+            Command::new(&self.config.executable)
+                .arg(source_code_file.path())
+        )
+    }
+
+    fn change_config(&mut self, config: &dyn Any) -> SnippetResult<()> {
+        if let Some(config) = config.downcast_ref::<BashSnippetRunnerConfig>() {
             self.config = config.clone();
             Ok(())
         } else {
@@ -539,6 +589,16 @@ fn test_python_change_config1() {
     }).unwrap();
 
     assert_eq!(Path::new("python2"), runner.config.executable);
+}
+
+#[test]
+fn test_bash_success1() {
+    let runner = BashSnippetRunner::default();
+    let result = runner.run(r#"
+echo "Hello, World!"
+    "#);
+
+    assert_eq!("Hello, World!\n".to_owned(), result.unwrap());
 }
 
 #[test]

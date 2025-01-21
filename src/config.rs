@@ -5,7 +5,7 @@ use serde::{Serialize, Deserialize};
 
 use crate::helpers::{base_dir, io_error};
 use crate::model::RESOURCES_DIR;
-use crate::snippets::{PythonSnippetRunnerConfig, RustSnippetRunnerConfig};
+use crate::snippets::{BashSnippetRunnerConfig, JavaScriptSnippetRunnerConfig, PythonSnippetRunnerConfig, RustSnippetRunnerConfig, TypeScriptSnippetRunnerConfig};
 
 pub fn config_path() -> PathBuf {
     base_dir().join("config.toml")
@@ -74,8 +74,11 @@ impl FileConfig {
 #[serde(deny_unknown_fields)]
 pub struct SnippetFileConfig {
     pub python: Option<PythonSnippetRunnerConfig>,
+    pub bash: Option<BashSnippetRunnerConfig>,
     pub cpp: Option<RustSnippetRunnerConfig>,
-    pub rust: Option<RustSnippetRunnerConfig>
+    pub rust: Option<RustSnippetRunnerConfig>,
+    pub javascript: Option<JavaScriptSnippetRunnerConfig>,
+    pub typescript: Option<TypeScriptSnippetRunnerConfig>
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -60,7 +60,7 @@ print([x * x for x in xs])
         CommandInterpreter::with_launch_editor(
             config,
             repository,
-            Box::new(move |_, path| {
+            Box::new(move |_, path, _| {
                 std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))?;
                 Ok(EditorOutput::default())
             })
@@ -101,7 +101,7 @@ print([x * x for x in xs])
         CommandInterpreter::with_launch_editor(
             config,
             repository,
-            Box::new(move |_, path| {
+            Box::new(move |_, path, _| {
                 std::fs::write(path, &note_content_clone).map_err(|err| CommandError::IO(err))?;
                 Ok(EditorOutput::default())
             })
@@ -990,7 +990,7 @@ print([x * x for x in xs])
         CommandInterpreter::with_launch_editor(
             config,
             repository,
-            Box::new(move |_, path| {
+            Box::new(move |_, path, _| {
                 std::fs::write(path, &note_content2_clone).map_err(|err| CommandError::IO(err))?;
                 Ok(EditorOutput::default())
             })
@@ -1047,7 +1047,7 @@ print([x * x for x in xs])
         CommandInterpreter::with_launch_editor(
             config,
             repository,
-            Box::new(move |_, _| {
+            Box::new(move |_, _, _| {
                 Ok(EditorOutput::default())
             })
         )

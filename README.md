@@ -7,6 +7,7 @@ CLI based notes & snippet application powered by Git.
 * Notes organized in a virtual file system.
 * Possible to run snippets and save output inside notes. Supported languages:
     * Python
+    * Bash
     * JavaScript (requires Node.JS)
     * TypeScript (requires Node.JS & tsc)
     * C++ (requires G++)

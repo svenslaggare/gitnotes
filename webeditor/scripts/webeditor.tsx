@@ -32,11 +32,14 @@ interface WebEditorMainState {
     snippetOutputContent: string;
 
     selectedFile: File;
+    linkText: string;
+    linkLink: string;
 }
 
 class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainState> {
     editArea: React.RefObject<AceEditor>;
     addResourceModal: any;
+    addLinkModal: any;
 
     constructor(props) {
         super(props);
@@ -53,11 +56,14 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             snippetOutput: null,
             snippetOutputContent: null,
 
-            selectedFile: null
+            selectedFile: null,
+            linkText: "",
+            linkLink: ""
         };
 
         this.editArea = React.createRef();
         this.addResourceModal = null;
+        this.addLinkModal = null;
         this.fetchContent();
     }
 
@@ -66,6 +72,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
             <div>
                 {this.renderExited()}
                 {this.renderAddResourceModal()}
+                {this.renderAddLinkModal()}
 
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
@@ -74,14 +81,18 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     </div>
                     <div className="col-3">
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="checkbox" checked={this.state.showText} id="showTextCheckbox"
-                                   onChange={event => { this.changeText(event); }} />
+                            <input
+                                className="form-check-input" type="checkbox" checked={this.state.showText} id="showTextCheckbox"
+                                onChange={event => { this.changeText(event); }}
+                            />
                             <label className="form-check-label" htmlFor="showTextCheckbox">Text</label>
                         </div>
 
                         <div className="form-check form-check-inline">
-                            <input className="form-check-input" type="checkbox" checked={this.state.showRendered} id="showRenderedheckbox"
-                                   onChange={event => { this.changeRendered(event); }} />
+                            <input
+                                className="form-check-input" type="checkbox" checked={this.state.showRendered} id="showRenderedheckbox"
+                                onChange={event => { this.changeRendered(event); }}
+                            />
                             <label className="form-check-label" htmlFor="showRenderedheckbox">Rendered</label>
                         </div>
                     </div>
@@ -136,8 +147,16 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     renderSaveExit() {
         return (
             <span>
-                { !this.state.isReadOnly ? <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button> : null }
-                { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button> : null }
+                {
+                    !this.state.isReadOnly ?
+                        <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button>
+                        : null
+                }
+                {
+                    !this.state.isReadOnly ?
+                        <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button>
+                        : null
+                }
                 <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
             </span>
         );
@@ -151,7 +170,11 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         return (
             <span style={{ paddingLeft: "15px" }}>
                 <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
-                { !this.state.isReadOnly ? <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button> : null }
+                {
+                    !this.state.isReadOnly ?
+                    <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button>
+                    : null
+                }
             </span>
         );
     }
@@ -249,17 +272,24 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     renderEditorCommands() {
         return (
             <span>
-                <i className="editorButton fa-solid fa-bold" onClick={() => { this.addBold(); }}></i>
-                <i className="editorButton fa-solid fa-italic" onClick={() => { this.addItalic(); }}></i>
+                <i title="Add bold text" className="editorButton fa-solid fa-bold" onClick={() => { this.addBold(); }}></i>
+                <i title="Add italic text" className="editorButton fa-solid fa-italic" onClick={() => { this.addItalic(); }}></i>
+                <i title="Add link" className="editorButton fa-solid fa-link" onClick={() => { this.showAddLinkModel(); }}></i>
                 <span className="separator">|</span>
-                <i className="editorButton fa-solid fa-list-ul" onClick={() => { this.addUnorderedList(); }}></i>
-                <i className="editorButton fa-solid fa-list-ol" onClick={() => { this.addOrderedList(); }}></i>
+                <i title="Add unordered list" className="editorButton fa-solid fa-list-ul" onClick={() => { this.addUnorderedList(); }}></i>
+                <i title="Add ordered list" className="editorButton fa-solid fa-list-ol" onClick={() => { this.addOrderedList(); }}></i>
                 <span className="separator">|</span>
                 <i title="Add Python code block" className="editorButton fa-brands fa-python" onClick={() => { this.addCode("python"); }} />
                 <i title="Add Bash code block" className="editorButton fa-solid fa-terminal" onClick={() => { this.addCode("bash"); }} />
                 <i title="Add JavaScript code block" className="editorButton fa-brands fa-js" onClick={() => { this.addCode("javascript"); }} />
-                <img title="Add TypeScript code block" className="editorButton svgIcon" onClick={() => { this.addCode("typescript"); }} src="/content/images/typescript.svg" />
-                <img title="Add C++ code block" className="editorButton svgIcon" onClick={() => { this.addCode("cpp"); }} src="/content/images/cpp.svg" />
+                <img
+                    title="Add TypeScript code block" className="editorButton svgIcon" onClick={() => { this.addCode("typescript"); }}
+                    src="/content/images/typescript.svg"
+                />
+                <img
+                    title="Add C++ code block" className="editorButton svgIcon" onClick={() => { this.addCode("cpp"); }}
+                    src="/content/images/cpp.svg"
+                />
                 <i title="Add Rust code block" className="editorButton fa-brands fa-rust" onClick={() => { this.addCode("rust"); }} />
                 <i title="Add code block" className="editorButton fa-solid fa-code" onClick={() => { this.addCode(); }} />      
             </span>
@@ -317,6 +347,17 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
 
     addItalic() {
         this.insertAround("*", "*");
+    }
+
+    addLink() {
+        this.insertAtEnd(`\n[${this.state.linkText}](${this.state.linkLink})`);
+
+        this.setState({
+            linkText: "",
+            linkLink: ""
+        });
+
+        this.hideAddLinkModal();
     }
 
     addUnorderedList() {
@@ -424,6 +465,62 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                             <br />
                             <br />
                             <button type="button" className="btn btn-primary" onClick={() => { this.addResource(); }}>Upload</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
+
+    showAddLinkModel() {
+        // @ts-ignore
+        this.addLinkModal = new bootstrap.Modal(document.getElementById("addLinkModal"));
+        this.addLinkModal.show();
+    }
+
+    hideAddLinkModal() {
+        if (this.addLinkModal != null) {
+            this.addLinkModal.hide();
+        }
+    }
+
+    renderAddLinkModal() {
+        return (
+            <div className="modal" id="addLinkModal" tabIndex={-1} aria-labelledby="addLinkModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h1 className="modal-title fs-5" id="addLinkModalLabel">Add link</h1>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <div className="form-group">
+                                <label htmlFor="addLinkText">Text</label>
+                                <input
+                                    type="text" className="form-control" id="addLinkText" placeholder="Text"
+                                    defaultValue={this.state.linkText}
+                                    onChange={event => { this.setState({ linkText: event.target.value }) }}
+                                />
+                            </div>
+
+                            <br/>
+
+                            <div className="form-group">
+                                <label htmlFor="addLinkLink">Link</label>
+                                <input
+                                    type="text" className="form-control" id="addLinkLink" placeholder="URL"
+                                    defaultValue={this.state.linkLink}
+                                    onChange={event => { this.setState({ linkLink: event.target.value }) }}
+                                />
+                            </div>
+
+                            <br/>
+                            <button
+                                type="button" className="btn btn-primary"
+                                disabled={!(this.state.linkText.length > 0 && this.state.linkLink.length > 0)}
+                                onClick={() => { this.addLink(); }}>
+                                Add
+                            </button>
                         </div>
                     </div>
                 </div>

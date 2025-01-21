@@ -69,10 +69,13 @@ var WebEditorMain = /** @class */ (function (_super) {
             error: null,
             snippetOutput: null,
             snippetOutputContent: null,
-            selectedFile: null
+            selectedFile: null,
+            linkText: "",
+            linkLink: ""
         };
         _this.editArea = react_1.default.createRef();
         _this.addResourceModal = null;
+        _this.addLinkModal = null;
         _this.fetchContent();
         return _this;
     }
@@ -81,6 +84,7 @@ var WebEditorMain = /** @class */ (function (_super) {
         return (react_1.default.createElement("div", null,
             this.renderExited(),
             this.renderAddResourceModal(),
+            this.renderAddLinkModal(),
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
                 react_1.default.createElement("div", { className: "col-9" },
                     this.renderSaveExit(),
@@ -127,8 +131,12 @@ var WebEditorMain = /** @class */ (function (_super) {
     WebEditorMain.prototype.renderSaveExit = function () {
         var _this = this;
         return (react_1.default.createElement("span", null,
-            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save") : null,
-            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit") : null,
+            !this.state.isReadOnly ?
+                react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save")
+                : null,
+            !this.state.isReadOnly ?
+                react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit")
+                : null,
             react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")));
     };
     WebEditorMain.prototype.renderActions = function () {
@@ -138,7 +146,9 @@ var WebEditorMain = /** @class */ (function (_super) {
         }
         return (react_1.default.createElement("span", { style: { paddingLeft: "15px" } },
             react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
-            !this.state.isReadOnly ? react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource") : null));
+            !this.state.isReadOnly ?
+                react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource")
+                : null));
     };
     WebEditorMain.prototype.renderText = function () {
         var _this = this;
@@ -187,11 +197,12 @@ var WebEditorMain = /** @class */ (function (_super) {
     WebEditorMain.prototype.renderEditorCommands = function () {
         var _this = this;
         return (react_1.default.createElement("span", null,
-            react_1.default.createElement("i", { className: "editorButton fa-solid fa-bold", onClick: function () { _this.addBold(); } }),
-            react_1.default.createElement("i", { className: "editorButton fa-solid fa-italic", onClick: function () { _this.addItalic(); } }),
+            react_1.default.createElement("i", { title: "Add bold text", className: "editorButton fa-solid fa-bold", onClick: function () { _this.addBold(); } }),
+            react_1.default.createElement("i", { title: "Add italic text", className: "editorButton fa-solid fa-italic", onClick: function () { _this.addItalic(); } }),
+            react_1.default.createElement("i", { title: "Add link", className: "editorButton fa-solid fa-link", onClick: function () { _this.showAddLinkModel(); } }),
             react_1.default.createElement("span", { className: "separator" }, "|"),
-            react_1.default.createElement("i", { className: "editorButton fa-solid fa-list-ul", onClick: function () { _this.addUnorderedList(); } }),
-            react_1.default.createElement("i", { className: "editorButton fa-solid fa-list-ol", onClick: function () { _this.addOrderedList(); } }),
+            react_1.default.createElement("i", { title: "Add unordered list", className: "editorButton fa-solid fa-list-ul", onClick: function () { _this.addUnorderedList(); } }),
+            react_1.default.createElement("i", { title: "Add ordered list", className: "editorButton fa-solid fa-list-ol", onClick: function () { _this.addOrderedList(); } }),
             react_1.default.createElement("span", { className: "separator" }, "|"),
             react_1.default.createElement("i", { title: "Add Python code block", className: "editorButton fa-brands fa-python", onClick: function () { _this.addCode("python"); } }),
             react_1.default.createElement("i", { title: "Add Bash code block", className: "editorButton fa-solid fa-terminal", onClick: function () { _this.addCode("bash"); } }),
@@ -238,6 +249,14 @@ var WebEditorMain = /** @class */ (function (_super) {
     };
     WebEditorMain.prototype.addItalic = function () {
         this.insertAround("*", "*");
+    };
+    WebEditorMain.prototype.addLink = function () {
+        this.insertAtEnd("\n[".concat(this.state.linkText, "](").concat(this.state.linkLink, ")"));
+        this.setState({
+            linkText: "",
+            linkLink: ""
+        });
+        this.hideAddLinkModal();
     };
     WebEditorMain.prototype.addUnorderedList = function () {
         this.insertAtEnd("\n* Item\n");
@@ -333,6 +352,35 @@ var WebEditorMain = /** @class */ (function (_super) {
                         react_1.default.createElement("br", null),
                         react_1.default.createElement("br", null),
                         react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.addResource(); } }, "Upload"))))));
+    };
+    WebEditorMain.prototype.showAddLinkModel = function () {
+        // @ts-ignore
+        this.addLinkModal = new bootstrap.Modal(document.getElementById("addLinkModal"));
+        this.addLinkModal.show();
+    };
+    WebEditorMain.prototype.hideAddLinkModal = function () {
+        if (this.addLinkModal != null) {
+            this.addLinkModal.hide();
+        }
+    };
+    WebEditorMain.prototype.renderAddLinkModal = function () {
+        var _this = this;
+        return (react_1.default.createElement("div", { className: "modal", id: "addLinkModal", tabIndex: -1, "aria-labelledby": "addLinkModalLabel", "aria-hidden": "true" },
+            react_1.default.createElement("div", { className: "modal-dialog" },
+                react_1.default.createElement("div", { className: "modal-content" },
+                    react_1.default.createElement("div", { className: "modal-header" },
+                        react_1.default.createElement("h1", { className: "modal-title fs-5", id: "addLinkModalLabel" }, "Add link"),
+                        react_1.default.createElement("button", { type: "button", className: "btn-close", "data-bs-dismiss": "modal", "aria-label": "Close" })),
+                    react_1.default.createElement("div", { className: "modal-body" },
+                        react_1.default.createElement("div", { className: "form-group" },
+                            react_1.default.createElement("label", { htmlFor: "addLinkText" }, "Text"),
+                            react_1.default.createElement("input", { type: "text", className: "form-control", id: "addLinkText", placeholder: "Text", defaultValue: this.state.linkText, onChange: function (event) { _this.setState({ linkText: event.target.value }); } })),
+                        react_1.default.createElement("br", null),
+                        react_1.default.createElement("div", { className: "form-group" },
+                            react_1.default.createElement("label", { htmlFor: "addLinkLink" }, "Link"),
+                            react_1.default.createElement("input", { type: "text", className: "form-control", id: "addLinkLink", placeholder: "URL", defaultValue: this.state.linkLink, onChange: function (event) { _this.setState({ linkLink: event.target.value }); } })),
+                        react_1.default.createElement("br", null),
+                        react_1.default.createElement("button", { type: "button", className: "btn btn-primary", disabled: !(this.state.linkText.length > 0 && this.state.linkLink.length > 0), onClick: function () { _this.addLink(); } }, "Add"))))));
     };
     WebEditorMain.prototype.onFileChanged = function (event) {
         this.setState({

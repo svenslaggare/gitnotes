@@ -23,6 +23,7 @@ impl Default for EditorOutput {
 
 pub fn launch(config: &Config,
               path: &Path,
+              display_path: Option<&Path>,
               access_mode: AccessMode) -> CommandResult<EditorOutput> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
@@ -37,6 +38,7 @@ pub fn launch(config: &Config,
                     web_config,
                     WebEditorInput {
                         path: path.to_owned(),
+                        display_path: display_path.map(|x| x.to_owned()),
                         repository_path: Some(config.repository.clone())
                     }
                 )
@@ -61,11 +63,12 @@ pub fn launch(config: &Config,
 
 pub fn launch_with_content(config: &Config,
                            content: &str,
+                           display_path: Option<&Path>,
                            access_mode: AccessMode) -> CommandResult<EditorOutput> {
     let ext = ".".to_owned() + NOTE_CONTENT_EXT;
     let temp_file = tempfile::Builder::new()
         .suffix(&ext)
         .tempfile()?;
     temp_file.as_file().write_all(content.as_bytes())?;
-    launch(config, temp_file.path(), access_mode)
+    launch(config, temp_file.path(), display_path, access_mode)
 }

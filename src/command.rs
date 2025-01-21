@@ -66,7 +66,7 @@ pub enum Command {
     Commit
 }
 
-pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path) -> CommandResult<EditorOutput>>;
+pub type LaunchEditorFn = Box<dyn Fn(&Config, &Path, &Path) -> CommandResult<EditorOutput>>;
 pub struct CommandInterpreter {
     config: Config,
 
@@ -87,7 +87,7 @@ impl CommandInterpreter {
         CommandInterpreter::with_launch_editor(
             config,
             repository.clone(),
-            Box::new(|config, path| editor::launch(config, path, AccessMode::default()))
+            Box::new(|config, path, note_path| editor::launch(config, path, Some(note_path), AccessMode::default()))
         )
     }
 
@@ -133,15 +133,19 @@ impl CommandInterpreter {
                     self.check_if_note_exists(&path)?;
 
                     let id = NoteId::new();
-                    let (relative_note_path, abs_note_path) = self.get_note_storage_path(&id);
+                    let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
 
-                    if !abs_note_path.exists() {
-                        std::fs::write(&abs_note_path, "").map_err(|err| FailedToAddNote(err.to_string()))?;
+                    if !abs_content_path.exists() {
+                        std::fs::write(&abs_content_path, "").map_err(|err| FailedToAddNote(err.to_string()))?;
                     }
 
-                    let output = (self.launch_editor)(&self.config, &abs_note_path).map_err(|err| FailedToAddNote(err.to_string()))?;
+                    let output = (self.launch_editor)(
+                        &self.config,
+                        &abs_content_path,
+                        &path
+                    ).map_err(|err| FailedToAddNote(err.to_string()))?;
 
-                    self.add_note(id, &relative_note_path, path, tags)?;
+                    self.add_note(id, &relative_content_path, path, tags)?;
                     self.add_resources_from_editor_output(output)?;
                 }
                 Command::AddNoteWithContent { path, tags, content } => {
@@ -156,6 +160,8 @@ impl CommandInterpreter {
                 }
                 Command::EditNoteContent { path, history, clear_tags, add_tags } => {
                     let id = self.get_note_id(&path)?;
+                    let note_path = self.get_note_path(&id)?.to_owned();
+
                     let (relative_content_path, abs_content_path) = self.get_note_storage_path(&id);
                     let real_path = self.get_note_path(&id)?.to_path_buf();
 
@@ -172,7 +178,11 @@ impl CommandInterpreter {
                         std::fs::write(&abs_content_path, content).map_err(|err| FailedToEditNote(err.to_string()))?;
                     }
 
-                    let output = (self.launch_editor)(&self.config, &abs_content_path).map_err(|err| FailedToEditNote(err.to_string()))?;
+                    let output = (self.launch_editor)(
+                        &self.config,
+                        &abs_content_path,
+                        &note_path,
+                    ).map_err(|err| FailedToEditNote(err.to_string()))?;
 
                     self.edited_file(relative_content_path)?;
 

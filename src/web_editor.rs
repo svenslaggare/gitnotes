@@ -64,6 +64,7 @@ impl Default for WebEditorConfig {
 
 pub struct WebEditorInput {
     pub path: PathBuf,
+    pub display_path: Option<PathBuf>,
     pub repository_path: Option<PathBuf>
 }
 
@@ -71,6 +72,7 @@ impl WebEditorInput {
     pub fn from_path(path: &Path) -> WebEditorInput {
         WebEditorInput {
             path: path.to_owned(),
+            display_path: None,
             repository_path: None
         }
     }
@@ -84,6 +86,7 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
 
     let state = Arc::new(WebServerState::new(
         input.path.clone(),
+        input.display_path.unwrap_or(input.path.clone()),
         config.access_mode,
         config.is_standalone,
         input.repository_path.clone(),
@@ -119,7 +122,7 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
             EditorOutput::default()
         }
         _ = state.notify.notified() => {
-            return EditorOutput {
+            EditorOutput {
                 added_resources: std::mem::take(state.added_resources.lock().await.deref_mut())
             }
         }
@@ -133,6 +136,7 @@ pub fn launch_sync(config: WebEditorConfig, input: WebEditorInput) -> EditorOutp
 
 struct WebServerState {
     path: PathBuf,
+    display_path: PathBuf,
     notify: Notify,
     access_mode: AccessMode,
     is_standalone: bool,
@@ -143,12 +147,14 @@ struct WebServerState {
 
 impl WebServerState {
     pub fn new(path: PathBuf,
+               display_path: PathBuf,
                access_mode: AccessMode,
                is_standalone: bool,
                repository_path: Option<PathBuf>,
                snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
         WebServerState {
             path,
+            display_path,
             notify: Notify::new(),
             access_mode,
             is_standalone,
@@ -204,6 +210,7 @@ impl IntoResponse for WebServerError {
 struct AppTemplate {
     time: i64,
     file_path: String,
+    display_file_path: String,
     is_read_only: bool,
     is_standalone: bool
 }
@@ -212,6 +219,7 @@ async fn index(State(state): State<Arc<WebServerState>>) -> Response {
     let template = AppTemplate {
         time: Local::now().timestamp(),
         file_path: state.path.to_str().unwrap().to_owned(),
+        display_file_path: state.display_path.to_str().unwrap().to_owned(),
         is_read_only: state.access_mode == AccessMode::Read,
         is_standalone: state.is_standalone
     };

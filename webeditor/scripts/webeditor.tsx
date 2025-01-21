@@ -256,6 +256,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 <i className="editorButton fa-solid fa-list-ol" onClick={() => { this.addOrderedList(); }}></i>
                 <span className="separator">|</span>
                 <i title="Add Python code block" className="editorButton fa-brands fa-python" onClick={() => { this.addCode("python"); }} />
+                <i title="Add Bash code block" className="editorButton fa-solid fa-terminal" onClick={() => { this.addCode("bash"); }} />
                 <i title="Add JavaScript code block" className="editorButton fa-brands fa-js" onClick={() => { this.addCode("javascript"); }} />
                 <img title="Add TypeScript code block" className="editorButton svgIcon" onClick={() => { this.addCode("typescript"); }} src="/content/images/typescript.svg" />
                 <img title="Add C++ code block" className="editorButton svgIcon" onClick={() => { this.addCode("cpp"); }} src="/content/images/cpp.svg" />

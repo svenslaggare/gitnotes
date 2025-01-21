@@ -194,6 +194,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             react_1.default.createElement("i", { className: "editorButton fa-solid fa-list-ol", onClick: function () { _this.addOrderedList(); } }),
             react_1.default.createElement("span", { className: "separator" }, "|"),
             react_1.default.createElement("i", { title: "Add Python code block", className: "editorButton fa-brands fa-python", onClick: function () { _this.addCode("python"); } }),
+            react_1.default.createElement("i", { title: "Add Bash code block", className: "editorButton fa-solid fa-terminal", onClick: function () { _this.addCode("bash"); } }),
             react_1.default.createElement("i", { title: "Add JavaScript code block", className: "editorButton fa-brands fa-js", onClick: function () { _this.addCode("javascript"); } }),
             react_1.default.createElement("img", { title: "Add TypeScript code block", className: "editorButton svgIcon", onClick: function () { _this.addCode("typescript"); }, src: "/content/images/typescript.svg" }),
             react_1.default.createElement("img", { title: "Add C++ code block", className: "editorButton svgIcon", onClick: function () { _this.addCode("cpp"); }, src: "/content/images/cpp.svg" }),

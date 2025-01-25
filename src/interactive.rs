@@ -195,6 +195,8 @@ impl<'a> AutoCompletion<'a> {
                 "cd".to_owned(),
                 "pwd".to_owned(),
                 "update-symbolic-links".to_owned(),
+                "remote".to_owned(),
+                "open-notes".to_owned()
             ],
             path_subcommands: HashSet::from_iter(vec![
                "add".to_owned(),

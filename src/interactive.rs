@@ -203,6 +203,7 @@ impl<'a> AutoCompletion<'a> {
                "rm".to_owned(),
                "cat".to_owned(),
                "show".to_owned(),
+               "convert".to_owned(),
                "ls".to_owned(),
                "tree".to_owned(),
                "info".to_owned(),

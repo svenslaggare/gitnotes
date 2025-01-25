@@ -16,7 +16,7 @@ use structopt::StructOpt;
 
 use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
-use crate::{editor, git_helpers, interactive, querying};
+use crate::{editor, git_helpers, helpers, interactive, querying};
 use crate::command::CommandError::{BranchNotFound, InternalError, RemoteNotFound};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR};
@@ -196,6 +196,23 @@ impl App {
                 }
 
                 self.execute_commands(commands)?;
+            }
+            InputCommand::ConvertFile { path, destination } => {
+                let path = self.get_path(path)?;
+
+                if helpers::where_is_binary("pandoc").is_none() {
+                    return Err(AppError::FailedToConvert(
+                        "pandoc not installed - see https://www.baeldung.com/linux/pdf-markdown-conversion".to_owned()
+                    ));
+                }
+
+                let abs_content_path = self.get_note_content_path(&path)?;
+                std::process::Command::new("pandoc")
+                    .arg(abs_content_path)
+                    .args(["--pdf-engine", "pdfroff"])
+                    .args(["-o", destination.to_str().unwrap()])
+                    .spawn().map_err(|err| AppError::FailedToConvert(err.to_string()))?
+                    .wait().map_err(|err| AppError::FailedToConvert(err.to_string()))?;
             }
             InputCommand::AddResource { path, destination } => {
                 self.create_and_execute_commands(vec![
@@ -615,6 +632,21 @@ impl App {
         )
     }
 
+    fn get_note_content_path(&mut self, path: &Path) -> QueryingResult<PathBuf> {
+        self.note_metadata_storage()?;
+        let id = self.note_metadata_storage()?
+            .get(path)
+            .ok_or_else(|| QueryingError::NoteNotFound(path.to_str().unwrap().to_string()))?
+            .id;
+
+        Ok(
+            NoteMetadataStorage::get_note_storage_path(
+                &self.config.repository,
+                &id
+            ).1
+        )
+    }
+
     pub fn clear_cache(&mut self) {
         self.note_metadata_storage = None;
         self.version += 1;
@@ -751,6 +783,14 @@ pub enum InputCommand {
         /// Saves the output of the snippet inside the note.
         #[structopt(long="save")]
         save_output: bool
+    },
+    /// Converts the given note to a file (like pdf)
+    #[structopt(name="convert")]
+    ConvertFile {
+        /// The absolute path of the note. Id also work.
+        path: PathBuf,
+        /// The destination of  the path
+        destination: PathBuf
     },
     /// Adds a resource to the repository
     AddResource {
@@ -960,6 +1000,9 @@ pub enum AppError {
 
     #[error("Failed to change directory: {0}")]
     ChangeDirectory(String),
+
+    #[error("Failed to convert to pdf: {0}")]
+    FailedToConvert(String),
 
     #[error("{0}")]
     Regex(regex::Error),

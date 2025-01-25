@@ -1,7 +1,8 @@
-# GitNotes
+# GitNotes'
 CLI based notes & snippet application powered by Git.
 
 ## Features
+
 * Notes stored in Markdown format in a Git repository.
 * Edit notes using your favorite editor.
 * Notes organized in a virtual file system.
@@ -29,6 +30,7 @@ Building the `gitnotes` binary is done using:
 
 ### Web editor
 Building the web editor is done using:
+
 * Requires yarn (https://yarnpkg.com/).
 * Build with `cd webeditor && ./build_js.sh`
 
@@ -74,6 +76,11 @@ Searching for properties of notes (such as tags or creation date) can be done us
 
 Content based searches "grep" can be done with the `gitnotes grep` command. It is also possible to search for past content using the `--history` argument where a git commit spec is used.
 
+### Converting note to PDF
+Notes can be converted to PDF's with `gitnotes conver <note> <destination>`.
+
+Under the hood, `pandoc` is used. See https://www.baeldung.com/linux/pdf-markdown-conversion for how to install.
+
 ### Interactive mode
 The interactive mode have some additional features that are not available using the CLi directly such as the ability of combining different operations into one commit:
 
@@ -88,9 +95,11 @@ $ gitnotes
 An auto-completion that is aware of the notes that are actually stored in the repository.
 
 ### Editor
+
 Any editor can be used to edit notes. The editors that are most preferred are the ones that offer a split code/markdown views such as Visual Studio Code. To minimize the need to use external editors though, a simple web based editor is included with GitNotes. This is used by setting the `editor` config to `web-editor`. It is also possible to run in a standalone fashion using `gitnotes web-editor <path>`.
 
 ### Virtual file system
+
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
 
 ### Synchronization

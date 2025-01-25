@@ -42,7 +42,6 @@ tempfile = "3"
 libc = "0.2"
 crossterm = "0.28"
 home = "0.5"
-
 rake = "0.3"
 
 axum = { version = "0.6", features = ["multipart"] }

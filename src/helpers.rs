@@ -2,7 +2,7 @@ use std::collections::{HashSet};
 use std::error;
 use std::hash::{Hash, Hasher};
 use std::io::{Read, Stdin};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use chrono::{DateTime, FixedOffset, NaiveDateTime, TimeZone};
 
@@ -241,4 +241,16 @@ impl TablePrinter {
             println!();
         }
     }
+}
+
+pub fn where_is_binary(name: &str) -> Option<PathBuf> {
+    let path_variable = std::env::var("PATH").ok()?;
+    for path_entry in path_variable.split(":") {
+        let filename = Path::new(&path_entry).join(name);
+        if filename.exists() {
+            return Some(filename);
+        }
+    }
+
+    None
 }

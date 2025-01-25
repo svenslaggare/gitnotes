@@ -1,4 +1,4 @@
-# GitNotes'
+# GitNotes
 CLI based notes & snippet application powered by Git.
 
 ## Features

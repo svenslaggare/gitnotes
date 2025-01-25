@@ -44,8 +44,8 @@ crossterm = "0.28"
 home = "0.5"
 rake = "0.3"
 
-axum = { version = "0.6", features = ["multipart"] }
+axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1", features = ["full"] }
-tower-http = { version = "0.4", features = ["fs"] }
+tower-http = { version = "0.6", features = ["fs"] }
 askama = "0.12"
 open = "5"

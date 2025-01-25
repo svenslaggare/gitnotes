@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::future::IntoFuture;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::ops::DerefMut;
 use std::path::{Path, PathBuf};
@@ -101,8 +102,8 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
         .route("/api/content", put(save_content))
         .route("/api/run-snippet", post(run_snippet))
         .route("/api/add-resource", post(add_resource))
-        .route("/local/*path", get(get_local_file))
-        .route("/resource/*path", get(get_resource_file))
+        .route("/local/{*path}", get(get_local_file))
+        .route("/resource/{*path}", get(get_resource_file))
         .with_state(state.clone())
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         ;
@@ -113,8 +114,10 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
 
     open::that(web_address).unwrap();
 
+    let listener = tokio::net::TcpListener::bind(&address).await.unwrap();
+
     tokio::select! {
-        result = axum::Server::bind(&address).serve(app.into_make_service()) => {
+        result = axum::serve(listener, app).into_future() => {
             result.unwrap();
             EditorOutput::default()
         }
@@ -307,8 +310,13 @@ async fn add_resource(State(state): State<Arc<WebServerState>>,
             let filename = field.file_name().unwrap_or("file.bin").to_owned();
             let data = field.bytes().await?;
 
+            let resources_dir = repository_path.join(RESOURCES_DIR);
+            if !resources_dir.exists() {
+                std::fs::create_dir_all(&resources_dir)?;
+            }
+
             println!("Adding resource: {} ({} bytes)", filename, data.len());
-            let path = repository_path.join(RESOURCES_DIR).join(&filename);
+            let path = resources_dir.join(&filename);
             std::fs::write(path, data)?;
             state.added_resources.lock().await.push(Path::new(&filename).to_owned())
         }

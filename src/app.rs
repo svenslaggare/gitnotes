@@ -282,6 +282,13 @@ impl App {
                 let list_tree = ListTree::new(self.note_metadata_storage()?, create_config)?;
                 list_tree.list(&prefix);
             }
+            InputCommand::OpenNotesInFileExplorer {} => {
+                self.create_and_execute_commands(vec![
+                    Command::UpdateSymbolicLinks {}
+                ])?;
+
+                open::that(&self.config.repository)?;
+            }
             InputCommand::Finder { interactive, command } => {
                 let query = match command {
                     InputCommandFinder::Tag { tags } => {
@@ -843,6 +850,11 @@ pub enum InputCommand {
         /// Creates an interactive prompt to choose which match to launch a new command with
         #[structopt(long, short)]
         interactive: Option<String>
+    },
+    /// Opens the notes folder in file explorer
+    #[structopt(name="open-notes")]
+    OpenNotesInFileExplorer {
+
     },
     /// Lists the resources
     ListResources {

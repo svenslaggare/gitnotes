@@ -432,10 +432,10 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     snippetOutputContent: response.data["newContent"]
                 });
             }).catch(error => {
-            this.setState({
-                error: getErrorMessage(error)
+                this.setState({
+                    error: getErrorMessage(error)
+                });
             });
-        });
     }
 
     showAddResourceModel() {

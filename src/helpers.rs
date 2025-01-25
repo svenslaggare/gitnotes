@@ -243,10 +243,14 @@ impl TablePrinter {
     }
 }
 
-pub fn where_is_binary(name: &str) -> Option<PathBuf> {
+pub fn where_is_binary(binary: &Path) -> Option<PathBuf> {
+    if binary.is_absolute() {
+        return Some(binary.to_owned());
+    }
+
     let path_variable = std::env::var("PATH").ok()?;
     for path_entry in path_variable.split(":") {
-        let filename = Path::new(&path_entry).join(name);
+        let filename = Path::new(&path_entry).join(binary);
         if filename.exists() {
             return Some(filename);
         }

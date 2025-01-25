@@ -9,6 +9,7 @@ use fnv::FnvHashMap;
 use thiserror::Error;
 
 use crate::config::SnippetFileConfig;
+use crate::helpers::where_is_binary;
 
 pub type SnippetResult<T> = Result<T, SnippetError>;
 
@@ -16,6 +17,12 @@ pub type SnippetResult<T> = Result<T, SnippetError>;
 pub enum SnippetError {
     #[error("No runner found for '{0}'")]
     RunnerNotFound(String),
+
+    #[error("Executable '{0}' not found")]
+    ExecutableNotFound(String),
+
+    #[error("Compiler '{0}' not found")]
+    CompilerNotFound(String),
 
     #[error("The configuration type is not valid for this runner")]
     InvalidConfigType,
@@ -145,6 +152,8 @@ impl Default for PythonSnippetRunner {
 
 impl SnippetRunner for PythonSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_executable_exists(&self.config.executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".py")
             .tempfile()?;
@@ -193,6 +202,8 @@ impl Default for BashSnippetRunner {
 
 impl SnippetRunner for BashSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_executable_exists(&self.config.executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".sh")
             .tempfile()?;
@@ -246,6 +257,8 @@ impl Default for CppSnippetRunner {
 
 impl SnippetRunner for CppSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_compiler_exists(&self.config.compiler_executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".cpp")
             .tempfile()?;
@@ -318,6 +331,8 @@ impl Default for RustSnippetRunner {
 
 impl SnippetRunner for RustSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_compiler_exists(&self.config.compiler_executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".rs")
             .tempfile()?;
@@ -388,6 +403,8 @@ impl Default for JavaScriptSnippetRunner {
 
 impl SnippetRunner for JavaScriptSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_executable_exists(&self.config.executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".js")
             .tempfile()?;
@@ -438,6 +455,9 @@ impl Default for TypeScriptSnippetRunner {
 
 impl SnippetRunner for TypeScriptSnippetRunner {
     fn run(&self, source_code: &str) -> SnippetResult<String> {
+        assert_compiler_exists(&self.config.compiler_executable)?;
+        assert_executable_exists(&self.config.node_executable)?;
+
         let mut source_code_file = tempfile::Builder::new()
             .suffix(".ts")
             .tempfile()?;
@@ -513,6 +533,22 @@ impl Drop for DeleteFileGuard {
     fn drop(&mut self) {
         let _ = std::fs::remove_file(&self.path);
     }
+}
+
+fn assert_compiler_exists(executable: &Path) -> SnippetResult<()> {
+    if where_is_binary(&executable).is_none() {
+        return Err(SnippetError::CompilerNotFound(executable.to_str().unwrap().to_owned()));
+    }
+
+    Ok(())
+}
+
+fn assert_executable_exists(executable: &Path) -> SnippetResult<()> {
+    if where_is_binary(&executable).is_none() {
+        return Err(SnippetError::ExecutableNotFound(executable.to_str().unwrap().to_owned()));
+    }
+
+    Ok(())
 }
 
 #[test]

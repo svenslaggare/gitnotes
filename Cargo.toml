@@ -37,7 +37,7 @@ toml = "0.8"
 serde_json = "1"
 
 git2 = "0.20"
-comrak = "0.33"
+comrak = "0.35"
 tempfile = "3"
 libc = "0.2"
 crossterm = "0.28"

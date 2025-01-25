@@ -200,7 +200,7 @@ impl App {
             InputCommand::ConvertFile { path, destination } => {
                 let path = self.get_path(path)?;
 
-                if helpers::where_is_binary("pandoc").is_none() {
+                if helpers::where_is_binary(Path::new("pandoc")).is_none() {
                     return Err(AppError::FailedToConvert(
                         "pandoc not installed - see https://www.baeldung.com/linux/pdf-markdown-conversion".to_owned()
                     ));

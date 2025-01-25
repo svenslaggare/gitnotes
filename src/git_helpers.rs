@@ -1,4 +1,12 @@
-use git2::{Cred, CredentialType, Repository};
+use git2::{BranchType, Cred, CredentialType, Repository};
+use crate::command::CommandError;
+
+pub fn find_branch_ref(repository: &Repository, branch: &str) -> Result<String, CommandError> {
+    let branch_ref = repository.find_branch(&branch, BranchType::Local).map_err(|_| CommandError::BranchNotFound(branch.to_owned()))?;
+    let branch_ref = branch_ref.into_reference();
+    let branch_ref = branch_ref.name().ok_or_else(|| CommandError::InternalError("Failed to unwrap branch ref".to_owned()))?;
+    Ok(branch_ref.to_string())
+}
 
 pub fn create_ssh_credentials() -> impl FnMut(&str, Option<&str>, CredentialType) -> Result<Cred, git2::Error> {
     |_url, username_from_url, _allowed_types| {

@@ -227,6 +227,30 @@ impl App {
                 self.execute_commands(vec![Command::Commit])?;
                 self.auto_commit = true;
             }
+            InputCommand::Remote { command } => {
+                match command {
+                    InputCommandRemote::List { .. } => {
+                        let repository = self.repository.borrow();
+                        println!("Remotes:");
+                        for remote in repository.remotes()?.iter() {
+                            if let Some(remote) = remote {
+                                let remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.to_owned()))?;
+                                println!("{}: {}", remote.name().unwrap_or("N/A"), remote.url().unwrap_or("N/A"));
+                            }
+                        }
+                    }
+                    InputCommandRemote::Add { name, url } => {
+                        let repository = self.repository.borrow();
+                        repository.remote_set_url(&name, &url)?;
+                        println!("Added remote '{}.", name);
+                    }
+                    InputCommandRemote::Remove { name } => {
+                        let repository = self.repository.borrow();
+                        repository.remote_delete(&name).map_err(|_| RemoteNotFound(name.to_owned()))?;
+                        println!("Removed remote '{}.", name);
+                    }
+                }
+            }
             InputCommand::Synchronize { branch, remote, no_pull, no_push } => {
                 let branch = branch.unwrap_or_else(|| self.config.sync_default_branch.clone());
                 let remote = remote.unwrap_or_else(|| self.config.sync_default_remote.clone());
@@ -235,10 +259,7 @@ impl App {
 
                 let repository = self.repository.borrow();
 
-                let branch_ref = repository.find_branch(&branch, BranchType::Local).map_err(|_| BranchNotFound(branch.clone()))?;
-                let branch_ref = branch_ref.into_reference();
-                let branch_ref = branch_ref.name().ok_or_else(|| InternalError("Failed to unwrap branch ref".to_owned()))?;
-
+                let branch_ref = git_helpers::find_branch_ref(&repository, &branch)?;
                 let mut remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.clone()))?;
 
                 if pull {
@@ -249,7 +270,7 @@ impl App {
                     callbacks.credentials(git_helpers::create_ssh_credentials());
                     fetch_options.remote_callbacks(callbacks);
 
-                    remote.fetch(&[branch_ref], Some(&mut fetch_options), None)?;
+                    remote.fetch(&[&branch_ref], Some(&mut fetch_options), None)?;
                     let fetch_head = repository.find_reference("FETCH_HEAD")?;
                     let fetch_commit = repository.reference_to_annotated_commit(&fetch_head)?;
                     git_helpers::merge(&repository, &branch, fetch_commit)?;
@@ -263,7 +284,7 @@ impl App {
                     callbacks.credentials(git_helpers::create_ssh_credentials());
                     push_options.remote_callbacks(callbacks);
 
-                    remote.push(&[branch_ref], Some(&mut push_options))?;
+                    remote.push(&[&branch_ref], Some(&mut push_options))?;
                 }
             }
             InputCommand::PrintContent { path, history, only_code, only_output } => {
@@ -307,26 +328,8 @@ impl App {
                 open::that(&self.config.repository)?;
             }
             InputCommand::Finder { interactive, command } => {
-                let query = match command {
-                    InputCommandFinder::Tag { tags } => {
-                        FindQuery::Tags(tags)
-                    }
-                    InputCommandFinder::Name { name } => {
-                        FindQuery::Path(name)
-                    }
-                    InputCommandFinder::Id { id } => {
-                        FindQuery::Id(id)
-                    }
-                    InputCommandFinder::Created { parts } => {
-                        FindQuery::Created(parts)
-                    }
-                    InputCommandFinder::Updated { parts } => {
-                        FindQuery::LastUpdated(parts)
-                    }
-                };
-
                 let finder = Finder::new(self.note_metadata_storage()?)?;
-                let results = finder.find(&query)?;
+                let results = finder.find(&command.query())?;
                 print_note_metadata_results(&results);
 
                 if let Some(command) = interactive {
@@ -391,8 +394,14 @@ impl App {
             }
             InputCommand::Info { path, only_file_system_path } => {
                 self.note_metadata_storage()?;
-                let note_metadata = self.note_metadata_storage_ref()?.get(&path).ok_or_else(|| QueryingError::NoteNotFound(path.to_str().unwrap().to_owned()))?;
-                let file_system_path = NoteMetadataStorage::get_note_storage_path(&self.config.repository, &note_metadata.id).1.to_str().unwrap().to_owned();
+                let note_metadata = self.note_metadata_storage_ref()?
+                    .get(&path)
+                    .ok_or_else(|| QueryingError::NoteNotFound(path.to_str().unwrap().to_owned()))?;
+
+                let file_system_path = NoteMetadataStorage::get_note_storage_path(
+                    &self.config.repository,
+                    &note_metadata.id
+                ).1.to_str().unwrap().to_owned();
 
                 if !only_file_system_path {
                     println!("Id: {}", note_metadata.id);
@@ -807,6 +816,11 @@ pub enum InputCommand {
     Commit {
 
     },
+    /// Manages remote git instances
+    Remote {
+        #[structopt(subcommand)]
+        command: InputCommandRemote
+    },
     /// Synchronizes the notes with a remote git instance
     #[structopt(name="sync")]
     Synchronize {
@@ -976,6 +990,48 @@ pub enum InputCommandFinder {
     Updated {
         /// First element is year, then month, etc. All parts are optional.
         parts: Vec<i32>
+    }
+}
+
+impl InputCommandFinder {
+    pub fn query(self) -> FindQuery {
+        match self {
+            InputCommandFinder::Tag { tags } => {
+                FindQuery::Tags(tags)
+            }
+            InputCommandFinder::Name { name } => {
+                FindQuery::Path(name)
+            }
+            InputCommandFinder::Id { id } => {
+                FindQuery::Id(id)
+            }
+            InputCommandFinder::Created { parts } => {
+                FindQuery::Created(parts)
+            }
+            InputCommandFinder::Updated { parts } => {
+                FindQuery::LastUpdated(parts)
+            }
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+pub enum InputCommandRemote {
+    /// Lists the existing remotes
+    List {
+
+    },
+    /// Adds a new remote
+    Add {
+        /// The name of the remote
+        name: String,
+        /// The URL of the remote
+        url: String
+    },
+    /// Removes an existing remote
+    Remove {
+        /// The name of the remoote
+        name: String
     }
 }
 

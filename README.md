@@ -77,7 +77,7 @@ Searching for properties of notes (such as tags or creation date) can be done us
 Content based searches "grep" can be done with the `gitnotes grep` command. It is also possible to search for past content using the `--history` argument where a git commit spec is used.
 
 ### Converting note to PDF
-Notes can be converted to PDF's with `gitnotes conver <note> <destination>`.
+Notes can be converted to PDF's with `gitnotes convert <note> <destination>`.
 
 Under the hood, `pandoc` is used. See https://www.baeldung.com/linux/pdf-markdown-conversion for how to install.
 
@@ -103,4 +103,7 @@ Any editor can be used to edit notes. The editors that are most preferred are th
 The path used is _virtual_ in the sense that it doesn't affect the actual folder structure (the file path is just a metadata property of the note). All notes also have a numeric ID that can be used to refer to the note instead of the (virtual) path.
 
 ### Synchronization
-Synchronization can be done by adding a git remote (manually) and then using the `gitnotes sync` command.
+Synchronization can be done by adding a git remote and then using the `gitnotes sync` command.
+
+#### Adding remote
+Add a remote (SSH only supported) using `gitnotes remote add origin <URL>`.

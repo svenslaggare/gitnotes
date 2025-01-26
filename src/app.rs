@@ -213,11 +213,6 @@ impl App {
                     .spawn().map_err(|err| AppError::FailedToConvert(err.to_string()))?
                     .wait().map_err(|err| AppError::FailedToConvert(err.to_string()))?;
             }
-            InputCommand::AddResource { path, destination } => {
-                self.create_and_execute_commands(vec![
-                    Command::AddResource { path, destination }
-                ])?;
-            }
             InputCommand::Begin { } => {
                 self.auto_commit = false;
                 self.command_interpreter.new_commit()?;
@@ -372,19 +367,28 @@ impl App {
                     }
                 }
             }
-            InputCommand::ListResources { query, print_absolute } => {
-                let resources_dir = self.config.resources_dir();
-                querying::list_resources(&resources_dir, query, print_absolute)?;
-            }
-            InputCommand::ApplyCommandOnResource { command, resource } => {
-                let full_path = self.config.resources_dir().join(resource).canonicalize()?;
+            InputCommand::Resource { command } => {
+                match command {
+                    InputCommandResource::Add { path, destination } => {
+                        self.create_and_execute_commands(vec![
+                            Command::AddResource { path, destination }
+                        ])?;
+                    }
+                    InputCommandResource::List { query, print_absolute } => {
+                        let resources_dir = self.config.resources_dir();
+                        querying::list_resources(&resources_dir, query, print_absolute)?;
+                    }
+                    InputCommandResource::Apply { command, resource } => {
+                        let full_path = self.config.resources_dir().join(resource).canonicalize()?;
 
-                let mut result = std::process::Command::new(&command)
-                    .arg(full_path)
-                    .stdin(Stdio::inherit())
-                    .spawn()
-                    .map_err(|err| CommandError::SubProcess(err))?;
-                result.wait().map_err(|err| CommandError::SubProcess(err))?;
+                        let mut result = std::process::Command::new(&command)
+                            .arg(full_path)
+                            .stdin(Stdio::inherit())
+                            .spawn()
+                            .map_err(|err| CommandError::SubProcess(err))?;
+                        result.wait().map_err(|err| CommandError::SubProcess(err))?;
+                    }
+                }
             }
             InputCommand::Log { count } => {
                 let repository = self.repository.borrow();
@@ -800,13 +804,6 @@ pub enum InputCommand {
         /// The destination of  the path
         destination: PathBuf
     },
-    /// Adds a resource to the repository
-    AddResource {
-        /// The path of the resource on the local filesystem
-        path: PathBuf,
-        /// The path of the resource within the repository
-        destination: PathBuf
-    },
     /// Begins a commit. All subsequent operations are done within this commit (interactive mode only).
     Begin {
 
@@ -815,7 +812,7 @@ pub enum InputCommand {
     Commit {
 
     },
-    /// Manages remote git instances
+    /// Manages remote git connections
     Remote {
         #[structopt(subcommand)]
         command: InputCommandRemote
@@ -904,26 +901,15 @@ pub enum InputCommand {
         #[structopt(long, short)]
         interactive: Option<String>
     },
+    /// Manage resources
+    Resource {
+        #[structopt(subcommand)]
+        command: InputCommandResource
+    },
     /// Opens the notes folder in file explorer
     #[structopt(name="open-notes")]
     OpenNotesInFileExplorer {
 
-    },
-    /// Lists the resources
-    ListResources {
-        /// The directory to list. Leave empty for all.
-        query: Option<PathBuf>,
-        /// Prints the absolute path.
-        #[structopt(long)]
-        print_absolute: bool
-    },
-    /// Applies a command on a resource
-    #[structopt(name="apply-resource")]
-    ApplyCommandOnResource {
-        /// The command to apply. Path to resource is given as first argument
-        command: String,
-        /// The resource to apply on
-        resource: PathBuf
     },
     /// Lists git commits
     Log {
@@ -1029,9 +1015,35 @@ pub enum InputCommandRemote {
     },
     /// Removes an existing remote
     Remove {
-        /// The name of the remoote
+        /// The name of the remote
         name: String
     }
+}
+
+#[derive(Debug, StructOpt)]
+pub enum InputCommandResource {
+    /// Lists the resources
+    List {
+        /// The directory to list. Leave empty for all.
+        query: Option<PathBuf>,
+        /// Prints the absolute path.
+        #[structopt(long)]
+        print_absolute: bool
+    },
+    /// Adds a resource to the repository
+    Add {
+        /// The path of the resource on the local filesystem
+        path: PathBuf,
+        /// The path of the resource within the repository
+        destination: PathBuf
+    },
+    /// Applies a command on a resource
+    Apply {
+        /// The command to apply. Path to resource is given as first argument
+        command: String,
+        /// The resource to apply on
+        resource: PathBuf
+    },
 }
 
 pub type AppResult<T> = Result<T, AppError>;

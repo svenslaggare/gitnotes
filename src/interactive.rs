@@ -217,6 +217,14 @@ impl<'a> AutoCompletion<'a> {
                 ]
             },
             AutoCompletionCommand::Regular { name: "grep".to_owned() },
+            AutoCompletionCommand::SubCommand {
+                name: "resource".to_owned(),
+                sub_commands: vec![
+                    "add".to_string(),
+                    "list".to_owned(),
+                    "apply".to_owned(),
+                ]
+            },
             AutoCompletionCommand::Regular { name: "help".to_owned() },
             AutoCompletionCommand::Regular { name: "log".to_owned() },
             AutoCompletionCommand::Regular { name: "switch".to_owned() },

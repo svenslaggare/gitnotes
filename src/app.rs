@@ -750,7 +750,7 @@ pub enum InputCommand {
     },
     /// Edit an existing note.
     Edit {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Starts editing the note with content at the given git commit
         #[structopt(long="history")]
@@ -765,7 +765,7 @@ pub enum InputCommand {
     /// Moves a note to a new location
     #[structopt(name="mv")]
     Move {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         source: PathBuf,
         /// The absolute path of the new destination.
         destination: PathBuf,
@@ -776,7 +776,7 @@ pub enum InputCommand {
     /// Removes a note
     #[structopt(name="rm")]
     Remove {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Recursively removes all notes in path.
         #[structopt(long, short)]
@@ -790,7 +790,7 @@ pub enum InputCommand {
     /// Runs the code snippet contained in a note.
     #[structopt(name="run")]
     RunSnippet {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Saves the output of the snippet inside the note.
         #[structopt(long="save")]
@@ -799,7 +799,7 @@ pub enum InputCommand {
     /// Converts the given note to a file (like pdf)
     #[structopt(name="convert")]
     ConvertFile {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// The destination of  the path
         destination: PathBuf
@@ -834,7 +834,7 @@ pub enum InputCommand {
     /// Prints the content of a note.
     #[structopt(name="cat")]
     PrintContent {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Prints the content at the given git commit
         #[structopt(long="history")]
@@ -848,7 +848,7 @@ pub enum InputCommand {
     },
     /// Shows the content of a note in an editor
     Show {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Shows the content at the given git commit
         #[structopt(long="history")]
@@ -919,7 +919,7 @@ pub enum InputCommand {
     },
     /// Shows information about a note
     Info {
-        /// The absolute path of the note. Id also work.
+        /// The path of the note. Id also work.
         path: PathBuf,
         /// Prints only the file system path.
         #[structopt(long="file-system")]

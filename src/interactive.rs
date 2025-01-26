@@ -221,8 +221,9 @@ impl<'a> AutoCompletion<'a> {
             AutoCompletionCommand::SubCommand {
                 name: "resource".to_owned(),
                 sub_commands: vec![
-                    "add".to_string(),
                     "list".to_owned(),
+                    "add".to_string(),
+                    "remove".to_string(),
                     "apply".to_owned(),
                 ]
             },

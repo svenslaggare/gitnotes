@@ -63,6 +63,9 @@ pub enum Command {
         path: PathBuf,
         destination: PathBuf
     },
+    RemoveResource {
+        path: PathBuf
+    },
     Commit
 }
 
@@ -281,8 +284,8 @@ impl CommandInterpreter {
                 }
                 Command::AddResource { path, destination } => {
                     if path.exists() {
+                        let destination_path = self.config.resources_dir().join(&destination);
                         let destination_resource_path = Path::new(RESOURCES_DIR).join(&destination);
-                        let destination_path = destination_resource_path.join(&destination);
                         if let Some(destination_parent) = destination_path.parent() {
                             std::fs::create_dir_all(destination_parent)?;
                         }
@@ -296,6 +299,24 @@ impl CommandInterpreter {
                         self.commit_message_lines.insert(format!(
                             "Added resource '{}' (from {}).",
                             destination.to_str().unwrap_or("N/A"),
+                            path.to_str().unwrap_or("N/A")
+                        ));
+                    } else {
+                        return Err(ResourceNotFound(path.to_str().unwrap_or("N/A").to_owned()));
+                    }
+                }
+                Command::RemoveResource { path } => {
+                    let resource_path = Path::new(RESOURCES_DIR).join(&path);
+                    let file_path = self.config.resources_dir().join(&path);
+                    if file_path.exists() {
+                        std::fs::remove_file(&file_path)?;
+
+                        let index = self.index()?;
+                        index.remove_path(&resource_path)?;
+                        index.write()?;
+
+                        self.commit_message_lines.insert(format!(
+                            "Removed resource '{}'.",
                             path.to_str().unwrap_or("N/A")
                         ));
                     } else {

@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use crate::app::{App, AppError, InputCommand};
+use crate::app::{App, AppError, InputCommand, InputCommandResource};
 use crate::command::{Command, CommandError, CommandInterpreter};
 use crate::config::{Config, FileConfig};
 use crate::editor::EditorOutput;
@@ -1124,6 +1124,65 @@ fn test_undo() {
     app.run(InputCommand::Undo { commit: commit_id.to_string() }).unwrap();
     assert_eq!(note_content1, app.note_metadata_storage().unwrap().get_content(note_path).unwrap());
     assert_eq!(3, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_add_resource() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = create_test_config(&temp_repository_dir);
+    let repository = git2::Repository::init(&config.repository).unwrap();
+    let resources_dir = config.resources_dir();
+
+    let mut app = App::new(config).unwrap();
+
+    app.run_until_completion(
+        InputCommand::Resource {
+            command: InputCommandResource::Add {
+                path: Path::new("testdata/resource1.txt").to_owned(),
+                destination: Path::new("resource1.txt").to_owned(),
+            },
+        }
+    ).unwrap();
+
+    assert_eq!(
+        std::fs::read_to_string(Path::new("testdata/resource1.txt").to_owned()).unwrap(),
+        std::fs::read_to_string(resources_dir.join("resource1.txt")).unwrap(),
+    );
+    assert_eq!(1, repository.reflog("HEAD").unwrap().len());
+}
+
+#[test]
+fn test_remove_resource() {
+    use tempfile::TempDir;
+
+    let temp_repository_dir = TempDir::new().unwrap();
+    let config = create_test_config(&temp_repository_dir);
+    let repository = git2::Repository::init(&config.repository).unwrap();
+    let resources_dir = config.resources_dir();
+
+    let mut app = App::new(config).unwrap();
+
+    app.run_until_completion(
+        InputCommand::Resource {
+            command: InputCommandResource::Add {
+                path: Path::new("testdata/resource1.txt").to_owned(),
+                destination: Path::new("resource1.txt").to_owned(),
+            },
+        }
+    ).unwrap();
+
+    app.run_until_completion(
+        InputCommand::Resource {
+            command: InputCommandResource::Remove {
+                path: Path::new("resource1.txt").to_owned(),
+            },
+        }
+    ).unwrap();
+
+    assert!(!resources_dir.join("resource1.txt").exists());
+    assert_eq!(2, repository.reflog("HEAD").unwrap().len());
 }
 
 fn create_test_config(temp_repository_dir: &tempfile::TempDir) -> Config {

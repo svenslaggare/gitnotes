@@ -357,14 +357,19 @@ impl App {
             }
             InputCommand::Resource { command } => {
                 match command {
+                    InputCommandResource::List { query, print_absolute } => {
+                        let resources_dir = self.config.resources_dir();
+                        querying::list_resources(&resources_dir, query, print_absolute)?;
+                    }
                     InputCommandResource::Add { path, destination } => {
                         self.create_and_execute_commands(vec![
                             Command::AddResource { path, destination }
                         ])?;
                     }
-                    InputCommandResource::List { query, print_absolute } => {
-                        let resources_dir = self.config.resources_dir();
-                        querying::list_resources(&resources_dir, query, print_absolute)?;
+                    InputCommandResource::Remove { path } => {
+                        self.create_and_execute_commands(vec![
+                            Command::RemoveResource { path }
+                        ])?;
                     }
                     InputCommandResource::Apply { command, resource } => {
                         let full_path = self.config.resources_dir().join(resource).canonicalize()?;
@@ -1030,6 +1035,11 @@ pub enum InputCommandResource {
         path: PathBuf,
         /// The path of the resource within the repository
         destination: PathBuf
+    },
+    /// Remove a resource from the repository
+    Remove {
+        /// The path of the resource within the repository
+        path: PathBuf
     },
     /// Applies a command on a resource
     Apply {

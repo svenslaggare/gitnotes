@@ -107,3 +107,6 @@ Synchronization can be done by adding a git remote and then using the `gitnotes 
 
 #### Adding remote
 Add a remote (SSH only supported) using `gitnotes remote add origin <URL>`.
+
+### Resources
+None note files (denoted 'resources') can be added to the repository with the `gitnotes resource add <local file> <repo destination>` command. If the resource is an image, this can be shown in the web editor as well. 

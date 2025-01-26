@@ -653,8 +653,6 @@ pub enum CommandError {
 
     #[error("Branch '{0}' not found")]
     BranchNotFound(String),
-    #[error("Remote '{0}' not found")]
-    RemoteNotFound(String),
 
     #[error("Internal error: {0}")]
     InternalError(String),

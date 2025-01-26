@@ -10,14 +10,13 @@ use globset::Glob;
 use regex::Regex;
 use thiserror::Error;
 
-use git2::{BranchType, FetchOptions, PushOptions, RemoteCallbacks};
+use git2::{FetchOptions, PushOptions, RemoteCallbacks};
 
 use structopt::StructOpt;
 
 use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
 use crate::{editor, git_helpers, helpers, interactive, querying};
-use crate::command::CommandError::{BranchNotFound, InternalError, RemoteNotFound};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
@@ -234,7 +233,7 @@ impl App {
                         println!("Remotes:");
                         for remote in repository.remotes()?.iter() {
                             if let Some(remote) = remote {
-                                let remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.to_owned()))?;
+                                let remote = repository.find_remote(&remote).map_err(|_| AppError::RemoteNotFound(remote.to_owned()))?;
                                 println!("{}: {}", remote.name().unwrap_or("N/A"), remote.url().unwrap_or("N/A"));
                             }
                         }
@@ -246,7 +245,7 @@ impl App {
                     }
                     InputCommandRemote::Remove { name } => {
                         let repository = self.repository.borrow();
-                        repository.remote_delete(&name).map_err(|_| RemoteNotFound(name.to_owned()))?;
+                        repository.remote_delete(&name).map_err(|_| AppError::RemoteNotFound(name.to_owned()))?;
                         println!("Removed remote '{}.", name);
                     }
                 }
@@ -260,7 +259,7 @@ impl App {
                 let repository = self.repository.borrow();
 
                 let branch_ref = git_helpers::find_branch_ref(&repository, &branch)?;
-                let mut remote = repository.find_remote(&remote).map_err(|_| RemoteNotFound(remote.clone()))?;
+                let mut remote = repository.find_remote(&remote).map_err(|_| AppError::RemoteNotFound(remote.clone()))?;
 
                 if pull {
                     println!("Pulling from remote...");
@@ -1059,6 +1058,9 @@ pub enum AppError {
 
     #[error("Failed to convert to pdf: {0}")]
     FailedToConvert(String),
+
+    #[error("Remote '{0}' not found")]
+    RemoteNotFound(String),
 
     #[error("{0}")]
     Regex(regex::Error),

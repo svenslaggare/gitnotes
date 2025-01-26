@@ -1,12 +1,11 @@
 use std::path::{Path, PathBuf};
-use std::collections::HashSet;
 use std::io::stdout;
 
 use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-
+use fnv::FnvHashMap;
 use structopt::{clap, StructOpt};
 
 use rustyline::completion::{Completer, Pair};
@@ -161,56 +160,79 @@ fn input_command_interactive(line: &str) -> Result<InputCommand, String> {
     )
 }
 
+pub enum AutoCompletionCommand {
+    Regular {
+        name: String
+    },
+    Path {
+        name: String
+    },
+    SubCommand {
+        name: String,
+        sub_commands: Vec<String>
+    }
+}
+
+impl AutoCompletionCommand {
+    pub fn name(&self) -> &str {
+        match self {
+            AutoCompletionCommand::Regular { name, .. } => name,
+            AutoCompletionCommand::Path { name, .. } => name,
+            AutoCompletionCommand::SubCommand { name, .. } => name
+        }
+    }
+}
+
 #[derive(Helper, Highlighter, Hinter)]
 struct AutoCompletion<'a> {
-    subcommands: Vec<String>,
-    path_subcommands: HashSet<String>,
+    commands: FnvHashMap<String, AutoCompletionCommand>,
     note_file_tree: NoteFileTree<'a>,
     working_dir: Option<PathBuf>
 }
 
 impl<'a> AutoCompletion<'a> {
     pub fn new(note_file_tree: NoteFileTree<'a>) -> AutoCompletion<'a> {
+        let commands = vec![
+            AutoCompletionCommand::Path { name: "add".to_owned() },
+            AutoCompletionCommand::Path { name: "rm".to_owned() },
+            AutoCompletionCommand::Path { name: "edit".to_owned() },
+            AutoCompletionCommand::Path { name: "mv".to_owned() },
+            AutoCompletionCommand::Path { name: "cat".to_owned() },
+            AutoCompletionCommand::Path { name: "show".to_owned() },
+            AutoCompletionCommand::Path { name: "convert".to_owned() },
+            AutoCompletionCommand::Path { name: "info".to_owned() },
+            AutoCompletionCommand::Path { name: "tree".to_owned() },
+            AutoCompletionCommand::Path { name: "cd".to_owned() },
+            AutoCompletionCommand::Regular { name: "begin".to_owned() },
+            AutoCompletionCommand::Regular { name: "commit".to_owned() },
+            AutoCompletionCommand::Regular { name: "config".to_owned() },
+            AutoCompletionCommand::SubCommand {
+                name: "find".to_owned(),
+                sub_commands: vec![
+                    "tag".to_string(),
+                    "name".to_owned(),
+                    "id".to_owned(),
+                    "created".to_owned(),
+                    "updated".to_owned()
+                ]
+            },
+            AutoCompletionCommand::Regular { name: "grep".to_owned() },
+            AutoCompletionCommand::Regular { name: "help".to_owned() },
+            AutoCompletionCommand::Regular { name: "log".to_owned() },
+            AutoCompletionCommand::Regular { name: "switch".to_owned() },
+            AutoCompletionCommand::Regular { name: "undo".to_owned() },
+            AutoCompletionCommand::Regular { name: "pwd".to_owned() },
+            AutoCompletionCommand::SubCommand {
+                name: "remote".to_owned(),
+                sub_commands: vec!["list".to_owned(), "add".to_owned(), "remove".to_owned()]
+            },
+            AutoCompletionCommand::Regular { name: "sync".to_owned() },
+            AutoCompletionCommand::Regular { name: "update-symbolic-links".to_owned() },
+            AutoCompletionCommand::Regular { name: "open-notes".to_owned() },
+        ];
+
         AutoCompletion {
-            subcommands: vec![
-                "add".to_owned(),
-                "begin".to_owned(),
-                "cat".to_owned(),
-                "commit".to_owned(),
-                "config".to_owned(),
-                "edit".to_owned(),
-                "find".to_owned(),
-                "grep".to_owned(),
-                "help".to_owned(),
-                "info".to_owned(),
-                "log".to_owned(),
-                "ls".to_owned(),
-                "mv".to_owned(),
-                "rm".to_owned(),
-                "run".to_owned(),
-                "show".to_owned(),
-                "switch".to_owned(),
-                "tree".to_owned(),
-                "undo".to_owned(),
-                "cd".to_owned(),
-                "pwd".to_owned(),
-                "update-symbolic-links".to_owned(),
-                "remote".to_owned(),
-                "open-notes".to_owned()
-            ],
-            path_subcommands: HashSet::from_iter(vec![
-               "add".to_owned(),
-               "edit".to_owned(),
-               "mv".to_owned(),
-               "rm".to_owned(),
-               "cat".to_owned(),
-               "show".to_owned(),
-               "convert".to_owned(),
-               "ls".to_owned(),
-               "tree".to_owned(),
-               "info".to_owned(),
-               "cd".to_owned(),
-            ]),
+            commands: FnvHashMap::from_iter(commands.into_iter().map(|command| (command.name().to_owned(), command))),
             note_file_tree,
             working_dir: None
         }
@@ -308,28 +330,37 @@ impl<'a> Completer for AutoCompletion<'a> {
 
         let iterator: Box<dyn Iterator<Item=(&str, bool)>> = match self.current_command(line) {
             None => {
-                Box::new(self.subcommands.iter().map(|word| (word.as_str(), false)))
+                Box::new(self.commands.values().map(|command| (command.name(), false)))
             }
-            Some(command) if self.path_subcommands.contains(command) => {
-                current_completion = &current_path_segment;
-                current_completion_length = current_path_segment_length;
+            Some(command) => {
+                if let Some(command) = self.commands.get(command) {
+                    match command {
+                        AutoCompletionCommand::Path { .. } => {
+                            current_completion = &current_path_segment;
+                            current_completion_length = current_path_segment_length;
 
-                self.get_note_tree(&current_word, path_segment_done)
-                    .map(|note_file_tree| {
-                        note_file_tree.children().map(|children| {
-                            let iter: Box<dyn Iterator<Item=(&str, bool)>> = Box::new(
-                                children
-                                    .iter()
-                                    .map(|(name, tree)| (name.to_str().unwrap(), !tree.is_leaf()))
-                            );
-                            iter
-                        })
-                    })
-                    .flatten()
-                    .unwrap_or_else(|| Box::new(std::iter::empty()))
-            }
-            _ => {
-                Box::new(std::iter::empty())
+                            self.get_note_tree(&current_word, path_segment_done)
+                                .map(|note_file_tree| {
+                                    note_file_tree.children().map(|children| {
+                                        let iter: Box<dyn Iterator<Item=(&str, bool)>> = Box::new(
+                                            children
+                                                .iter()
+                                                .map(|(name, tree)| (name.to_str().unwrap(), !tree.is_leaf()))
+                                        );
+                                        iter
+                                    })
+                                })
+                                .flatten()
+                                .unwrap_or_else(|| Box::new(std::iter::empty()))
+                        }
+                        AutoCompletionCommand::SubCommand { sub_commands, .. } => {
+                            Box::new(sub_commands.iter().map(|command| (command.as_str(), false)))
+                        }
+                        _ => Box::new(std::iter::empty())
+                    }
+                } else {
+                    Box::new(std::iter::empty())
+                }
             }
         };
 

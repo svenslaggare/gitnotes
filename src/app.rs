@@ -16,7 +16,7 @@ use structopt::StructOpt;
 
 use crate::command::{Command, CommandInterpreter, CommandError, CommandResult};
 use crate::config::{Config, config_path, FileConfig};
-use crate::{editor, git_helpers, helpers, interactive, querying};
+use crate::{editor, git_helpers, interactive, markdown, querying};
 use crate::helpers::{base_dir, get_or_insert_with, io_error, StdinExt};
 use crate::model::{NoteFileTree, NoteFileTreeCreateConfig, NoteMetadataStorage, NOTES_DIR};
 use crate::querying::{Finder, FindQuery, GitLog, ListDirectory, ListTree, print_list_directory_results, print_note_metadata_results, QueryingError, QueryingResult, RegexMatcher, Searcher, StringMatcher};
@@ -198,20 +198,8 @@ impl App {
             }
             InputCommand::ConvertFile { path, destination } => {
                 let path = self.get_path(path)?;
-
-                if helpers::where_is_binary(Path::new("pandoc")).is_none() {
-                    return Err(AppError::FailedToConvert(
-                        "pandoc not installed - see https://www.baeldung.com/linux/pdf-markdown-conversion".to_owned()
-                    ));
-                }
-
                 let abs_content_path = self.get_note_content_path(&path)?;
-                std::process::Command::new("pandoc")
-                    .arg(abs_content_path)
-                    .args(["--pdf-engine", "pdfroff"])
-                    .args(["-o", destination.to_str().unwrap()])
-                    .spawn().map_err(|err| AppError::FailedToConvert(err.to_string()))?
-                    .wait().map_err(|err| AppError::FailedToConvert(err.to_string()))?;
+                markdown::convert(&abs_content_path, &destination)?;
             }
             InputCommand::Begin { } => {
                 self.auto_commit = false;

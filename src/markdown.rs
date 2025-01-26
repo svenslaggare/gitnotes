@@ -1,7 +1,11 @@
 use std::cell::RefCell;
+use std::path::Path;
 
 use comrak::{Arena, ComrakOptions};
 use comrak::nodes::{Ast, AstNode, LineColumn, NodeCodeBlock, NodeValue};
+
+use crate::app::{AppError, AppResult};
+use crate::helpers;
 
 pub fn storage<'a>() -> Arena<AstNode<'a>> {
     Arena::new()
@@ -15,7 +19,12 @@ pub fn parse<'a>(arena: &'a Arena<AstNode<'a>>, content: &str) -> &'a AstNode<'a
     )
 }
 
-pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root: &'a AstNode<'a>, mut apply: F, show_code: bool, show_output: bool) -> Result<(), E> {
+pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(
+    root: &'a AstNode<'a>,
+    mut apply: F,
+    show_code: bool,
+    show_output: bool
+) -> Result<(), E> {
     for current_node in root.children() {
         match current_node.data.borrow().value {
             NodeValue::CodeBlock(ref block) => {
@@ -31,7 +40,10 @@ pub fn visit_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root
     Ok(())
 }
 
-pub fn visit_non_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(root: &'a AstNode<'a>, mut apply: F) -> Result<(), E> {
+pub fn visit_non_code_blocks<'a, E, F: FnMut(&'a AstNode<'a>) -> Result<(), E>>(
+    root: &'a AstNode<'a>,
+    mut apply: F
+) -> Result<(), E> {
     for current_node in root.children() {
         match &current_node.data.borrow().value {
             NodeValue::CodeBlock(_) => {}
@@ -56,4 +68,21 @@ pub fn create_output_code_block<'a>(arena: &'a Arena<AstNode<'a>>, output: Strin
     output_block.info = "output".to_owned();
     output_block.literal = output;
     arena.alloc(AstNode::new(RefCell::new(Ast::new(NodeValue::CodeBlock(output_block), LineColumn::from((0, 0))))))
+}
+
+pub fn convert(source: &Path, destination: &Path) -> AppResult<()> {
+    if helpers::where_is_binary(Path::new("pandoc")).is_none() {
+        return Err(AppError::FailedToConvert(
+            "pandoc not installed - see https://www.baeldung.com/linux/pdf-markdown-conversion".to_owned()
+        ));
+    }
+
+    std::process::Command::new("pandoc")
+        .arg(source)
+        .args(["--pdf-engine", "pdfroff"])
+        .args(["-o", destination.to_str().unwrap()])
+        .spawn().map_err(|err| AppError::FailedToConvert(err.to_string()))?
+        .wait().map_err(|err| AppError::FailedToConvert(err.to_string()))?;
+
+    Ok(())
 }

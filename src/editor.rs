@@ -21,10 +21,12 @@ impl Default for EditorOutput {
     }
 }
 
-pub fn launch(config: &Config,
-              path: &Path,
-              display_path: Option<&Path>,
-              access_mode: AccessMode) -> CommandResult<EditorOutput> {
+pub fn launch(
+    config: &Config,
+    path: &Path,
+    display_path: Option<&Path>,
+    access_mode: AccessMode
+) -> CommandResult<EditorOutput> {
     let mut editor_command = std::process::Command::new(&config.editor);
     match config.editor.as_str() {
         "code" | "gedit" | "xed" => { editor_command.arg("--wait"); },
@@ -61,10 +63,12 @@ pub fn launch(config: &Config,
     }
 }
 
-pub fn launch_with_content(config: &Config,
-                           content: &str,
-                           display_path: Option<&Path>,
-                           access_mode: AccessMode) -> CommandResult<EditorOutput> {
+pub fn launch_with_content(
+    config: &Config,
+    content: &str,
+    display_path: Option<&Path>,
+    access_mode: AccessMode
+) -> CommandResult<EditorOutput> {
     let ext = ".".to_owned() + NOTE_CONTENT_EXT;
     let temp_file = tempfile::Builder::new()
         .suffix(&ext)

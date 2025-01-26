@@ -484,11 +484,13 @@ impl App {
         self.note_metadata_storage.as_ref().ok_or_else(|| io_error("note_metadata_storage not created"))
     }
 
-    fn create_move_commands(&self,
-                            working_dir: PathBuf,
-                            source: PathBuf,
-                            destination: PathBuf,
-                            force: bool) -> QueryingResult<Vec<Command>> {
+    fn create_move_commands(
+        &self,
+        working_dir: PathBuf,
+        source: PathBuf,
+        destination: PathBuf,
+        force: bool
+    ) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
 
         let inner = |source: PathBuf, destination: PathBuf| {
@@ -550,10 +552,12 @@ impl App {
         inner(source, destination)
     }
 
-    fn create_remove_commands(&self,
-                              working_dir: PathBuf,
-                              path: PathBuf,
-                              recursive: bool) -> QueryingResult<Vec<Command>> {
+    fn create_remove_commands(
+        &self,
+        working_dir: PathBuf,
+        path: PathBuf,
+        recursive: bool
+    ) -> QueryingResult<Vec<Command>> {
         let note_file_tree = NoteFileTree::from_iter(self.note_metadata_storage_ref()?.notes());
 
         let inner = |path: PathBuf| {
@@ -595,10 +599,12 @@ impl App {
         inner(path)
     }
 
-    fn create_glob_paths(&self,
-                         working_dir: &Path,
-                         note_file_tree: Option<&NoteFileTree>,
-                         pattern: &str) -> QueryingResult<Option<Vec<PathBuf>>> {
+    fn create_glob_paths(
+        &self,
+        working_dir: &Path,
+        note_file_tree: Option<&NoteFileTree>,
+        pattern: &str
+    ) -> QueryingResult<Option<Vec<PathBuf>>> {
         if let Ok(glob) = Glob::new(pattern) {
             let glob = glob.compile_matcher();
 

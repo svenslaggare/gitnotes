@@ -21,32 +21,34 @@ pub fn create_ssh_credentials() -> impl FnMut(&str, Option<&str>, CredentialType
     }
 }
 
-pub fn merge<'a>(repo: &'a Repository,
-                 remote_branch: &str,
-                 fetch_commit: git2::AnnotatedCommit<'a>) -> Result<(), git2::Error> {
+pub fn merge<'a>(
+    repository: &'a Repository,
+    remote_branch: &str,
+    fetch_commit: git2::AnnotatedCommit<'a>
+) -> Result<(), git2::Error> {
     // 1. do a merge analysis
-    let analysis = repo.merge_analysis(&[&fetch_commit])?;
+    let analysis = repository.merge_analysis(&[&fetch_commit])?;
 
     // 2. Do the appropriate merge
     if analysis.0.is_fast_forward() {
         // do a fast forward
         let ref_name = format!("refs/heads/{}", remote_branch);
-        match repo.find_reference(&ref_name) {
+        match repository.find_reference(&ref_name) {
             Ok(mut r) => {
-                fast_forward(repo, &mut r, &fetch_commit)?;
+                fast_forward(repository, &mut r, &fetch_commit)?;
             }
             Err(_) => {
                 // The branch doesn't exist so just set the reference to the
                 // commit directly. Usually this is because you are pulling
                 // into an empty repository.
-                repo.reference(
+                repository.reference(
                     &ref_name,
                     fetch_commit.id(),
                     true,
                     &format!("Setting {} to {}", remote_branch, fetch_commit.id()),
                 )?;
-                repo.set_head(&ref_name)?;
-                repo.checkout_head(Some(
+                repository.set_head(&ref_name)?;
+                repository.checkout_head(Some(
                     git2::build::CheckoutBuilder::default()
                         .allow_conflicts(true)
                         .conflict_style_merge(true)
@@ -56,16 +58,18 @@ pub fn merge<'a>(repo: &'a Repository,
         };
     } else if analysis.0.is_normal() {
         // do a normal merge
-        let head_commit = repo.reference_to_annotated_commit(&repo.head()?)?;
-        normal_merge(&repo, &head_commit, &fetch_commit)?;
+        let head_commit = repository.reference_to_annotated_commit(&repository.head()?)?;
+        normal_merge(&repository, &head_commit, &fetch_commit)?;
     }
 
     Ok(())
 }
 
-fn fast_forward(repo: &Repository,
-                lb: &mut git2::Reference,
-                rc: &git2::AnnotatedCommit) -> Result<(), git2::Error> {
+fn fast_forward(
+    repository: &Repository,
+    lb: &mut git2::Reference,
+    rc: &git2::AnnotatedCommit
+) -> Result<(), git2::Error> {
     let name = match lb.name() {
         Some(s) => s.to_string(),
         None => String::from_utf8_lossy(lb.name_bytes()).to_string(),
@@ -73,8 +77,8 @@ fn fast_forward(repo: &Repository,
 
     let msg = format!("Fast-Forward: Setting {} to id: {}", name, rc.id());
     lb.set_target(rc.id(), &msg)?;
-    repo.set_head(&name)?;
-    repo.checkout_head(Some(
+    repository.set_head(&name)?;
+    repository.checkout_head(Some(
         git2::build::CheckoutBuilder::default()
             // For some reason the force is required to make the working directory actually get updated
             // I suspect we should be adding some logic to handle dirty working directory states
@@ -84,31 +88,33 @@ fn fast_forward(repo: &Repository,
     Ok(())
 }
 
-fn normal_merge(repo: &Repository,
-                local: &git2::AnnotatedCommit,
-                remote: &git2::AnnotatedCommit) -> Result<(), git2::Error> {
-    let local_tree = repo.find_commit(local.id())?.tree()?;
-    let remote_tree = repo.find_commit(remote.id())?.tree()?;
-    let ancestor = repo
-        .find_commit(repo.merge_base(local.id(), remote.id())?)?
+fn normal_merge(
+    repository: &Repository,
+    local: &git2::AnnotatedCommit,
+    remote: &git2::AnnotatedCommit
+) -> Result<(), git2::Error> {
+    let local_tree = repository.find_commit(local.id())?.tree()?;
+    let remote_tree = repository.find_commit(remote.id())?.tree()?;
+    let ancestor = repository
+        .find_commit(repository.merge_base(local.id(), remote.id())?)?
         .tree()?;
-    let mut idx = repo.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
+    let mut idx = repository.merge_trees(&ancestor, &local_tree, &remote_tree, None)?;
 
     if idx.has_conflicts() {
         println!("Merge conflicts detected...");
-        repo.checkout_index(Some(&mut idx), None)?;
+        repository.checkout_index(Some(&mut idx), None)?;
         return Ok(());
     }
 
-    let result_tree = repo.find_tree(idx.write_tree_to(repo)?)?;
+    let result_tree = repository.find_tree(idx.write_tree_to(repository)?)?;
     // now create the merge commit
     let msg = format!("Merge: {} into {}", remote.id(), local.id());
-    let sig = repo.signature()?;
-    let local_commit = repo.find_commit(local.id())?;
-    let remote_commit = repo.find_commit(remote.id())?;
+    let sig = repository.signature()?;
+    let local_commit = repository.find_commit(local.id())?;
+    let remote_commit = repository.find_commit(remote.id())?;
 
     // Do our merge commit and set current branch head to that commit.
-    let _merge_commit = repo.commit(
+    let _merge_commit = repository.commit(
         Some("HEAD"),
         &sig,
         &sig,
@@ -118,6 +124,6 @@ fn normal_merge(repo: &Repository,
     )?;
 
     // Set working tree to match head.
-    repo.checkout_head(None)?;
+    repository.checkout_head(None)?;
     Ok(())
 }

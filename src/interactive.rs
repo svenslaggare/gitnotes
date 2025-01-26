@@ -1,12 +1,13 @@
 use std::path::{Path, PathBuf};
 use std::io::stdout;
 
+use fnv::FnvHashMap;
+use structopt::{clap, StructOpt};
+
 use crossterm::cursor::{MoveDown, MoveUp, RestorePosition, SavePosition};
 use crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers, read};
 use crossterm::ExecutableCommand;
 use crossterm::terminal::{disable_raw_mode, enable_raw_mode};
-use fnv::FnvHashMap;
-use structopt::{clap, StructOpt};
 
 use rustyline::completion::{Completer, Pair};
 use rustyline::{Context, Editor};

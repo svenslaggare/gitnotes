@@ -677,10 +677,12 @@ impl From<std::io::Error> for CommandError {
     }
 }
 
-pub fn run_snippet<'a, F: FnMut(&str)>(snippet_runner_manager: &SnippetRunnerManger,
-                                       arena: &'a Arena<AstNode<'a>>,
-                                       content: &str,
-                                       mut do_print: F) -> CommandResult<&'a AstNode<'a>> {
+pub fn run_snippet<'a, F: FnMut(&str)>(
+    snippet_runner_manager: &SnippetRunnerManger,
+    arena: &'a Arena<AstNode<'a>>,
+    content: &str,
+    mut do_print: F
+) -> CommandResult<&'a AstNode<'a>> {
     let root = markdown::parse(&arena, content);
 
     markdown::visit_code_blocks::<CommandError, _>(

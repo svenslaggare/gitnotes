@@ -150,10 +150,12 @@ impl<'a> Searcher<'a> {
         Ok(matches)
     }
 
-    pub fn search_historic(&self,
-                           repository: &git2::Repository,
-                           query: &Regex,
-                           git_start: &str, git_end: Option<&str>) -> QueryingResult<Vec<(git2::Oid, NoteMetadata)>> {
+    pub fn search_historic(
+        &self,
+        repository: &git2::Repository,
+        query: &Regex,
+        git_start: &str, git_end: Option<&str>
+    ) -> QueryingResult<Vec<(git2::Oid, NoteMetadata)>> {
         let is_terminal = stdout().is_terminal();
 
         let mut rev_walk = repository.revwalk()?;
@@ -300,7 +302,8 @@ impl<'a> ListDirectory<'a> {
     pub fn new(note_metadata_storage: &'a NoteMetadataStorage) -> QueryingResult<ListDirectory<'a>> {
         Ok(
             ListDirectory {
-                root: NoteFileTree::from_iter(note_metadata_storage.notes()).ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
+                root: NoteFileTree::from_iter(note_metadata_storage.notes())
+                    .ok_or_else(|| QueryingError::FailedToCreateNoteFileTree)?
             }
         )
     }
@@ -395,7 +398,10 @@ pub struct ListTree<'a> {
 }
 
 impl<'a> ListTree<'a> {
-    pub fn new(note_metadata_storage: &'a NoteMetadataStorage, config: NoteFileTreeCreateConfig) -> QueryingResult<ListTree<'a>> {
+    pub fn new(
+        note_metadata_storage: &'a NoteMetadataStorage,
+        config: NoteFileTreeCreateConfig
+    ) -> QueryingResult<ListTree<'a>> {
         Ok(
             ListTree {
                 root: NoteFileTree::from_iter_with_config(
@@ -476,9 +482,11 @@ impl<'a> ListTree<'a> {
     }
 }
 
-pub fn list_resources(base_dir: &Path,
-                      query: Option<PathBuf>,
-                      print_absolute: bool) -> QueryingResult<()> {
+pub fn list_resources(
+    base_dir: &Path,
+    query: Option<PathBuf>,
+    print_absolute: bool
+) -> QueryingResult<()> {
     println!("Resources:");
 
     if !base_dir.exists() {
@@ -551,9 +559,11 @@ impl<'a> GitLog<'a> {
     }
 }
 
-pub fn get_note_content(repository: &git2::Repository,
-                        note_metadata_storage: &NoteMetadataStorage,
-                        path: &Path, git_reference: Option<String>) -> QueryingResult<String> {
+pub fn get_note_content(
+    repository: &git2::Repository,
+    note_metadata_storage: &NoteMetadataStorage,
+    path: &Path, git_reference: Option<String>
+) -> QueryingResult<String> {
     if let Some(git_reference) = git_reference {
         let git_content_fetcher = GitContentFetcher::new(repository, note_metadata_storage);
 

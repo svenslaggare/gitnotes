@@ -149,12 +149,14 @@ struct WebServerState {
 }
 
 impl WebServerState {
-    pub fn new(path: PathBuf,
-               display_path: PathBuf,
-               access_mode: AccessMode,
-               is_standalone: bool,
-               repository_path: Option<PathBuf>,
-               snippet_runner_manager: SnippetRunnerManger) -> WebServerState {
+    pub fn new(
+        path: PathBuf,
+        display_path: PathBuf,
+        access_mode: AccessMode,
+        is_standalone: bool,
+        repository_path: Option<PathBuf>,
+        snippet_runner_manager: SnippetRunnerManger
+    ) -> WebServerState {
         WebServerState {
             path,
             display_path,
@@ -303,8 +305,10 @@ async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json
     )
 }
 
-async fn add_resource(State(state): State<Arc<WebServerState>>,
-                      mut multipart: Multipart) -> WebServerResult<Response> {
+async fn add_resource(
+    State(state): State<Arc<WebServerState>>,
+    mut multipart: Multipart
+) -> WebServerResult<Response> {
     if let Some(repository_path) = state.repository_path.as_ref() {
         while let Some(field) = multipart.next_field().await? {
             let filename = field.file_name().unwrap_or("file.bin").to_owned();
@@ -329,9 +333,11 @@ async fn get_local_file(headers: HeaderMap, AxumPath(path): AxumPath<String>) ->
     serve_file(headers, Path::new(&path)).await
 }
 
-async fn get_resource_file(State(state): State<Arc<WebServerState>>,
-                           headers: HeaderMap,
-                           AxumPath(path): AxumPath<String>) -> Response {
+async fn get_resource_file(
+    State(state): State<Arc<WebServerState>>,
+    headers: HeaderMap,
+    AxumPath(path): AxumPath<String>
+) -> Response {
     if let Some(repository_path) = state.repository_path.as_ref() {
         serve_file(headers, &repository_path.join(RESOURCES_DIR).join(&path)).await
     } else {

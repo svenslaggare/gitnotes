@@ -931,7 +931,7 @@ pub enum InputCommand {
         /// The new working directory
         path: PathBuf
     },
-    /// Prints the current working directory of the (virtual) file system (interactive mode only)
+    /// Prints the current working directory of the (virtual) file system
     #[structopt(name="pwd")]
     PrintWorkingDirectory {
 

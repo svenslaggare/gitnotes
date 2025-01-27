@@ -148,7 +148,8 @@ var WebEditorMain = /** @class */ (function (_super) {
             react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
             !this.state.isReadOnly ?
                 react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource")
-                : null));
+                : null,
+            react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.convertToPDF(); } }, "Convert to PDF")));
     };
     WebEditorMain.prototype.renderText = function () {
         var _this = this;
@@ -352,6 +353,10 @@ var WebEditorMain = /** @class */ (function (_super) {
                         react_1.default.createElement("br", null),
                         react_1.default.createElement("br", null),
                         react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.addResource(); } }, "Upload"))))));
+    };
+    WebEditorMain.prototype.convertToPDF = function () {
+        var url = "/convert-to-pdf?path=".concat(this.props.filePath);
+        window.open(url, "_blank");
     };
     WebEditorMain.prototype.showAddLinkModel = function () {
         // @ts-ignore

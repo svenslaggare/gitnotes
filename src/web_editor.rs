@@ -104,6 +104,7 @@ pub async fn launch(config: WebEditorConfig, input: WebEditorInput) -> EditorOut
         .route("/api/add-resource", post(add_resource))
         .route("/local/{*path}", get(get_local_file))
         .route("/resource/{*path}", get(get_resource_file))
+        .route("/convert-to-pdf", get(convert_to_pdf))
         .with_state(state.clone())
         .layer(DefaultBodyLimit::max(10 * 1024 * 1024))
         ;
@@ -255,7 +256,10 @@ struct SaveContent {
     content: String
 }
 
-async fn save_content(State(state): State<Arc<WebServerState>>, Json(input): Json<SaveContent>) -> WebServerResult<Response> {
+async fn save_content(
+    State(state): State<Arc<WebServerState>>,
+    Json(input): Json<SaveContent>
+) -> WebServerResult<Response> {
     if state.access_mode == AccessMode::ReadWrite {
         std::fs::write(&input.path, input.content)?;
         println!("Saved content for '{}'.", input.path.to_str().unwrap());
@@ -275,7 +279,10 @@ struct RunSnippet {
     content: String
 }
 
-async fn run_snippet(State(state): State<Arc<WebServerState>>, Json(input): Json<RunSnippet>) -> WebServerResult<Response> {
+async fn run_snippet(
+    State(state): State<Arc<WebServerState>>,
+    Json(input): Json<RunSnippet>
+) -> WebServerResult<Response> {
     let arena = markdown::storage();
 
     let mut snippet_output = String::new();
@@ -346,6 +353,18 @@ async fn get_resource_file(
             StatusCode::BAD_REQUEST
         )
     }
+}
+
+async fn convert_to_pdf(headers: HeaderMap, Query(parameters): Query<HashMap<String, String>>) -> WebServerResult<Response> {
+    let path = parameters.get("path").ok_or_else(|| WebServerError::ExpectedQueryParameter("path".to_owned()))?;
+
+    let output_path = tempfile::Builder::new()
+        .suffix(".pdf")
+        .tempfile()?
+        .path().to_path_buf();
+
+    markdown::convert(Path::new(&path), &output_path).unwrap();
+    Ok(serve_file(headers, &output_path).await)
 }
 
 async fn serve_file(headers: HeaderMap, path: &Path) -> Response {

@@ -175,6 +175,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                     <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button>
                     : null
                 }
+                <button type="button" className="btn btn-primary" onClick={() => { this.convertToPDF(); }}>Convert to PDF</button>
             </span>
         );
     }
@@ -470,6 +471,11 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 </div>
             </div>
         );
+    }
+
+    convertToPDF() {
+        let url = `/convert-to-pdf?path=${this.props.filePath}`
+        window.open(url, "_blank");
     }
 
     showAddLinkModel() {

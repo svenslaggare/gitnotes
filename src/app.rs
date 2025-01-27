@@ -371,6 +371,18 @@ impl App {
                             Command::RemoveResource { path }
                         ])?;
                     }
+                    InputCommandResource::Open { path } => {
+                        match path.map(|path| self.config.resources_dir().join(path)) {
+                            Some(path) => {
+                                if let Some(parent) = path.parent() {
+                                    open::that(parent)?;
+                                }
+                            }
+                            None => {
+                                open::that(self.config.resources_dir())?;
+                            }
+                        }
+                    }
                     InputCommandResource::Apply { command, resource } => {
                         let full_path = self.config.resources_dir().join(resource).canonicalize()?;
 
@@ -1040,6 +1052,10 @@ pub enum InputCommandResource {
     Remove {
         /// The path of the resource within the repository
         path: PathBuf
+    },
+    /// Opens the file explorer for the given resource
+    Open {
+        path: Option<PathBuf>
     },
     /// Applies a command on a resource
     Apply {

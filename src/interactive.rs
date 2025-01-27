@@ -224,6 +224,7 @@ impl<'a> AutoCompletion<'a> {
                     "list".to_owned(),
                     "add".to_string(),
                     "remove".to_string(),
+                    "open".to_string(),
                     "apply".to_owned(),
                 ]
             },

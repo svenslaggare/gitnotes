@@ -1,13 +1,13 @@
 [package]
 name = "gitnotes"
-version = "0.1.0"
+version = "1.0.0"
 authors = ["Anton Jansson <anton_jansson@live.se>"]
 edition = "2021"
 description = "CLI & Git based notes/snippet application"
 license = "MIT"
 homepage = "https://github.com/svenslaggare/gitnotes"
 default-run = "gitnotes"
-readme = "README.md"
+readme = "README_DEB.txt"
 
 [package.metadata.deb]
 assets = [

@@ -1,0 +1,1 @@
+CLI based notes & snippet application powered by Git. See https://github.com/svenslaggare/gitnotes for how to.

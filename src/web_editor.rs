@@ -180,6 +180,9 @@ enum WebServerError {
     Multipart(axum::extract::multipart::MultipartError),
 
     #[error("{0}")]
+    FailedToConvertPDF(String),
+
+    #[error("{0}")]
     IO(std::io::Error)
 }
 
@@ -199,6 +202,14 @@ type WebServerResult<T> = Result<T, WebServerError>;
 
 impl IntoResponse for WebServerError {
     fn into_response(self) -> Response {
+        if let WebServerError::FailedToConvertPDF(message) = &self {
+            let (status_code, error_message) = (StatusCode::BAD_REQUEST, self.to_string());
+            return with_response_code(
+                error_message.into_response(),
+                status_code
+            );
+        }
+
         let (status_code, error_message) = (StatusCode::BAD_REQUEST, self.to_string());
         with_response_code(
             Json(
@@ -305,10 +316,12 @@ async fn run_snippet(
     }
 
     Ok(
-        Json(json!({
-            "output": snippet_output,
-            "newContent": new_content
-        })).into_response()
+        Json(
+            json!({
+                "output": snippet_output,
+                "newContent": new_content
+            })
+        ).into_response()
     )
 }
 
@@ -363,7 +376,9 @@ async fn convert_to_pdf(headers: HeaderMap, Query(parameters): Query<HashMap<Str
         .tempfile()?
         .path().to_path_buf();
 
-    markdown::convert(Path::new(&path), &output_path).unwrap();
+    markdown::convert(Path::new(&path), &output_path)
+        .map_err(|err| WebServerError::FailedToConvertPDF(err.to_string()))?;
+
     Ok(serve_file(headers, &output_path).await)
 }
 

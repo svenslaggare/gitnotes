@@ -58,3 +58,9 @@ html {
     width: 14px;
     margin-bottom: 5px;
 }
+
+.centerContent {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

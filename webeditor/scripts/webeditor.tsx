@@ -12,6 +12,7 @@ import ReactMarkdown from "react-markdown";
 import {Prism as SyntaxHighlighter} from 'react-syntax-highlighter'
 
 import axios from "axios";
+import {OptionalRender} from "./helpers";
 
 class WebEditorMainProps {
     filePath: string;
@@ -77,7 +78,6 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                 <div className="row" style={{ "padding": "7px" }}>
                     <div className="col-9">
                         {this.renderSaveExit()}
-                        {this.renderActions()}
                     </div>
                     <div className="col-3">
                         <div className="form-check form-check-inline">
@@ -97,6 +97,7 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
                         </div>
                     </div>
                 </div>
+                {this.renderActions()}
                 {this.renderSuccess()}
                 {this.renderError()}
                 {this.renderSnippetOutput()}
@@ -147,16 +148,18 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
     renderSaveExit() {
         return (
             <span>
-                {
-                    !this.state.isReadOnly ?
-                        <button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button>
-                        : null
-                }
-                {
-                    !this.state.isReadOnly ?
-                        <button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button>
-                        : null
-                }
+                <OptionalRender
+                    condition={!this.state.isReadOnly}
+                    trueContent={<button type="button" className="btn btn-success" onClick={() => { this.saveContent(); }}>Save</button>}
+                    falseContent={null}
+                />
+
+                <OptionalRender
+                    condition={!this.state.isReadOnly}
+                    trueContent={<button type="button" className="btn btn-primary" onClick={() => { this.saveContentAndExit(); }}>Save & exit</button>}
+                    falseContent={null}
+                />
+
                 <button type="button" className="btn btn-danger" onClick={() => { this.exit(); }}>Exit</button>
             </span>
         );
@@ -168,15 +171,23 @@ class WebEditorMain extends React.Component<WebEditorMainProps, WebEditorMainSta
         }
 
         return (
-            <span style={{ paddingLeft: "15px" }}>
-                <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
-                {
-                    !this.state.isReadOnly ?
-                    <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button>
-                    : null
-                }
-                <button type="button" className="btn btn-primary" onClick={() => { this.convertToPDF(); }}>Convert to PDF</button>
-            </span>
+            <div className="row">
+                <div className="col-4" />
+                <div className="col-4 centerContent">
+                    <span>
+                        <button type="button" className="btn btn-primary" onClick={() => { this.runSnippet(); }}>Run snippet</button>
+                        <OptionalRender
+                            condition={!this.state.isReadOnly}
+                            trueContent={
+                                <button type="button" className="btn btn-primary" onClick={() => { this.showAddResourceModel(); }}>Add resource</button>
+                            }
+                            falseContent={null}
+                        />
+                        <button type="button" className="btn btn-primary" onClick={() => { this.convertToPDF(); }}>Convert to PDF</button>
+                    </span>
+                </div>
+                <div className="col-4" />
+            </div>
         );
     }
 

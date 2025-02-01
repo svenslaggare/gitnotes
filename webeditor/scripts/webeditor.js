@@ -50,6 +50,7 @@ require("brace/ext/searchbox");
 var react_markdown_1 = __importDefault(require("react-markdown"));
 var react_syntax_highlighter_1 = require("react-syntax-highlighter");
 var axios_1 = __importDefault(require("axios"));
+var helpers_1 = require("./helpers");
 var WebEditorMainProps = /** @class */ (function () {
     function WebEditorMainProps() {
     }
@@ -86,9 +87,7 @@ var WebEditorMain = /** @class */ (function (_super) {
             this.renderAddResourceModal(),
             this.renderAddLinkModal(),
             react_1.default.createElement("div", { className: "row", style: { "padding": "7px" } },
-                react_1.default.createElement("div", { className: "col-9" },
-                    this.renderSaveExit(),
-                    this.renderActions()),
+                react_1.default.createElement("div", { className: "col-9" }, this.renderSaveExit()),
                 react_1.default.createElement("div", { className: "col-3" },
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
                         react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showText, id: "showTextCheckbox", onChange: function (event) { _this.changeText(event); } }),
@@ -96,6 +95,7 @@ var WebEditorMain = /** @class */ (function (_super) {
                     react_1.default.createElement("div", { className: "form-check form-check-inline" },
                         react_1.default.createElement("input", { className: "form-check-input", type: "checkbox", checked: this.state.showRendered, id: "showRenderedheckbox", onChange: function (event) { _this.changeRendered(event); } }),
                         react_1.default.createElement("label", { className: "form-check-label", htmlFor: "showRenderedheckbox" }, "Rendered")))),
+            this.renderActions(),
             this.renderSuccess(),
             this.renderError(),
             this.renderSnippetOutput(),
@@ -131,12 +131,8 @@ var WebEditorMain = /** @class */ (function (_super) {
     WebEditorMain.prototype.renderSaveExit = function () {
         var _this = this;
         return (react_1.default.createElement("span", null,
-            !this.state.isReadOnly ?
-                react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save")
-                : null,
-            !this.state.isReadOnly ?
-                react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit")
-                : null,
+            react_1.default.createElement(helpers_1.OptionalRender, { condition: !this.state.isReadOnly, trueContent: react_1.default.createElement("button", { type: "button", className: "btn btn-success", onClick: function () { _this.saveContent(); } }, "Save"), falseContent: null }),
+            react_1.default.createElement(helpers_1.OptionalRender, { condition: !this.state.isReadOnly, trueContent: react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.saveContentAndExit(); } }, "Save & exit"), falseContent: null }),
             react_1.default.createElement("button", { type: "button", className: "btn btn-danger", onClick: function () { _this.exit(); } }, "Exit")));
     };
     WebEditorMain.prototype.renderActions = function () {
@@ -144,12 +140,14 @@ var WebEditorMain = /** @class */ (function (_super) {
         if (this.state.isStandalone) {
             return null;
         }
-        return (react_1.default.createElement("span", { style: { paddingLeft: "15px" } },
-            react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
-            !this.state.isReadOnly ?
-                react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource")
-                : null,
-            react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.convertToPDF(); } }, "Convert to PDF")));
+        return (react_1.default.createElement("div", { className: "row" },
+            react_1.default.createElement("div", { className: "col-4" }),
+            react_1.default.createElement("div", { className: "col-4 centerContent" },
+                react_1.default.createElement("span", null,
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.runSnippet(); } }, "Run snippet"),
+                    react_1.default.createElement(helpers_1.OptionalRender, { condition: !this.state.isReadOnly, trueContent: react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.showAddResourceModel(); } }, "Add resource"), falseContent: null }),
+                    react_1.default.createElement("button", { type: "button", className: "btn btn-primary", onClick: function () { _this.convertToPDF(); } }, "Convert to PDF"))),
+            react_1.default.createElement("div", { className: "col-4" })));
     };
     WebEditorMain.prototype.renderText = function () {
         var _this = this;
